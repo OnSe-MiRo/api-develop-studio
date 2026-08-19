@@ -35,6 +35,8 @@ class CaseResult:
     response: HttpResponse | None = None
     differences: list[Difference] = field(default_factory=list)
     error: str | None = None
+    request_definition: dict[str, Any] | None = None
+    expected_definition: dict[str, Any] | None = None
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -146,7 +148,10 @@ class ApiTestRunner:
             response_headers = dict(exc.headers.items()) if exc.headers else {}
             raw_body = exc.read().decode("utf-8", errors="replace")
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            return CaseResult(case_id, "error", attempt, error=str(exc))
+            return CaseResult(
+                case_id, "error", attempt, error=str(exc),
+                request_definition=request_definition, expected_definition=expected,
+            )
 
         try:
             body: Any = json.loads(raw_body) if raw_body else None
@@ -158,4 +163,7 @@ class ApiTestRunner:
             differences.append(Difference("$.status", expected["status"], status, "status mismatch"))
         if "body" in expected:
             differences.extend(compare_json(expected["body"], body, "$.body", strict=expected.get("strict", True)))
-        return CaseResult(case_id, "passed" if not differences else "failed", attempt, response, differences)
+        return CaseResult(
+            case_id, "passed" if not differences else "failed", attempt, response, differences,
+            request_definition=request_definition, expected_definition=expected,
+        )
