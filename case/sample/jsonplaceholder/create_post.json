@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://jsonplaceholder.typicode.com/posts?test=2&j=1",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "title": "API test post",
+      "body": "Created by the JSON API test runner.",
+      "userId": 1
+    }
+  },
+  "expected": {
+    "status": 201,
+    "strict": true,
+    "body": {
+      "title": "API test post",
+      "body": "Created by the JSON API test runner.",
+      "userId": 1,
+      "id": 101
+    }
+  }
+}

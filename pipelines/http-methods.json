@@ -1,0 +1,34 @@
+{
+  "defaults": {
+    "retry": 1,
+    "retry_interval_seconds": 0.5
+  },
+  "steps": [
+    {
+      "name": "get_post",
+      "case": "sample/jsonplaceholder/get_post.json"
+    },
+    {
+      "name": "create_post",
+      "case": "sample/jsonplaceholder/create_post.json"
+    },
+    {
+      "name": "replace_post",
+      "case": "sample/jsonplaceholder/replace_post.json"
+    },
+    {
+      "name": "update_post_title",
+      "case": "sample/jsonplaceholder/update_post_title.json"
+    },
+    {
+      "name": "delete_post",
+      "case": "sample/jsonplaceholder/delete_post.json"
+    },
+    {
+      "name": "a",
+      "case": "sample/jsonplaceholder/get_post.json",
+      "retry": 1,
+      "retry_interval_seconds": 1
+    }
+  ]
+}

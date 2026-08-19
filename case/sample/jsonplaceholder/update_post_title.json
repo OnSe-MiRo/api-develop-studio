@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "PATCH",
+    "url": "https://jsonplaceholder.typicode.com/posts/1",
+    "body": {
+      "title": "Updated title"
+    }
+  },
+  "expected": {
+    "status": 200,
+    "strict": true,
+    "body": {
+      "userId": 1,
+      "id": 1,
+      "title": "Updated title",
+      "body": "quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto"
+    }
+  }
+}

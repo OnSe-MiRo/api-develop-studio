@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "PUT",
+    "url": "https://jsonplaceholder.typicode.com/posts/1",
+    "body": {
+      "id": 1,
+      "title": "Replacement title",
+      "body": "The full resource is replaced.",
+      "userId": 1
+    }
+  },
+  "expected": {
+    "status": 200,
+    "strict": true,
+    "body": {
+      "id": 1,
+      "title": "Replacement title",
+      "body": "The full resource is replaced.",
+      "userId": 1
+    }
+  }
+}
