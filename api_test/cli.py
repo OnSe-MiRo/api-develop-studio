@@ -10,6 +10,24 @@ from .run_log import create_run_logger
 from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, read_json, resolve_case_path
 
 
+SENSITIVE_FIELD_PARTS = ("authorization", "token", "secret", "password", "api_key", "apikey", "cookie")
+
+
+def _redact(value: Any, key: str = "") -> Any:
+    """Keep failure diagnostics useful without writing credentials to disk."""
+    if any(part in key.lower() for part in SENSITIVE_FIELD_PARTS):
+        return "***REDACTED***"
+    if isinstance(value, dict):
+        return {str(item_key): _redact(item_value, str(item_key)) for item_key, item_value in value.items()}
+    if isinstance(value, list):
+        return [_redact(item) for item in value]
+    return value
+
+
+def _json_log_value(value: Any) -> str:
+    return json.dumps(_redact(value), ensure_ascii=False, default=str)
+
+
 def _retry_config(item: dict[str, Any], defaults: dict[str, Any]) -> tuple[int, float]:
     retry = item.get("retry", defaults.get("retry", 0))
     interval = item.get("retry_interval_seconds", defaults.get("retry_interval_seconds", 0))
@@ -30,6 +48,17 @@ def _result_lines(result: CaseResult) -> list[str]:
             f"expected={json.dumps(difference.expected, ensure_ascii=False)}, "
             f"actual={json.dumps(difference.actual, ensure_ascii=False)}"
         )
+    if result.status != "passed":
+        request_value = result.request_definition or {}
+        expected_value = result.expected_definition or {}
+        actual_value: dict[str, Any] | None = None
+        if result.response:
+            actual_value = {"status": result.response.status, "body": result.response.body}
+        lines.extend([
+            f"  request_value={_json_log_value(request_value)}",
+            f"  expected_response={_json_log_value(expected_value)}",
+            f"  actual_response={_json_log_value(actual_value)}",
+        ])
     return lines
 
 

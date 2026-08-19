@@ -106,6 +106,9 @@ class ApiRunnerTest(unittest.TestCase):
             log_content = next(log_dir.glob("api-test_*.log")).read_text(encoding="utf-8")
             self.assertIn("alpha: TOTAL 1 | PASS 0 | FAIL 1 | ERROR 0 | SKIPPED 0", log_content)
             self.assertIn("beta: TOTAL 1 | PASS 0 | FAIL 0 | ERROR 0 | SKIPPED 1", log_content)
+            self.assertIn('request_value={"url": "https://example.test/fail"}', log_content)
+            self.assertIn('expected_response={"status": 200}', log_content)
+            self.assertIn('actual_response={"status": 500, "body": {"error": "failure"}}', log_content)
 
     def test_runs_a_single_case_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
