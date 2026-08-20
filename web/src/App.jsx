@@ -297,18 +297,19 @@ function ProjectList({ projects, activeProject, onOpenProject, onCreateProject, 
 }
 
 function ProjectSettings({ projects, onSaved, onCancel }) {
-  const [form, setForm] = useState({ name: '', baseUrl: '' })
+  const [form, setForm] = useState({ name: '', baseUrl: '', proxy: '', verify: true })
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
   const save = async () => {
     try {
       if (!form.name || !form.baseUrl) throw new Error('프로젝트 이름과 Base URL을 입력하세요.')
       const reference = projectFileName(form.name, projects)
-      await api(`/api/projects/${encodeURIComponent(reference)}`, { method: 'PUT', body: JSON.stringify({ name: form.name, base_url: form.baseUrl }) })
+      await api(`/api/projects/${encodeURIComponent(reference)}`, { method: 'PUT', body: JSON.stringify({ name: form.name, base_url: form.baseUrl, advanced: { proxy: form.proxy, verify: form.verify } }) })
       await onSaved(reference)
     } catch (error) { setNotice(error.message) }
   }
-  return <main className="project-page"><section className="card"><div className="section-header"><div><p className="eyebrow">NEW PROJECT</p><h2>프로젝트 설정</h2></div><div className="actions"><button className="ghost" onClick={onCancel}>목록으로</button><button className="primary" onClick={save}>저장</button></div></div><div className="form-grid project-settings-grid"><Field label="프로젝트 이름"><input value={form.name} onChange={event => set('name', event.target.value)} placeholder="New Project" /></Field><Field label="Base URL"><input value={form.baseUrl} onChange={event => set('baseUrl', event.target.value)} placeholder="https://api.example.com" /></Field></div><p className="hint">프로젝트 JSON 파일은 프로젝트 이름을 기준으로 자동 생성됩니다. 케이스의 URL에 <code>/users</code>처럼 상대 경로를 입력하면 이 Base URL과 결합해 실행합니다. 절대 URL도 그대로 실행할 수 있습니다.</p></section>{notice && <p className="notice">{notice}</p>}</main>
+  return <main className="project-page"><section className="card"><div className="section-header"><div><p className="eyebrow">NEW PROJECT</p><h2>프로젝트 설정</h2></div><div className="actions"><button className="ghost" onClick={onCancel}>목록으로</button><button className="primary" onClick={save}>저장</button></div></div><div className="form-grid project-settings-grid"><Field label="프로젝트 이름"><input value={form.name} onChange={event => set('name', event.target.value)} placeholder="New Project" /></Field><Field label="Base URL"><input value={form.baseUrl} onChange={event => set('baseUrl', event.target.value)} placeholder="https://api.example.com" /></Field></div><section className="advanced-settings"><button className="advanced-toggle" onClick={() => setAdvancedOpen(current => !current)}><span>고급 설정</span><span>{advancedOpen ? '−' : '+'}</span></button>{advancedOpen && <div className="advanced-content"><Field label="Proxy URL"><input value={form.proxy} onChange={event => set('proxy', event.target.value)} placeholder="http://proxy.example.com:8080" /></Field><label className="toggle"><input type="checkbox" checked={form.verify} onChange={event => set('verify', event.target.checked)} /><span>TLS 인증서 검증 (verify)</span></label><p className="hint">프록시를 비우면 직접 연결합니다. verify를 끄면 자체 서명 인증서 등의 TLS 검증을 생략합니다.</p></div>}</section><p className="hint">프로젝트 JSON 파일은 프로젝트 이름을 기준으로 자동 생성됩니다. 케이스의 URL에 <code>/users</code>처럼 상대 경로를 입력하면 이 Base URL과 결합해 실행합니다. 절대 URL도 그대로 실행할 수 있습니다.</p></section>{notice && <p className="notice">{notice}</p>}</main>
 }
 
 function StudioApp() {

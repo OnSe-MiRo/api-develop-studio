@@ -8,12 +8,12 @@ import unittest
 import urllib.error
 from email.message import Message
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from api_test import cli
 from api_test.cli import run_case_file, run_case_files, run_pipeline
 from api_test.comparison import compare_json
-from api_test.runner import ApiTestRunner, project_base_url
+from api_test.runner import ApiTestRunner, project_base_url, project_request_settings
 
 
 class FakeResponse:
@@ -63,6 +63,29 @@ class ApiRunnerTest(unittest.TestCase):
                 result = ApiTestRunner().run_case("users", case, base_url=project_base_url(case, project_root))
             self.assertEqual(result.status, "passed")
             self.assertEqual(urlopen.call_args.args[0].full_url, "https://example.test/api/users")
+
+    def test_project_advanced_proxy_and_verify_settings_are_applied(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_root = root / "projects"
+            project_root.mkdir()
+            (project_root / "private-api.json").write_text(json.dumps({
+                "name": "Private API", "base_url": "https://example.test",
+                "advanced": {"proxy": "http://proxy.example.test:8080", "verify": False},
+            }), encoding="utf-8")
+            case = {"project": "private-api.json", "request": {"url": "/health"}, "expected": {"status": 200}}
+            settings = project_request_settings(case, project_root)
+            self.assertIsNotNone(settings)
+            assert settings is not None
+            opener = Mock()
+            opener.open.return_value = FakeResponse(200, {"ok": True})
+            with patch("api_test.runner.urllib.request.build_opener", return_value=opener) as build_opener:
+                result = ApiTestRunner().run_case(
+                    "health", case, base_url=settings.base_url, proxy_url=settings.proxy_url, verify_ssl=settings.verify_ssl,
+                )
+            self.assertEqual(result.status, "passed")
+            self.assertEqual(opener.open.call_args.args[0].full_url, "https://example.test/health")
+            self.assertEqual(build_opener.call_count, 1)
 
     def test_pipeline_resolves_previous_response_and_retries(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

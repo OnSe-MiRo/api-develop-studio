@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .run_log import create_run_logger
-from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, project_base_url, read_json, resolve_case_path
+from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, project_request_settings, read_json, resolve_case_path
 
 
 SENSITIVE_FIELD_PARTS = ("authorization", "token", "secret", "password", "api_key", "apikey", "cookie")
@@ -126,7 +126,13 @@ def run_pipeline(
         case_path = resolve_case_path(case_root, raw_step["case"])
         logger.info("Step started: name=%s case=%s retry=%s retry_interval_seconds=%s", name, case_path, retry, interval)
         case_document = read_json(case_path)
-        result = runner.run_case(name, case_document, results, retry, interval, project_base_url(case_document, project_root))
+        project_settings = project_request_settings(case_document, project_root)
+        result = runner.run_case(
+            name, case_document, results, retry, interval,
+            project_settings.base_url if project_settings else None,
+            project_settings.proxy_url if project_settings else None,
+            project_settings.verify_ssl if project_settings else True,
+        )
         results[name] = result
         for line in _result_lines(result):
             report(line, logging.INFO if result.status == "passed" else logging.ERROR)
@@ -160,7 +166,13 @@ def run_case_files(
         case_id = f"case_{index}_{case_path.stem}"
         logger.info("Case started: case=%s", case_path)
         case_document = read_json(case_path)
-        result = ApiTestRunner(timeout).run_case(case_id, case_document, base_url=project_base_url(case_document, project_root))
+        project_settings = project_request_settings(case_document, project_root)
+        result = ApiTestRunner(timeout).run_case(
+            case_id, case_document,
+            base_url=project_settings.base_url if project_settings else None,
+            proxy_url=project_settings.proxy_url if project_settings else None,
+            verify_ssl=project_settings.verify_ssl if project_settings else True,
+        )
         results[case_id] = result
         steps.append({"name": case_id, "case": case_reference})
         for line in _result_lines(result):
