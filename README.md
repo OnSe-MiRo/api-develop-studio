@@ -57,6 +57,14 @@ docker compose up --build
 - `PIP_PROXY`, `PIP_TRUSTED_HOST`, `PIP_INDEX_URL`, `PIP_EXTRA_INDEX_URL`: Docker 빌드 중 Python 패키지 설치에 사용할 프록시, 신뢰 호스트 및 패키지 저장소입니다.
 - `HTTP_PROXY`, `HTTPS_PROXY`는 Docker 빌드 중 `npm ci`에도 동일하게 적용됩니다. `NPM_REGISTRY`, `NPM_STRICT_SSL`로 npm registry 및 TLS 검증 설정을 추가로 지정할 수 있습니다.
 - `API_PORT`, `WEB_PORT`: 호스트에 노출할 포트입니다. 기본값은 각각 `8765`, `5173`입니다.
+- `CASE_VOLUME_PATH`, `LOG_VOLUME_PATH`: 각각 컨테이너의 `/app/case`, `/app/logs`에 마운트할 호스트 경로입니다. 기본값은 `./case`, `./logs`입니다.
+
+예를 들어 케이스와 로그를 프로젝트 밖에 보관하려면 `.env`에서 다음처럼 변경합니다. Windows 경로는 `C:/api-test/case`처럼 `/`를 사용합니다.
+
+```env
+CASE_VOLUME_PATH=/data/api-test/case
+LOG_VOLUME_PATH=/data/api-test/logs
+```
 
 중지하려면 다음 명령을 사용합니다.
 
