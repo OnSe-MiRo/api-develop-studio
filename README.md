@@ -40,6 +40,30 @@ npm run dev
 
 프로덕션 정적 화면을 만들려면 `web/`에서 `npm run build`를 실행한 뒤 `http://127.0.0.1:8765`으로 접속합니다.
 
+## Docker Compose 실행
+
+Docker Compose는 Python API 서버(`api`)와 React 개발 서버(`web`)를 함께 실행합니다. `.env.example`을 복사한 뒤 사내 네트워크 설정에 맞게 프록시와 패키지 저장소 값을 입력합니다. `.env`에는 인증 정보가 들어갈 수 있으므로 Git에 올리지 않습니다.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+실행 후 브라우저에서 `http://127.0.0.1:5173`을 엽니다. React 컨테이너의 `/api` 요청은 Docker 네트워크 안의 `api:8765`으로 프록시됩니다.
+
+`.env`에서 주로 설정하는 값은 다음과 같습니다.
+
+- `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`: 컨테이너 실행과 Python API 호출에 사용할 네트워크 프록시입니다.
+- `PIP_PROXY`, `PIP_TRUSTED_HOST`, `PIP_INDEX_URL`, `PIP_EXTRA_INDEX_URL`: Docker 빌드 중 Python 패키지 설치에 사용할 프록시, 신뢰 호스트 및 패키지 저장소입니다.
+- `HTTP_PROXY`, `HTTPS_PROXY`는 Docker 빌드 중 `npm ci`에도 동일하게 적용됩니다. `NPM_REGISTRY`, `NPM_STRICT_SSL`로 npm registry 및 TLS 검증 설정을 추가로 지정할 수 있습니다.
+- `API_PORT`, `WEB_PORT`: 호스트에 노출할 포트입니다. 기본값은 각각 `8765`, `5173`입니다.
+
+중지하려면 다음 명령을 사용합니다.
+
+```bash
+docker compose down
+```
+
 ## 빠른 실행
 
 ### 하나의 파이프라인 실행

@@ -1,0 +1,39 @@
+FROM python:3.12-slim
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ARG PIP_PROXY
+ARG PIP_TRUSTED_HOST
+ARG PIP_INDEX_URL
+ARG PIP_EXTRA_INDEX_URL
+
+ENV HTTP_PROXY=${HTTP_PROXY} \
+    HTTPS_PROXY=${HTTPS_PROXY} \
+    NO_PROXY=${NO_PROXY} \
+    http_proxy=${HTTP_PROXY} \
+    https_proxy=${HTTPS_PROXY} \
+    no_proxy=${NO_PROXY} \
+    PIP_PROXY=${PIP_PROXY} \
+    PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST} \
+    PIP_INDEX_URL=${PIP_INDEX_URL} \
+    PIP_EXTRA_INDEX_URL=${PIP_EXTRA_INDEX_URL} \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements.txt ./
+
+# PIP_PROXY and PIP_TRUSTED_HOST are applied before dependencies are installed.
+RUN if [ -n "$PIP_PROXY" ]; then python -m pip config set global.proxy "$PIP_PROXY"; fi \
+    && if [ -n "$PIP_TRUSTED_HOST" ]; then python -m pip config set global.trusted-host "$PIP_TRUSTED_HOST"; fi \
+    && if [ -n "$PIP_INDEX_URL" ]; then python -m pip config set global.index-url "$PIP_INDEX_URL"; fi \
+    && if [ -n "$PIP_EXTRA_INDEX_URL" ]; then python -m pip config set global.extra-index-url "$PIP_EXTRA_INDEX_URL"; fi \
+    && python -m pip install --no-cache-dir -r requirements.txt
+
+COPY . ./
+
+EXPOSE 8765
+
+CMD ["python", "react_server.py"]

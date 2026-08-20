@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
@@ -201,6 +202,8 @@ class StudioHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = ThreadingHTTPServer(("127.0.0.1", 8765), StudioHandler)
-    print("API Test Studio server: http://127.0.0.1:8765")
+    host = os.environ.get("API_TEST_HOST", "127.0.0.1")
+    port = int(os.environ.get("API_TEST_PORT", "8765"))
+    server = ThreadingHTTPServer((host, port), StudioHandler)
+    print(f"API Test Studio server: http://{host}:{port}")
     server.serve_forever()
