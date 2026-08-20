@@ -94,7 +94,8 @@ function CaseEditor({ caseItems, refresh }) {
     if (!reference) return
     try {
       const data = await api(`/api/cases/${encodeURIComponent(reference)}`)
-      const [tag, apiName, fileName] = reference.split('/')
+      // Cases created before path normalization on Windows may still use backslashes.
+      const [tag, apiName, fileName] = asText(reference).split(/[\\/]/)
       const request = data.request || {}, expected = data.expected || {}
       const requestUrl = splitRequestUrl(request.url)
       const headers = { ...(request.headers || {}) }
@@ -132,12 +133,20 @@ function CaseEditor({ caseItems, refresh }) {
     return { request, expected }
   }
 
+  const casePayload = () => ({ ...document(), _expectedBodyRaw: form.expectedBody })
+
   const save = async () => {
     try {
-      const caseDocument = document()
-      await api(`/api/cases/${encodeURIComponent(caseRef)}`, { method: 'PUT', body: JSON.stringify({ ...caseDocument, _expectedBodyRaw: form.expectedBody }) })
+      await api(`/api/cases/${encodeURIComponent(caseRef)}`, { method: 'PUT', body: JSON.stringify(casePayload()) })
       await refresh(); setSelected(caseRef); setNotice(`저장됨: case/${caseRef}`); return true
     } catch (error) { setNotice(error.message); return false }
+  }
+  const runOnly = async () => {
+    try {
+      setResult(null); setNotice('현재 입력값을 저장하지 않고 실행 중입니다.')
+      setResult(await api('/api/run', { method: 'POST', body: JSON.stringify({ inlineCase: casePayload(), caseReference: caseRef }) }))
+      setNotice('저장하지 않고 실행했습니다.')
+    } catch (error) { setResult({ error: error.message }); setNotice(error.message) }
   }
   const run = async () => {
     if (!(await save())) return
@@ -156,7 +165,7 @@ function CaseEditor({ caseItems, refresh }) {
   return <div className="workspace">
     <aside className="sidebar"><div className="sidebar-title">저장된 API 케이스</div><select value={selected} onChange={event => load(event.target.value)}><option value="">케이스 불러오기…</option>{caseItems.map(item => <option key={item} value={item}>{item}</option>)}</select><button className="ghost full" onClick={() => { setForm(emptyCase); setSelected(''); setNotice('새 케이스를 작성하세요.'); setResult(null) }}>＋ 새 케이스</button><button className="danger-button full" disabled={!selected} onClick={removeCase}>삭제</button><p className="hint">저장 위치<br /><code>case/tag/api_name/case.json</code></p></aside>
     <main className="editor">
-      <section className="card"><div className="section-header"><div><p className="eyebrow">CASE DETAILS</p><h2>API 요청 정의</h2></div><div className="actions"><button className="ghost" onClick={save}>저장</button><button className="primary" onClick={run}>저장 후 실행</button></div></div>
+      <section className="card"><div className="section-header"><div><p className="eyebrow">CASE DETAILS</p><h2>API 요청 정의</h2></div><div className="actions"><button className="ghost" onClick={save}>저장</button><button className="ghost" onClick={runOnly}>실행만</button><button className="primary" onClick={run}>저장 후 실행</button></div></div>
         <div className="form-grid three"><Field label="Tag"><input value={form.tag} onChange={event => set('tag', event.target.value)} /></Field><Field label="API 이름"><input value={form.apiName} onChange={event => set('apiName', event.target.value)} /></Field><Field label="케이스 파일"><input value={form.fileName} onChange={event => set('fileName', event.target.value)} /></Field></div>
       </section>
       <section className="card request-card"><div className="request-bar"><select className="method" value={form.method} onChange={event => set('method', event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => <option key={method}>{method}</option>)}</select><input className="url-input" value={form.url} placeholder="https://api.example.com/v1/users" onChange={event => set('url', event.target.value)} /></div>
@@ -196,8 +205,19 @@ function PipelineEditor({ caseItems, pipelineItems, refresh }) {
     if (draft.continue) step.continue_on_failure = true
     setSteps(current => [...current, step]); setDraft(current => ({ ...current, name: '', retry: '', interval: '', continue: false }))
   }
+  const pipelineDocument = () => {
+    if (!steps.length) throw new Error('최소 한 개의 단계를 추가하세요.')
+    return { defaults: { retry: Number(defaults.retry), retry_interval_seconds: Number(defaults.retry_interval_seconds) }, steps }
+  }
   const save = async () => {
-    try { if (!steps.length) throw new Error('최소 한 개의 단계를 추가하세요.'); await api(`/api/pipelines/${encodeURIComponent(ref)}`, { method: 'PUT', body: JSON.stringify({ defaults: { retry: Number(defaults.retry), retry_interval_seconds: Number(defaults.retry_interval_seconds) }, steps }) }); await refresh(); setSelected(ref); setNotice(`저장됨: pipelines/${ref}`); return true } catch (error) { setNotice(error.message); return false }
+    try { await api(`/api/pipelines/${encodeURIComponent(ref)}`, { method: 'PUT', body: JSON.stringify(pipelineDocument()) }); await refresh(); setSelected(ref); setNotice(`저장됨: pipelines/${ref}`); return true } catch (error) { setNotice(error.message); return false }
+  }
+  const runOnly = async () => {
+    try {
+      setResult(null); setNotice('현재 파이프라인을 저장하지 않고 실행 중입니다.')
+      setResult(await api('/api/run', { method: 'POST', body: JSON.stringify({ inlinePipeline: pipelineDocument() }) }))
+      setNotice('저장하지 않고 실행했습니다.')
+    } catch (error) { setResult({ error: error.message }); setNotice(error.message) }
   }
   const run = async () => { if (!(await save())) return; try { setResult(await api('/api/run', { method: 'POST', body: JSON.stringify({ pipelines: [ref] }) })) } catch (error) { setResult({ error: error.message }) } }
   const removePipeline = async () => {
@@ -209,7 +229,7 @@ function PipelineEditor({ caseItems, pipelineItems, refresh }) {
     } catch (error) { setNotice(error.message) }
   }
   const move = (index, offset) => setSteps(current => { const target = index + offset; if (target < 0 || target >= current.length) return current; const next = [...current]; [next[index], next[target]] = [next[target], next[index]]; return next })
-  return <div className="workspace"><aside className="sidebar"><div className="sidebar-title">저장된 파이프라인</div><select value={selected} onChange={event => load(event.target.value)}><option value="">파이프라인 불러오기…</option>{pipelineItems.map(item => <option key={item} value={item}>{item}</option>)}</select><button className="ghost full" onClick={() => { setFileName('new_pipeline.json'); setSteps([]); setSelected(''); setNotice('새 파이프라인을 작성하세요.') }}>＋ 새 파이프라인</button><button className="danger-button full" disabled={!selected} onClick={removePipeline}>삭제</button><p className="hint">케이스를 순서대로 연결하고 단계별 정책을 설정하세요.</p></aside><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">PIPELINE DETAILS</p><h2>실행 설정</h2></div><div className="actions"><button className="ghost" onClick={save}>저장</button><button className="primary" onClick={run}>저장 후 실행</button></div></div><div className="form-grid three"><Field label="파일명"><input value={fileName} onChange={event => setFileName(event.target.value)} /></Field><Field label="기본 재시도"><input type="number" min="0" value={defaults.retry} onChange={event => setDefaults(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="기본 간격 (초)"><input type="number" min="0" step="0.1" value={defaults.retry_interval_seconds} onChange={event => setDefaults(current => ({ ...current, retry_interval_seconds: event.target.value }))} /></Field></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">ADD STEP</p><h2>테스트 단계 추가</h2></div></div><div className="form-grid step-grid"><Field label="케이스" wide><select value={draft.case} onChange={event => setDraft(current => ({ ...current, case: event.target.value }))}>{caseItems.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="단계 이름"><input value={draft.name} onChange={event => setDraft(current => ({ ...current, name: event.target.value }))} placeholder="get_user" /></Field><Field label="재시도 (선택)"><input type="number" min="0" value={draft.retry} onChange={event => setDraft(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="간격 (선택)"><input type="number" min="0" step="0.1" value={draft.interval} onChange={event => setDraft(current => ({ ...current, interval: event.target.value }))} /></Field></div><div className="step-actions"><label className="toggle"><input type="checkbox" checked={draft.continue} onChange={event => setDraft(current => ({ ...current, continue: event.target.checked }))} /><span>실패해도 다음 단계 실행</span></label><button className="primary" onClick={addStep}>＋ 단계 추가</button></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">EXECUTION ORDER</p><h2>실행 순서 <span className="count">{steps.length}</span></h2></div></div><div className="steps">{steps.length ? steps.map((step, index) => <div className="step" key={step.name}><span className="order">{String(index + 1).padStart(2, '0')}</span><div><strong>{step.name}</strong><small>{step.case}</small></div><div className="step-meta">재시도 {step.retry ?? '기본값'} · 간격 {step.retry_interval_seconds ?? '기본값'}</div><div className="row-actions"><button className="icon" onClick={() => move(index, -1)}>↑</button><button className="icon" onClick={() => move(index, 1)}>↓</button><button className="icon danger" onClick={() => setSteps(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div></div>) : <div className="empty">왼쪽 폼에서 케이스를 선택해 첫 단계를 추가하세요.</div>}</div></section>{notice && <p className="notice">{notice}</p>}<RunResult result={result} /></main></div>
+  return <div className="workspace"><aside className="sidebar"><div className="sidebar-title">저장된 파이프라인</div><select value={selected} onChange={event => load(event.target.value)}><option value="">파이프라인 불러오기…</option>{pipelineItems.map(item => <option key={item} value={item}>{item}</option>)}</select><button className="ghost full" onClick={() => { setFileName('new_pipeline.json'); setSteps([]); setSelected(''); setNotice('새 파이프라인을 작성하세요.') }}>＋ 새 파이프라인</button><button className="danger-button full" disabled={!selected} onClick={removePipeline}>삭제</button><p className="hint">케이스를 순서대로 연결하고 단계별 정책을 설정하세요.</p></aside><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">PIPELINE DETAILS</p><h2>실행 설정</h2></div><div className="actions"><button className="ghost" onClick={save}>저장</button><button className="ghost" onClick={runOnly}>실행만</button><button className="primary" onClick={run}>저장 후 실행</button></div></div><div className="form-grid three"><Field label="파일명"><input value={fileName} onChange={event => setFileName(event.target.value)} /></Field><Field label="기본 재시도"><input type="number" min="0" value={defaults.retry} onChange={event => setDefaults(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="기본 간격 (초)"><input type="number" min="0" step="0.1" value={defaults.retry_interval_seconds} onChange={event => setDefaults(current => ({ ...current, retry_interval_seconds: event.target.value }))} /></Field></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">ADD STEP</p><h2>테스트 단계 추가</h2></div></div><div className="form-grid step-grid"><Field label="케이스" wide><select value={draft.case} onChange={event => setDraft(current => ({ ...current, case: event.target.value }))}>{caseItems.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="단계 이름"><input value={draft.name} onChange={event => setDraft(current => ({ ...current, name: event.target.value }))} placeholder="get_user" /></Field><Field label="재시도 (선택)"><input type="number" min="0" value={draft.retry} onChange={event => setDraft(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="간격 (선택)"><input type="number" min="0" step="0.1" value={draft.interval} onChange={event => setDraft(current => ({ ...current, interval: event.target.value }))} /></Field></div><div className="step-actions"><label className="toggle"><input type="checkbox" checked={draft.continue} onChange={event => setDraft(current => ({ ...current, continue: event.target.checked }))} /><span>실패해도 다음 단계 실행</span></label><button className="primary" onClick={addStep}>＋ 단계 추가</button></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">EXECUTION ORDER</p><h2>실행 순서 <span className="count">{steps.length}</span></h2></div></div><div className="steps">{steps.length ? steps.map((step, index) => <div className="step" key={step.name}><span className="order">{String(index + 1).padStart(2, '0')}</span><div><strong>{step.name}</strong><small>{step.case}</small></div><div className="step-meta">재시도 {step.retry ?? '기본값'} · 간격 {step.retry_interval_seconds ?? '기본값'}</div><div className="row-actions"><button className="icon" onClick={() => move(index, -1)}>↑</button><button className="icon" onClick={() => move(index, 1)}>↓</button><button className="icon danger" onClick={() => setSteps(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div></div>) : <div className="empty">왼쪽 폼에서 케이스를 선택해 첫 단계를 추가하세요.</div>}</div></section>{notice && <p className="notice">{notice}</p>}<RunResult result={result} /></main></div>
 }
 
 function StudioApp() {

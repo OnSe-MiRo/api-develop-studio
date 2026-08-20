@@ -6,6 +6,7 @@ import json
 import mimetypes
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,7 +33,27 @@ def safe_file(root: Path, reference: str) -> Path:
 def json_files(root: Path) -> list[str]:
     if not root.exists():
         return []
-    return [str(path.relative_to(root)) for path in sorted(root.rglob("*.json"))]
+    # API references are persisted and consumed by the browser, so keep their separator
+    # stable even when the server runs on Windows.
+    return [path.relative_to(root).as_posix() for path in sorted(root.rglob("*.json"))]
+
+
+def normalize_case_document(payload: dict[str, object]) -> dict[str, object]:
+    """Apply editor-only fields while keeping the persisted/temporary case schema clean."""
+    document = dict(payload)
+    expected_body_raw = document.pop("_expectedBodyRaw", None)
+    if expected_body_raw is None:
+        return document
+    if not isinstance(expected_body_raw, str):
+        raise ApiError("_expectedBodyRaw must be a string")
+    expected = document.get("expected")
+    if not isinstance(expected, dict):
+        raise ApiError("Case expected must be an object")
+    if expected_body_raw.strip():
+        expected["body"] = json.loads(expected_body_raw)
+    else:
+        expected.pop("body", None)
+    return document
 
 
 class StudioHandler(SimpleHTTPRequestHandler):
@@ -87,17 +108,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
             payload = self.read_body()
             if len(parts) == 3 and parts[:2] == ["api", "cases"]:
                 path = safe_file(CASE_ROOT, parts[2])
-                expected_body_raw = payload.pop("_expectedBodyRaw", None)
-                if expected_body_raw is not None:
-                    if not isinstance(expected_body_raw, str):
-                        raise ApiError("_expectedBodyRaw must be a string")
-                    expected = payload.get("expected")
-                    if not isinstance(expected, dict):
-                        raise ApiError("Case expected must be an object")
-                    if expected_body_raw.strip():
-                        expected["body"] = json.loads(expected_body_raw)
-                    else:
-                        expected.pop("body", None)
+                payload = normalize_case_document(payload)
             elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
                 path = safe_file(PIPELINE_ROOT, parts[2])
             else:
@@ -115,12 +126,44 @@ class StudioHandler(SimpleHTTPRequestHandler):
             body = self.read_body()
             pipelines = body.get("pipelines", [])
             cases = body.get("cases", [])
+            inline_case = body.get("inlineCase")
+            inline_pipeline = body.get("inlinePipeline")
             if not isinstance(pipelines, list) or not isinstance(cases, list) or not all(isinstance(item, str) for item in pipelines + cases):
                 raise ApiError("pipelines and cases must be string arrays")
-            command = [sys.executable, "run_api_tests.py", *pipelines]
-            if cases:
-                command.extend(["--case", *cases])
-            result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
+            preview_count = int(inline_case is not None) + int(inline_pipeline is not None)
+            if preview_count > 1 or (preview_count and (pipelines or cases)):
+                raise ApiError("Run either saved targets or one unsaved case/pipeline")
+
+            with TemporaryDirectory(prefix="api-test-preview-") as directory:
+                if inline_case is not None:
+                    if not isinstance(inline_case, dict):
+                        raise ApiError("inlineCase must be an object")
+                    reference = body.get("caseReference", "preview/unsaved/unsaved_case.json")
+                    if not isinstance(reference, str):
+                        raise ApiError("caseReference must be a string")
+                    temporary_case_root = Path(directory) / "case"
+                    temporary_case_path = safe_file(temporary_case_root, reference)
+                    temporary_case_path.parent.mkdir(parents=True, exist_ok=True)
+                    temporary_case_path.write_text(
+                        json.dumps(normalize_case_document(inline_case), ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    command = [
+                        sys.executable, "run_api_tests.py", "--case-root", str(temporary_case_root), "--case", reference,
+                    ]
+                elif inline_pipeline is not None:
+                    if not isinstance(inline_pipeline, dict):
+                        raise ApiError("inlinePipeline must be an object")
+                    temporary_pipeline = Path(directory) / "unsaved_pipeline.json"
+                    temporary_pipeline.write_text(
+                        json.dumps(inline_pipeline, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+                    )
+                    command = [sys.executable, "run_api_tests.py", str(temporary_pipeline)]
+                else:
+                    command = [sys.executable, "run_api_tests.py", *pipelines]
+                    if cases:
+                        command.extend(["--case", *cases])
+                result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
             self.send_json(200, {"exitCode": result.returncode, "output": result.stdout + result.stderr})
         except subprocess.TimeoutExpired:
             self.send_json(504, {"error": "Test run timed out after 300 seconds"})
