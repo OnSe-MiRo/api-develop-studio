@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .run_log import create_run_logger
-from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, read_json, resolve_case_path
+from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, project_base_url, read_json, resolve_case_path
 
 
 SENSITIVE_FIELD_PARTS = ("authorization", "token", "secret", "password", "api_key", "apikey", "cookie")
@@ -93,7 +93,9 @@ def _tag_summary_lines(steps: list[Any], results: dict[str, CaseResult]) -> list
     ]
 
 
-def run_pipeline(pipeline_path: Path, case_root: Path, timeout: float, log_dir: Path = Path("logs")) -> int:
+def run_pipeline(
+    pipeline_path: Path, case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"),
+) -> int:
     logger, log_path = create_run_logger(log_dir)
 
     def report(message: str, level: int = logging.INFO) -> None:
@@ -123,7 +125,8 @@ def run_pipeline(pipeline_path: Path, case_root: Path, timeout: float, log_dir: 
         retry, interval = _retry_config(raw_step, defaults)
         case_path = resolve_case_path(case_root, raw_step["case"])
         logger.info("Step started: name=%s case=%s retry=%s retry_interval_seconds=%s", name, case_path, retry, interval)
-        result = runner.run_case(name, read_json(case_path), results, retry, interval)
+        case_document = read_json(case_path)
+        result = runner.run_case(name, case_document, results, retry, interval, project_base_url(case_document, project_root))
         results[name] = result
         for line in _result_lines(result):
             report(line, logging.INFO if result.status == "passed" else logging.ERROR)
@@ -139,7 +142,9 @@ def run_pipeline(pipeline_path: Path, case_root: Path, timeout: float, log_dir: 
     return 0 if failures == 0 and len(results) == len(steps) else 1
 
 
-def run_case_files(case_references: list[str], case_root: Path, timeout: float, log_dir: Path = Path("logs")) -> int:
+def run_case_files(
+    case_references: list[str], case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"),
+) -> int:
     """Run independent case files directly, without requiring a pipeline JSON file."""
     logger, log_path = create_run_logger(log_dir)
 
@@ -154,7 +159,8 @@ def run_case_files(case_references: list[str], case_root: Path, timeout: float, 
         case_path = resolve_case_path(case_root, case_reference)
         case_id = f"case_{index}_{case_path.stem}"
         logger.info("Case started: case=%s", case_path)
-        result = ApiTestRunner(timeout).run_case(case_id, read_json(case_path))
+        case_document = read_json(case_path)
+        result = ApiTestRunner(timeout).run_case(case_id, case_document, base_url=project_base_url(case_document, project_root))
         results[case_id] = result
         steps.append({"name": case_id, "case": case_reference})
         for line in _result_lines(result):
@@ -168,15 +174,18 @@ def run_case_files(case_references: list[str], case_root: Path, timeout: float, 
     return 0 if failed == 0 else 1
 
 
-def run_case_file(case_reference: str, case_root: Path, timeout: float, log_dir: Path = Path("logs")) -> int:
+def run_case_file(
+    case_reference: str, case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"),
+) -> int:
     """Backward-compatible helper for programmatic single-case execution."""
-    return run_case_files([case_reference], case_root, timeout, log_dir)
+    return run_case_files([case_reference], case_root, timeout, log_dir, project_root)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run API test pipelines and direct case files.")
     parser.add_argument("pipelines", nargs="*", type=Path, help="One or more pipeline JSON files")
     parser.add_argument("--case-root", type=Path, default=Path("case"), help="Root directory containing test cases")
+    parser.add_argument("--project-root", type=Path, default=Path("projects"), help="Root directory containing project Base URL JSON files")
     parser.add_argument("--timeout", type=float, default=10.0, help="HTTP timeout in seconds")
     parser.add_argument("--log-dir", type=Path, default=Path("logs"), help="Directory for per-run log files")
     parser.add_argument("--case", dest="case_references", nargs="+", help="Run one or more case files relative to --case-root")
@@ -190,14 +199,14 @@ def main() -> int:
     exit_code = 0
     for pipeline_path in args.pipelines:
         try:
-            exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir))
+            exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir, args.project_root))
         except CaseConfigurationError as exc:
             print(f"Configuration error in {pipeline_path}: {exc}")
             exit_code = 2
 
     if args.case_references:
         try:
-            exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir))
+            exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir, args.project_root))
         except CaseConfigurationError as exc:
             print(f"Configuration error in direct cases: {exc}")
             exit_code = 2

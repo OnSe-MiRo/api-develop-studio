@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from react_server import StudioHandler
+from react_server import StudioHandler, project_json_files
 
 
 class ReactServerRunTest(unittest.TestCase):
@@ -68,6 +69,14 @@ class ReactServerRunTest(unittest.TestCase):
         self.assertIsNotNone(temporary_path)
         self.assertFalse(temporary_path.exists())
         send_json.assert_called_once_with(200, {"exitCode": 1, "output": "inline pipeline failed"})
+
+    def test_filters_saved_documents_by_project(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "member").mkdir()
+            (root / "member" / "get.json").write_text(json.dumps({"project": "member.json"}), encoding="utf-8")
+            (root / "member" / "legacy.json").write_text(json.dumps({"request": {}}), encoding="utf-8")
+            self.assertEqual(project_json_files(root, "member.json"), ["member/get.json"])
 
 
 if __name__ == "__main__":

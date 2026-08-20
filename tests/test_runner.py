@@ -13,6 +13,7 @@ from unittest.mock import patch
 from api_test import cli
 from api_test.cli import run_case_file, run_case_files, run_pipeline
 from api_test.comparison import compare_json
+from api_test.runner import ApiTestRunner, project_base_url
 
 
 class FakeResponse:
@@ -44,6 +45,24 @@ class ApiRunnerTest(unittest.TestCase):
         self.assertEqual(strict_differences[0].reason, "type mismatch")
         boolean_differences = compare_json({"enabled": True}, {"enabled": 1}, strict=False)
         self.assertEqual(boolean_differences[0].reason, "type mismatch")
+
+    def test_project_base_url_resolves_relative_case_url(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_root = root / "projects"
+            project_root.mkdir()
+            (project_root / "member.json").write_text(json.dumps({
+                "name": "Member API", "base_url": "https://example.test/api/",
+            }), encoding="utf-8")
+            case = {
+                "project": "member.json",
+                "request": {"url": "/users"},
+                "expected": {"status": 200, "body": {"ok": True}},
+            }
+            with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})) as urlopen:
+                result = ApiTestRunner().run_case("users", case, base_url=project_base_url(case, project_root))
+            self.assertEqual(result.status, "passed")
+            self.assertEqual(urlopen.call_args.args[0].full_url, "https://example.test/api/users")
 
     def test_pipeline_resolves_previous_response_and_retries(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

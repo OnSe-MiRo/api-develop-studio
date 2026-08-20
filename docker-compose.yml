@@ -22,6 +22,7 @@ services:
       - "${CASE_VOLUME_PATH:-./case}:/app/case"
       - ./pipelines:/app/pipelines
       - "${LOG_VOLUME_PATH:-./logs}:/app/logs"
+      - "${PROJECT_VOLUME_PATH:-./projects}:/app/projects"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/cases')"]
       interval: 5s

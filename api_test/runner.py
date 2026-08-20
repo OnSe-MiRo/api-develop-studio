@@ -9,6 +9,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from .comparison import Difference, compare_json
 
@@ -61,6 +62,33 @@ def resolve_case_path(case_root: Path, reference: str) -> Path:
     return candidate
 
 
+def project_base_url(case: dict[str, Any], project_root: Path) -> str | None:
+    """Read and validate the Base URL referenced by a project-aware case."""
+    project_reference = case.get("project")
+    if project_reference is None:
+        return None
+    if not isinstance(project_reference, str) or not project_reference:
+        raise CaseConfigurationError("case.project must be a non-empty project JSON reference")
+    project_path = resolve_case_path(project_root, project_reference)
+    base_url = read_json(project_path).get("base_url")
+    if not isinstance(base_url, str) or not base_url.strip():
+        raise CaseConfigurationError(f"project.base_url is required: {project_reference}")
+    parsed = urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise CaseConfigurationError(f"project.base_url must be an absolute HTTP URL: {project_reference}")
+    return urlunparse(parsed._replace(path=parsed.path.rstrip("/")))
+
+
+def resolve_request_url(url: str, base_url: str | None) -> str:
+    """Keep absolute URLs unchanged and resolve project-relative endpoints."""
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.netloc:
+        return url
+    if not base_url:
+        raise CaseConfigurationError("request.url must be absolute when case.project is not set")
+    return f"{base_url.rstrip('/')}/{url.lstrip('/')}"
+
+
 def _dig(value: Any, path: str) -> Any:
     current = value
     if not path:
@@ -108,6 +136,7 @@ class ApiTestRunner:
         context: dict[str, CaseResult] | None = None,
         retry: int = 0,
         retry_interval_seconds: float = 0,
+        base_url: str | None = None,
     ) -> CaseResult:
         request_definition = case.get("request")
         expected = case.get("expected")
@@ -117,6 +146,7 @@ class ApiTestRunner:
             raise CaseConfigurationError("request.url is required")
 
         resolved_request = resolve_references(copy.deepcopy(request_definition), context or {})
+        resolved_request["url"] = resolve_request_url(resolved_request["url"], base_url)
         attempts = max(0, retry) + 1
         last_result: CaseResult | None = None
         for attempt in range(1, attempts + 1):

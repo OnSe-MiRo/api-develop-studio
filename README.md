@@ -14,11 +14,14 @@ API 케이스와 파이프라인의 `실행만` 버튼은 현재 화면의 값�
 
 ### 화면에서 작업하는 순서
 
-1. `API 케이스` 탭에서 Tag, API 이름, 케이스 파일, HTTP method, URL을 입력합니다.
-2. `Params`, `Authorization`, `Headers`, `Body` 탭에서 요청 값을 입력합니다. Params의 마지막 행에 값을 입력하거나 `Parameter 추가`를 누르면 다음 입력 행을 만들 수 있습니다.
-3. 기대 HTTP 상태와 응답 body를 입력하고, 필요에 따라 `strict 비교`를 설정합니다.
-4. 저장하지 않은 현재 값만 확인하려면 `실행만`을 누릅니다. 케이스 파일까지 저장하려면 `저장` 또는 `저장 후 실행`을 사용합니다.
-5. `파이프라인` 탭에서 저장된 케이스를 단계로 추가하고 순서·재시도 정책을 지정합니다. 파이프라인도 `실행만`으로 저장 없이 현재 구성만 실행할 수 있습니다.
+1. 첫 화면의 `프로젝트 목록`에서 `새 프로젝트 만들기`를 누르고 프로젝트 이름과 Base URL을 입력합니다.
+2. 저장하면 해당 프로젝트의 `API 케이스` 화면으로 바로 이동합니다. 이후 목록의 프로젝트 카드를 클릭해도 같은 방식으로 해당 프로젝트의 테스트 화면을 열 수 있습니다. Tag, API 이름, 케이스 파일, HTTP method, URL을 입력합니다.
+3. `Params`, `Authorization`, `Headers`, `Body` 탭에서 요청 값을 입력합니다. Params의 마지막 행에 값을 입력하거나 `Parameter 추가`를 누르면 다음 입력 행을 만들 수 있습니다.
+4. 기대 HTTP 상태와 응답 body를 입력하고, 필요에 따라 `strict 비교`를 설정합니다.
+5. 저장하지 않은 현재 값만 확인하려면 `실행만`을 누릅니다. 케이스 파일까지 저장하려면 `저장` 또는 `저장 후 실행`을 사용합니다.
+6. `파이프라인` 탭에서 같은 프로젝트의 저장된 케이스를 단계로 추가하고 순서·재시도 정책을 지정합니다. 파이프라인도 `실행만`으로 저장 없이 현재 구성만 실행할 수 있습니다.
+
+프로젝트 Base URL이 `https://api.example.com`일 때 케이스 URL에 `/users`를 입력하면 `https://api.example.com/users`로 실행됩니다. 외부 API처럼 절대 URL을 입력한 경우에는 Base URL을 붙이지 않습니다.
 
 `strict 비교`를 켜면 값과 타입이 모두 같아야 합니다. 예를 들어 `9.0`과 `9`는 서로 다른 타입으로 실패합니다. 끄면 객체의 추가 키와 배열의 뒤쪽 요소를 허용하며, 숫자 값이 같다면 `9.0`과 `9`는 통과합니다. `true`와 `1`은 strict 여부와 관계없이 서로 다른 값으로 비교합니다.
 
@@ -58,12 +61,14 @@ docker compose up --build
 - `HTTP_PROXY`, `HTTPS_PROXY`는 Docker 빌드 중 `npm ci`에도 동일하게 적용됩니다. `NPM_REGISTRY`, `NPM_STRICT_SSL`로 npm registry 및 TLS 검증 설정을 추가로 지정할 수 있습니다.
 - `API_PORT`, `WEB_PORT`: 호스트에 노출할 포트입니다. 기본값은 각각 `8765`, `5173`입니다.
 - `CASE_VOLUME_PATH`, `LOG_VOLUME_PATH`: 각각 컨테이너의 `/app/case`, `/app/logs`에 마운트할 호스트 경로입니다. 기본값은 `./case`, `./logs`입니다.
+- `PROJECT_VOLUME_PATH`: 프로젝트 Base URL 설정을 보관할 컨테이너의 `/app/projects`에 마운트할 호스트 경로입니다. 기본값은 `./projects`입니다.
 
 예를 들어 케이스와 로그를 프로젝트 밖에 보관하려면 `.env`에서 다음처럼 변경합니다. Windows 경로는 `C:/api-test/case`처럼 `/`를 사용합니다.
 
 ```env
 CASE_VOLUME_PATH=/data/api-test/case
 LOG_VOLUME_PATH=/data/api-test/logs
+PROJECT_VOLUME_PATH=/data/api-test/projects
 ```
 
 중지하려면 다음 명령을 사용합니다.
@@ -151,6 +156,12 @@ python3 run_api_tests.py pipelines/http-methods.json --log-dir test-logs
 python3 run_api_tests.py pipelines/my_pipeline.json --case-root case --timeout 15
 ```
 
+프로젝트 Base URL 설정이 다른 경로에 있다면 `--project-root`를 지정합니다.
+
+```bash
+python3 run_api_tests.py pipelines/my_pipeline.json --project-root projects
+```
+
 테스트는 다음 명령으로 실행합니다.
 
 ```bash
@@ -186,9 +197,24 @@ case/
       get_not_found.json
 pipelines/
   smoke.json
+projects/
+  member-api.json
 ```
 
 예: `case/member/users/get_success.json`은 `member` 태그의 `users` API에 대한 성공 케이스입니다.
+
+## 프로젝트 JSON
+
+프로젝트마다 Base URL을 한 번만 저장하고, 케이스에서는 프로젝트 파일명과 상대 URL을 연결합니다.
+
+```json
+{
+  "name": "회원 API",
+  "base_url": "https://api.example.com"
+}
+```
+
+`projects/member-api.json`을 저장한 뒤 케이스에 `"project": "member-api.json"`, `"url": "/users"`를 지정하면 `https://api.example.com/users`를 호출합니다.
 
 ## 케이스 JSON
 
@@ -196,9 +222,10 @@ pipelines/
 
 ```json
 {
+  "project": "member-api.json",
   "request": {
     "method": "POST",
-    "url": "https://api.example.com/users",
+    "url": "/users",
     "headers": {
       "Authorization": "Bearer token"
     },
@@ -217,8 +244,9 @@ pipelines/
 }
 ```
 
+- `project`: 프로젝트 탭에서 저장한 프로젝트 JSON 파일명입니다. 프로젝트가 지정된 케이스는 상대 URL을 사용할 수 있습니다.
 - `request.method`: 선택 사항이며 기본값은 `GET`입니다.
-- `request.url`: 필수입니다.
+- `request.url`: 필수입니다. 프로젝트가 있으면 `/users` 같은 상대 URL 또는 절대 URL을 사용할 수 있습니다.
 - `request.headers`, `request.body`: 선택 사항입니다. `body`는 JSON으로 직렬화됩니다.
 - `expected.status`: 기대 HTTP 상태 코드입니다.
 - `expected.body`: 기대 JSON 응답입니다.
@@ -232,6 +260,7 @@ pipelines/
 
 ```json
 {
+  "project": "member-api.json",
   "defaults": {
     "retry": 1,
     "retry_interval_seconds": 0.5
@@ -251,6 +280,7 @@ pipelines/
 }
 ```
 
+- `project`: 파이프라인이 속한 프로젝트 JSON 파일명입니다. 화면에서는 같은 프로젝트의 케이스만 단계로 선택할 수 있습니다.
 - `steps[].name`: 파이프라인 안에서 고유한 단계 이름입니다.
 - `steps[].case`: `case` 루트 기준 케이스 파일 경로입니다.
 - `defaults.retry`: 모든 단계의 기본 재시도 횟수입니다. `0`이면 재시도하지 않습니다.

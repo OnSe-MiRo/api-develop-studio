@@ -11,12 +11,13 @@ from tempfile import TemporaryDirectory
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 
 ROOT = Path(__file__).resolve().parent
 CASE_ROOT = ROOT / "case"
 PIPELINE_ROOT = ROOT / "pipelines"
+PROJECT_ROOT = ROOT / "projects"
 WEB_DIST = ROOT / "web" / "dist"
 
 
@@ -37,6 +38,47 @@ def json_files(root: Path) -> list[str]:
     # API references are persisted and consumed by the browser, so keep their separator
     # stable even when the server runs on Windows.
     return [path.relative_to(root).as_posix() for path in sorted(root.rglob("*.json"))]
+
+
+def project_json_files(root: Path, project_reference: str | None) -> list[str]:
+    """Return only documents belonging to a project when one is selected."""
+    if not project_reference:
+        return json_files(root)
+    items: list[str] = []
+    for reference in json_files(root):
+        document = json.loads(safe_file(root, reference).read_text(encoding="utf-8"))
+        if document.get("project") == project_reference:
+            items.append(reference)
+    return items
+
+
+def validate_project_document(payload: dict[str, object]) -> None:
+    name = payload.get("name")
+    base_url = payload.get("base_url")
+    if not isinstance(name, str) or not name.strip():
+        raise ApiError("Project name is required")
+    if not isinstance(base_url, str) or not base_url.strip():
+        raise ApiError("Project base_url is required")
+    parsed = urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ApiError("Project base_url must be an absolute HTTP URL")
+
+
+def validate_project_reference(payload: dict[str, object]) -> None:
+    project_reference = payload.get("project")
+    if not isinstance(project_reference, str) or not project_reference:
+        raise ApiError("A project must be selected")
+    if not safe_file(PROJECT_ROOT, project_reference).is_file():
+        raise ApiError("Selected project does not exist")
+
+
+def project_is_in_use(reference: str) -> bool:
+    for root in (CASE_ROOT, PIPELINE_ROOT):
+        for item in json_files(root):
+            document = json.loads(safe_file(root, item).read_text(encoding="utf-8"))
+            if document.get("project") == reference:
+                return True
+    return False
 
 
 def normalize_case_document(payload: dict[str, object]) -> dict[str, object]:
@@ -82,13 +124,19 @@ class StudioHandler(SimpleHTTPRequestHandler):
     def api_path(self) -> list[str]:
         return [unquote(part) for part in urlparse(self.path).path.split("/") if part]
 
+    def query_value(self, name: str) -> str | None:
+        values = parse_qs(urlparse(self.path).query).get(name)
+        return values[0] if values else None
+
     def do_GET(self) -> None:  # noqa: N802
         try:
             parts = self.api_path()
             if parts == ["api", "cases"]:
-                self.send_json(200, {"items": json_files(CASE_ROOT)})
+                self.send_json(200, {"items": project_json_files(CASE_ROOT, self.query_value("project"))})
             elif parts == ["api", "pipelines"]:
-                self.send_json(200, {"items": json_files(PIPELINE_ROOT)})
+                self.send_json(200, {"items": project_json_files(PIPELINE_ROOT, self.query_value("project"))})
+            elif parts == ["api", "projects"]:
+                self.send_json(200, {"items": json_files(PROJECT_ROOT)})
             elif len(parts) == 3 and parts[:2] == ["api", "cases"]:
                 document = json.loads(safe_file(CASE_ROOT, parts[2]).read_text(encoding="utf-8"))
                 expected = document.get("expected", {})
@@ -98,6 +146,8 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 self.send_json(200, document)
             elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
                 self.send_json(200, json.loads(safe_file(PIPELINE_ROOT, parts[2]).read_text(encoding="utf-8")))
+            elif len(parts) == 3 and parts[:2] == ["api", "projects"]:
+                self.send_json(200, json.loads(safe_file(PROJECT_ROOT, parts[2]).read_text(encoding="utf-8")))
             else:
                 self.serve_frontend()
         except (ApiError, OSError, json.JSONDecodeError) as exc:
@@ -110,8 +160,13 @@ class StudioHandler(SimpleHTTPRequestHandler):
             if len(parts) == 3 and parts[:2] == ["api", "cases"]:
                 path = safe_file(CASE_ROOT, parts[2])
                 payload = normalize_case_document(payload)
+                validate_project_reference(payload)
             elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
                 path = safe_file(PIPELINE_ROOT, parts[2])
+                validate_project_reference(payload)
+            elif len(parts) == 3 and parts[:2] == ["api", "projects"]:
+                path = safe_file(PROJECT_ROOT, parts[2])
+                validate_project_document(payload)
             else:
                 raise ApiError("Unknown save endpoint")
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -174,10 +229,12 @@ class StudioHandler(SimpleHTTPRequestHandler):
     def do_DELETE(self) -> None:  # noqa: N802
         try:
             parts = self.api_path()
-            if len(parts) != 3 or parts[0] != "api" or parts[1] not in {"cases", "pipelines"}:
+            if len(parts) != 3 or parts[0] != "api" or parts[1] not in {"cases", "pipelines", "projects"}:
                 raise ApiError("Unknown delete endpoint")
-            root = CASE_ROOT if parts[1] == "cases" else PIPELINE_ROOT
+            root = {"cases": CASE_ROOT, "pipelines": PIPELINE_ROOT, "projects": PROJECT_ROOT}[parts[1]]
             path = safe_file(root, parts[2])
+            if parts[1] == "projects" and project_is_in_use(parts[2]):
+                raise ApiError("Delete the project's cases and pipelines before deleting the project")
             if not path.is_file():
                 raise ApiError("JSON file not found")
             path.unlink()
