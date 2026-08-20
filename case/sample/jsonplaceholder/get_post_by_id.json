@@ -1,4 +1,5 @@
 {
+  "project": "jsonplaceholder.json",
   "request": {
     "method": "GET",
     "url": "https://jsonplaceholder.typicode.com/posts/${get_post.response.body.id}"
