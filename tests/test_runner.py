@@ -38,6 +38,13 @@ class ApiRunnerTest(unittest.TestCase):
         self.assertEqual(differences[0].path, "$.user.id")
         self.assertEqual(differences[0].reason, "value mismatch")
 
+    def test_non_strict_allows_equivalent_integer_and_float(self) -> None:
+        self.assertEqual(compare_json({"score": 9.0}, {"score": 9}, strict=False), [])
+        strict_differences = compare_json({"score": 9.0}, {"score": 9}, strict=True)
+        self.assertEqual(strict_differences[0].reason, "type mismatch")
+        boolean_differences = compare_json({"enabled": True}, {"enabled": 1}, strict=False)
+        self.assertEqual(boolean_differences[0].reason, "type mismatch")
+
     def test_pipeline_resolves_previous_response_and_retries(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

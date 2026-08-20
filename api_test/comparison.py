@@ -12,12 +12,21 @@ class Difference:
     reason: str
 
 
+def _is_json_number(value: Any) -> bool:
+    """Return true for JSON numbers, but never treat booleans as numbers."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def compare_json(expected: Any, actual: Any, path: str = "$", *, strict: bool = True) -> list[Difference]:
     """Compare JSON values recursively and return every detected difference.
 
     Strict mode requires object keys and array ordering/length to match exactly.
     """
     differences: list[Difference] = []
+    if not strict and _is_json_number(expected) and _is_json_number(actual):
+        if expected != actual:
+            differences.append(Difference(path, expected, actual, "value mismatch"))
+        return differences
     if type(expected) is not type(actual):
         return [Difference(path, expected, actual, "type mismatch")]
 
