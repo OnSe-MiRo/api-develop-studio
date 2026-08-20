@@ -92,7 +92,21 @@ function RunResult({ result }) {
   </section>
 }
 
-function CaseEditor({ caseItems, refresh, projects, projectRef, project, onProjectChange }) {
+function TestSidebar({ active, projectRef, project, onNavigate, onProjectList }) {
+  const projectName = project?.name || projectRef.replace(/\.json$/, '')
+  return <aside className="sidebar"><button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button><div className="sidebar-title">현재 프로젝트</div><div className="current-project"><strong>{projectName}</strong>{project?.base_url && <code>{project.base_url}</code>}</div><div className="sidebar-title">테스트 구성</div><div className="side-nav"><button className={active === 'cases' ? 'active' : ''} onClick={() => onNavigate('cases')}>API 케이스</button><button className={active === 'pipeline' ? 'active' : ''} onClick={() => onNavigate('pipeline')}>파이프라인</button></div></aside>
+}
+
+function CaseList({ caseItems, projectRef, project, refresh, onNavigate, onProjectList, onCreate, onOpen }) {
+  const [notice, setNotice] = useState('')
+  const removeCase = async reference => {
+    if (!window.confirm(`${reference} 케이스를 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return
+    try { await api(`/api/cases/${encodeURIComponent(reference)}`, { method: 'DELETE' }); await refresh(); setNotice(`삭제됨: case/${reference}`) } catch (error) { setNotice(error.message) }
+  }
+  return <div className="workspace"><TestSidebar active="cases" projectRef={projectRef} project={project} onNavigate={onNavigate} onProjectList={onProjectList} /><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">API CASES</p><h2>API 케이스 목록 <span className="count">{caseItems.length}</span></h2></div><button className="primary" onClick={onCreate}>＋ 새 케이스</button></div>{caseItems.length ? <div className="case-list">{caseItems.map(reference => { const [tag, apiName, fileName] = reference.split('/'); return <article className="case-list-item" key={reference}><button className="case-list-row" onClick={() => onOpen(reference)}><span className="case-list-icon">{tag?.slice(0, 1).toUpperCase() || 'A'}</span><span><strong>{apiName || reference}</strong><small>{tag} · {fileName}</small></span><span className="case-list-action">수정 · 실행 <b>→</b></span></button><button className="case-list-delete" aria-label={`${reference} 케이스 삭제`} title="케이스 삭제" onClick={() => removeCase(reference)}>×</button></article> })}</div> : <div className="empty">저장된 API 케이스가 없습니다. 새 케이스를 만들어 시작하세요.</div>}</section>{notice && <p className="notice">{notice}</p>}</main></div>
+}
+
+function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, onProjectList, onBack }) {
   const [form, setForm] = useState(emptyCase)
   const [requestTab, setRequestTab] = useState('Params')
   const [selected, setSelected] = useState('')
@@ -100,7 +114,11 @@ function CaseEditor({ caseItems, refresh, projects, projectRef, project, onProje
   const [result, setResult] = useState(null)
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
   const caseRef = `${asText(form.tag)}/${asText(form.apiName)}/${jsonFileName(form.fileName)}`
-  useEffect(() => { setForm(emptyCase); setSelected(''); setResult(null); setNotice('프로젝트에 맞는 케이스를 작성하세요.') }, [projectRef])
+  useEffect(() => {
+    setResult(null)
+    if (caseReference) load(caseReference)
+    else { setForm(emptyCase); setSelected(''); setNotice('새 API 케이스를 작성하세요.') }
+  }, [caseReference, projectRef])
 
   const updateParam = (index, key, value) => setForm(current => {
     const params = current.params.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item)
@@ -181,9 +199,9 @@ function CaseEditor({ caseItems, refresh, projects, projectRef, project, onProje
   }
 
   return <div className="workspace">
-    <aside className="sidebar"><div className="sidebar-title">프로젝트</div><select value={projectRef} onChange={event => onProjectChange(event.target.value)}><option value="">프로젝트 선택…</option>{projects.map(item => <option key={item} value={item}>{item}</option>)}</select>{project && <p className="hint"><strong>{project.name}</strong><br /><code>{project.base_url}</code></p>}<div className="sidebar-title">저장된 API 케이스</div><select value={selected} onChange={event => load(event.target.value)} disabled={!projectRef}><option value="">케이스 불러오기…</option>{caseItems.map(item => <option key={item} value={item}>{item}</option>)}</select><button className="ghost full" onClick={() => { setForm(emptyCase); setSelected(''); setNotice('새 케이스를 작성하세요.'); setResult(null) }}>＋ 새 케이스</button><button className="danger-button full" disabled={!selected} onClick={removeCase}>삭제</button><p className="hint">상대 URL 예: <code>/users</code><br />저장 위치: <code>case/tag/api_name/case.json</code></p></aside>
+    <TestSidebar active="cases" projectRef={projectRef} project={project} onNavigate={onNavigate} onProjectList={onProjectList} />
     <main className="editor">
-      <section className="card"><div className="section-header"><div><p className="eyebrow">CASE DETAILS</p><h2>API 요청 정의</h2></div><div className="actions"><button className="ghost" onClick={save}>저장</button><button className="ghost" onClick={runOnly}>실행만</button><button className="primary" onClick={run}>저장 후 실행</button></div></div>
+      <section className="card"><div className="section-header"><div><p className="eyebrow">CASE SETTINGS</p><h2>{selected ? 'API 케이스 설정' : '새 API 케이스'}</h2></div><div className="actions"><button className="ghost" onClick={onBack}>목록으로</button>{selected && <button className="danger-button" onClick={removeCase}>삭제</button>}<button className="ghost" onClick={save}>저장</button><button className="ghost" onClick={runOnly}>실행만</button><button className="primary" onClick={run}>저장 후 실행</button></div></div>
         <div className="form-grid three"><Field label="Tag"><input value={form.tag} onChange={event => set('tag', event.target.value)} /></Field><Field label="API 이름"><input value={form.apiName} onChange={event => set('apiName', event.target.value)} /></Field><Field label="케이스 파일"><input value={form.fileName} onChange={event => set('fileName', event.target.value)} /></Field></div>
       </section>
       <section className="card request-card"><div className="request-bar"><select className="method" value={form.method} onChange={event => set('method', event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => <option key={method}>{method}</option>)}</select><input className="url-input" value={form.url} placeholder="/v1/users (프로젝트 Base URL 기준)" onChange={event => set('url', event.target.value)} /></div>
@@ -200,7 +218,16 @@ function CaseEditor({ caseItems, refresh, projects, projectRef, project, onProje
   </div>
 }
 
-function PipelineEditor({ caseItems, pipelineItems, refresh, projects, projectRef, project, onProjectChange }) {
+function PipelineList({ pipelineItems, projectRef, project, refresh, onNavigate, onProjectList, onCreate, onOpen }) {
+  const [notice, setNotice] = useState('')
+  const removePipeline = async reference => {
+    if (!window.confirm(`${reference} 파이프라인을 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return
+    try { await api(`/api/pipelines/${encodeURIComponent(reference)}`, { method: 'DELETE' }); await refresh(); setNotice(`삭제됨: pipelines/${reference}`) } catch (error) { setNotice(error.message) }
+  }
+  return <div className="workspace"><TestSidebar active="pipeline" projectRef={projectRef} project={project} onNavigate={onNavigate} onProjectList={onProjectList} /><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">PIPELINES</p><h2>파이프라인 목록 <span className="count">{pipelineItems.length}</span></h2></div><button className="primary" onClick={onCreate}>＋ 새 파이프라인</button></div>{pipelineItems.length ? <div className="case-list">{pipelineItems.map(reference => <article className="case-list-item" key={reference}><button className="case-list-row" onClick={() => onOpen(reference)}><span className="case-list-icon">P</span><span><strong>{reference.replace(/\.json$/, '')}</strong><small>{reference}</small></span><span className="case-list-action">수정 · 실행 <b>→</b></span></button><button className="case-list-delete" aria-label={`${reference} 파이프라인 삭제`} title="파이프라인 삭제" onClick={() => removePipeline(reference)}>×</button></article>)}</div> : <div className="empty">저장된 파이프라인이 없습니다. 새 파이프라인을 만들어 시작하세요.</div>}</section>{notice && <p className="notice">{notice}</p>}</main></div>
+}
+
+function PipelineEditor({ caseItems, refresh, projectRef, project, onNavigate, onProjectList, pipelineReference, onBack }) {
   const [fileName, setFileName] = useState('new_pipeline.json')
   const [defaults, setDefaults] = useState({ retry: 0, retry_interval_seconds: 0 })
   const [steps, setSteps] = useState([])
@@ -210,7 +237,11 @@ function PipelineEditor({ caseItems, pipelineItems, refresh, projects, projectRe
   const [result, setResult] = useState(null)
   const ref = jsonFileName(fileName)
   useEffect(() => { if (!draft.case && caseItems.length) setDraft(current => ({ ...current, case: caseItems[0] })) }, [caseItems])
-  useEffect(() => { setFileName('new_pipeline.json'); setSteps([]); setDraft({ name: '', case: '', retry: '', interval: '', continue: false }); setSelected(''); setResult(null); setNotice('프로젝트에 맞는 파이프라인을 작성하세요.') }, [projectRef])
+  useEffect(() => {
+    setResult(null)
+    if (pipelineReference) load(pipelineReference)
+    else { setFileName('new_pipeline.json'); setDefaults({ retry: 0, retry_interval_seconds: 0 }); setSteps([]); setDraft({ name: '', case: '', retry: '', interval: '', continue: false }); setSelected(''); setNotice('새 파이프라인을 작성하세요.') }
+  }, [pipelineReference, projectRef])
   const load = async reference => {
     if (!reference) return
     try { const data = await api(`/api/pipelines/${encodeURIComponent(reference)}`); setFileName(reference); setDefaults(data.defaults || { retry: 0, retry_interval_seconds: 0 }); setSteps(data.steps || []); setSelected(reference); setNotice(`불러옴: ${reference}`); setResult(null) } catch (error) { setNotice(error.message) }
@@ -249,7 +280,7 @@ function PipelineEditor({ caseItems, pipelineItems, refresh, projects, projectRe
     } catch (error) { setNotice(error.message) }
   }
   const move = (index, offset) => setSteps(current => { const target = index + offset; if (target < 0 || target >= current.length) return current; const next = [...current]; [next[index], next[target]] = [next[target], next[index]]; return next })
-  return <div className="workspace"><aside className="sidebar"><div className="sidebar-title">프로젝트</div><select value={projectRef} onChange={event => onProjectChange(event.target.value)}><option value="">프로젝트 선택…</option>{projects.map(item => <option key={item} value={item}>{item}</option>)}</select>{project && <p className="hint"><strong>{project.name}</strong><br /><code>{project.base_url}</code></p>}<div className="sidebar-title">저장된 파이프라인</div><select value={selected} onChange={event => load(event.target.value)} disabled={!projectRef}><option value="">파이프라인 불러오기…</option>{pipelineItems.map(item => <option key={item} value={item}>{item}</option>)}</select><button className="ghost full" onClick={() => { setFileName('new_pipeline.json'); setSteps([]); setSelected(''); setNotice('새 파이프라인을 작성하세요.') }}>＋ 새 파이프라인</button><button className="danger-button full" disabled={!selected} onClick={removePipeline}>삭제</button><p className="hint">현재 프로젝트의 케이스만 단계로 추가할 수 있습니다.</p></aside><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">PIPELINE DETAILS</p><h2>실행 설정</h2></div><div className="actions"><button className="ghost" onClick={save}>저장</button><button className="ghost" onClick={runOnly}>실행만</button><button className="primary" onClick={run}>저장 후 실행</button></div></div><div className="form-grid three"><Field label="파일명"><input value={fileName} onChange={event => setFileName(event.target.value)} /></Field><Field label="기본 재시도"><input type="number" min="0" value={defaults.retry} onChange={event => setDefaults(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="기본 간격 (초)"><input type="number" min="0" step="0.1" value={defaults.retry_interval_seconds} onChange={event => setDefaults(current => ({ ...current, retry_interval_seconds: event.target.value }))} /></Field></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">ADD STEP</p><h2>테스트 단계 추가</h2></div></div><div className="form-grid step-grid"><Field label="케이스" wide><select value={draft.case} onChange={event => setDraft(current => ({ ...current, case: event.target.value }))} disabled={!projectRef}>{caseItems.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="단계 이름"><input value={draft.name} onChange={event => setDraft(current => ({ ...current, name: event.target.value }))} placeholder="get_user" /></Field><Field label="재시도 (선택)"><input type="number" min="0" value={draft.retry} onChange={event => setDraft(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="간격 (선택)"><input type="number" min="0" step="0.1" value={draft.interval} onChange={event => setDraft(current => ({ ...current, interval: event.target.value }))} /></Field></div><div className="step-actions"><label className="toggle"><input type="checkbox" checked={draft.continue} onChange={event => setDraft(current => ({ ...current, continue: event.target.checked }))} /><span>실패해도 다음 단계 실행</span></label><button className="primary" onClick={addStep}>＋ 단계 추가</button></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">EXECUTION ORDER</p><h2>실행 순서 <span className="count">{steps.length}</span></h2></div></div><div className="steps">{steps.length ? steps.map((step, index) => <div className="step" key={step.name}><span className="order">{String(index + 1).padStart(2, '0')}</span><div><strong>{step.name}</strong><small>{step.case}</small></div><div className="step-meta">재시도 {step.retry ?? '기본값'} · 간격 {step.retry_interval_seconds ?? '기본값'}</div><div className="row-actions"><button className="icon" onClick={() => move(index, -1)}>↑</button><button className="icon" onClick={() => move(index, 1)}>↓</button><button className="icon danger" onClick={() => setSteps(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div></div>) : <div className="empty">프로젝트를 선택하고 케이스를 단계로 추가하세요.</div>}</div></section>{notice && <p className="notice">{notice}</p>}<RunResult result={result} /></main></div>
+  return <div className="workspace"><TestSidebar active="pipeline" projectRef={projectRef} project={project} onNavigate={onNavigate} onProjectList={onProjectList} /><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">PIPELINE SETTINGS</p><h2>{selected ? '파이프라인 설정' : '새 파이프라인'}</h2></div><div className="actions"><button className="ghost" onClick={onBack}>목록으로</button>{selected && <button className="danger-button" onClick={removePipeline}>삭제</button>}<button className="ghost" onClick={save}>저장</button><button className="ghost" onClick={runOnly}>실행만</button><button className="primary" onClick={run}>저장 후 실행</button></div></div><div className="form-grid three"><Field label="파일명"><input value={fileName} onChange={event => setFileName(event.target.value)} /></Field><Field label="기본 재시도"><input type="number" min="0" value={defaults.retry} onChange={event => setDefaults(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="기본 간격 (초)"><input type="number" min="0" step="0.1" value={defaults.retry_interval_seconds} onChange={event => setDefaults(current => ({ ...current, retry_interval_seconds: event.target.value }))} /></Field></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">ADD STEP</p><h2>테스트 단계 추가</h2></div></div><div className="form-grid step-grid"><Field label="케이스" wide><select value={draft.case} onChange={event => setDraft(current => ({ ...current, case: event.target.value }))} disabled={!projectRef}>{caseItems.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="단계 이름"><input value={draft.name} onChange={event => setDraft(current => ({ ...current, name: event.target.value }))} placeholder="get_user" /></Field><Field label="재시도 (선택)"><input type="number" min="0" value={draft.retry} onChange={event => setDraft(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="간격 (선택)"><input type="number" min="0" step="0.1" value={draft.interval} onChange={event => setDraft(current => ({ ...current, interval: event.target.value }))} /></Field></div><div className="step-actions"><label className="toggle"><input type="checkbox" checked={draft.continue} onChange={event => setDraft(current => ({ ...current, continue: event.target.checked }))} /><span>실패해도 다음 단계 실행</span></label><button className="primary" onClick={addStep}>＋ 단계 추가</button></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">EXECUTION ORDER</p><h2>실행 순서 <span className="count">{steps.length}</span></h2></div></div><div className="steps">{steps.length ? steps.map((step, index) => <div className="step" key={step.name}><span className="order">{String(index + 1).padStart(2, '0')}</span><div><strong>{step.name}</strong><small>{step.case}</small></div><div className="step-meta">재시도 {step.retry ?? '기본값'} · 간격 {step.retry_interval_seconds ?? '기본값'}</div><div className="row-actions"><button className="icon" onClick={() => move(index, -1)}>↑</button><button className="icon" onClick={() => move(index, 1)}>↓</button><button className="icon danger" onClick={() => setSteps(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div></div>) : <div className="empty">API 케이스를 먼저 저장한 뒤 단계로 추가하세요.</div>}</div></section>{notice && <p className="notice">{notice}</p>}<RunResult result={result} /></main></div>
 }
 
 function ProjectList({ projects, activeProject, onOpenProject, onCreateProject, refresh }) {
@@ -287,6 +318,8 @@ function StudioApp() {
   const [project, setProject] = useState(null)
   const [caseItems, setCaseItems] = useState([])
   const [pipelineItems, setPipelineItems] = useState([])
+  const [caseReference, setCaseReference] = useState('')
+  const [pipelineReference, setPipelineReference] = useState('')
   const [error, setError] = useState('')
   const refresh = async (preferredProject = activeProject) => {
     try {
@@ -299,12 +332,20 @@ function StudioApp() {
       setProjects(projectData.items); setActiveProject(selectedProject); setProject(selectedDocument); setCaseItems(cases.items); setPipelineItems(pipelines.items); setError('')
     } catch (requestError) { setError(`서버 연결 오류: ${requestError.message}`) }
   }
-  const selectProject = async reference => { await refresh(reference) }
-  const openProject = async reference => { await selectProject(reference); setTab('case') }
+  const selectProject = async reference => { setCaseReference(''); setPipelineReference(''); await refresh(reference) }
+  const openProject = async reference => { await selectProject(reference); setTab('case-list') }
   const saveProjectAndOpen = async reference => { await openProject(reference) }
+  const navigateTest = target => {
+    if (target === 'cases') { setCaseReference(''); setTab('case-list') }
+    else { setPipelineReference(''); setTab('pipeline-list') }
+  }
+  const openCase = reference => { setCaseReference(reference); setTab('case-settings') }
+  const createCase = () => { setCaseReference(''); setTab('case-settings') }
+  const openPipeline = reference => { setPipelineReference(reference); setTab('pipeline-settings') }
+  const createPipeline = () => { setPipelineReference(''); setTab('pipeline-settings') }
   useEffect(() => { refresh() }, [])
-  const editorProps = { caseItems, pipelineItems, projects, projectRef: activeProject, project, onProjectChange: selectProject, refresh }
-  return <><header className="topbar"><div className="brand"><span>⚡</span><div><strong>API Test Studio</strong><small>프로젝트별 JSON API 테스트</small></div></div><nav><button className={tab === 'project' || tab === 'project-settings' ? 'selected' : ''} onClick={() => setTab('project')}>프로젝트 목록</button><button className={tab === 'case' ? 'selected' : ''} onClick={() => setTab('case')}>API 케이스</button><button className={tab === 'pipeline' ? 'selected' : ''} onClick={() => setTab('pipeline')}>파이프라인</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} activeProject={activeProject} onOpenProject={openProject} onCreateProject={() => setTab('project-settings')} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} onSaved={saveProjectAndOpen} onCancel={() => setTab('project')} /> : tab === 'case' ? <CaseEditor {...editorProps} /> : <PipelineEditor {...editorProps} />}</>
+  const editorProps = { caseItems, pipelineItems, projects, projectRef: activeProject, project, onProjectChange: selectProject, refresh, onNavigate: navigateTest, onProjectList: () => setTab('project') }
+  return <><header className="topbar"><div className="brand"><span>⚡</span><div><strong>API Test Studio</strong><small>프로젝트별 JSON API 테스트</small></div></div><nav><button className={tab === 'project' || tab === 'project-settings' ? 'selected' : ''} onClick={() => setTab('project')}>프로젝트 목록</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} activeProject={activeProject} onOpenProject={openProject} onCreateProject={() => setTab('project-settings')} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} onSaved={saveProjectAndOpen} onCancel={() => setTab('project')} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} />}</>
 }
 
 class ErrorBoundary extends Component {
