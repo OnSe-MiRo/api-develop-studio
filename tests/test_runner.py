@@ -91,7 +91,7 @@ class ApiRunnerTest(unittest.TestCase):
             case_root = root / "case"
             (case_root / "alpha" / "users").mkdir(parents=True)
             (case_root / "beta" / "orders").mkdir(parents=True)
-            failed_case = {"request": {"url": "https://example.test/fail"}, "expected": {"status": 200}}
+            failed_case = {"request": {"url": "https://example.test/fail"}, "expected": {"status": 200, "strict": True}}
             skipped_case = {"request": {"url": "https://example.test/skip"}, "expected": {"status": 200}}
             (case_root / "alpha" / "users" / "fail.json").write_text(json.dumps(failed_case), encoding="utf-8")
             (case_root / "beta" / "orders" / "skip.json").write_text(json.dumps(skipped_case), encoding="utf-8")
@@ -109,6 +109,7 @@ class ApiRunnerTest(unittest.TestCase):
             self.assertIn('request_value={"url": "https://example.test/fail"}', log_content)
             self.assertIn('expected_response={"status": 200}', log_content)
             self.assertIn('actual_response={"status": 500, "body": {"error": "failure"}}', log_content)
+            self.assertIn('comparison_options={"strict": true}', log_content)
 
     def test_runs_a_single_case_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

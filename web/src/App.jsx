@@ -79,7 +79,7 @@ function CaseEditor({ caseItems, refresh }) {
         authType: authorization.startsWith('Bearer ') ? 'Bearer Token' : 'No Auth', authValue: authorization.replace(/^Bearer /, ''),
         headers: Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n'),
         body: request.body === undefined ? '' : JSON.stringify(request.body, null, 2), expectedStatus: String(expected.status ?? 200),
-        strict: expected.strict ?? true, expectedBody: expected.body === undefined ? '' : JSON.stringify(expected.body, null, 2),
+        strict: expected.strict ?? true, expectedBody: data._expectedBodyRaw ?? (expected.body === undefined ? '' : JSON.stringify(expected.body, null, 2)),
       })
       setSelected(reference); setNotice(`불러옴: ${reference}`); setResult(null)
     } catch (error) { setNotice(error.message) }
@@ -107,7 +107,8 @@ function CaseEditor({ caseItems, refresh }) {
 
   const save = async () => {
     try {
-      await api(`/api/cases/${encodeURIComponent(caseRef)}`, { method: 'PUT', body: JSON.stringify(document()) })
+      const caseDocument = document()
+      await api(`/api/cases/${encodeURIComponent(caseRef)}`, { method: 'PUT', body: JSON.stringify({ ...caseDocument, _expectedBodyRaw: form.expectedBody }) })
       await refresh(); setSelected(caseRef); setNotice(`저장됨: case/${caseRef}`); return true
     } catch (error) { setNotice(error.message); return false }
   }
