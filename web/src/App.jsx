@@ -6,6 +6,13 @@ const emptyCase = {
   expectedStatus: '200', strict: true, expectedBody: '',
 }
 
+const asText = value => typeof value === 'string' ? value : ''
+
+function jsonFileName(value) {
+  const fileName = asText(value).trim()
+  return fileName.endsWith('.json') ? fileName : `${fileName}.json`
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options })
   const data = await response.json()
@@ -14,15 +21,16 @@ async function api(path, options = {}) {
 }
 
 function parseJson(value, name, required = false) {
-  if (!value.trim()) {
+  const text = asText(value)
+  if (!text.trim()) {
     if (required) throw new Error(`${name}을(를) 입력하세요.`)
     return undefined
   }
-  try { return JSON.parse(value) } catch { throw new Error(`${name} JSON 형식이 올바르지 않습니다.`) }
+  try { return JSON.parse(text) } catch { throw new Error(`${name} JSON 형식이 올바르지 않습니다.`) }
 }
 
 function parseHeaders(value) {
-  return value.split('\n').reduce((headers, line, index) => {
+  return asText(value).split('\n').reduce((headers, line, index) => {
     if (!line.trim()) return headers
     const separator = line.indexOf(':')
     if (separator < 1) throw new Error(`Headers ${index + 1}번째 줄은 이름: 값 형식이어야 합니다.`)
@@ -32,7 +40,7 @@ function parseHeaders(value) {
 }
 
 function splitRequestUrl(rawUrl) {
-  const value = rawUrl || ''
+  const value = asText(rawUrl)
   try {
     const url = new URL(value)
     return {
@@ -73,7 +81,7 @@ function CaseEditor({ caseItems, refresh }) {
   const [notice, setNotice] = useState('')
   const [result, setResult] = useState(null)
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
-  const caseRef = `${form.tag}/${form.apiName}/${form.fileName.endsWith('.json') ? form.fileName : `${form.fileName}.json`}`
+  const caseRef = `${asText(form.tag)}/${asText(form.apiName)}/${jsonFileName(form.fileName)}`
 
   const updateParam = (index, key, value) => setForm(current => {
     const params = current.params.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item)
@@ -90,10 +98,10 @@ function CaseEditor({ caseItems, refresh }) {
       const request = data.request || {}, expected = data.expected || {}
       const requestUrl = splitRequestUrl(request.url)
       const headers = { ...(request.headers || {}) }
-      const authorization = headers.Authorization || ''
+      const authorization = asText(headers.Authorization)
       delete headers.Authorization
       setForm({
-        tag, apiName, fileName, method: request.method || 'GET', url: requestUrl.baseUrl,
+        tag: asText(tag), apiName: asText(apiName), fileName: asText(fileName), method: asText(request.method) || 'GET', url: requestUrl.baseUrl,
         params: requestUrl.params.concat({ key: '', value: '' }),
         authType: authorization.startsWith('Bearer ') ? 'Bearer Token' : 'No Auth', authValue: authorization.replace(/^Bearer /, ''),
         headers: Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n'),
@@ -173,7 +181,7 @@ function PipelineEditor({ caseItems, pipelineItems, refresh }) {
   const [selected, setSelected] = useState('')
   const [notice, setNotice] = useState('')
   const [result, setResult] = useState(null)
-  const ref = fileName.endsWith('.json') ? fileName : `${fileName}.json`
+  const ref = jsonFileName(fileName)
   useEffect(() => { if (!draft.case && caseItems.length) setDraft(current => ({ ...current, case: caseItems[0] })) }, [caseItems])
   const load = async reference => {
     if (!reference) return
