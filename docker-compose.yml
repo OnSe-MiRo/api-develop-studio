@@ -19,9 +19,9 @@ services:
     ports:
       - "${API_PORT:-8765}:8765"
     volumes:
-      - ./case:/app/case
+      - "${CASE_VOLUME_PATH:-./case}:/app/case"
       - ./pipelines:/app/pipelines
-      - ./logs:/app/logs
+      - "${LOG_VOLUME_PATH:-./logs}:/app/logs"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/cases')"]
       interval: 5s
