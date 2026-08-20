@@ -68,7 +68,12 @@ class StudioHandler(SimpleHTTPRequestHandler):
             elif parts == ["api", "pipelines"]:
                 self.send_json(200, {"items": json_files(PIPELINE_ROOT)})
             elif len(parts) == 3 and parts[:2] == ["api", "cases"]:
-                self.send_json(200, json.loads(safe_file(CASE_ROOT, parts[2]).read_text(encoding="utf-8")))
+                document = json.loads(safe_file(CASE_ROOT, parts[2]).read_text(encoding="utf-8"))
+                expected = document.get("expected", {})
+                if isinstance(expected, dict) and "body" in expected:
+                    # JavaScript parses 9.0 as 9. Keep the original JSON numeric spelling for the editor.
+                    document["_expectedBodyRaw"] = json.dumps(expected["body"], ensure_ascii=False, indent=2)
+                self.send_json(200, document)
             elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
                 self.send_json(200, json.loads(safe_file(PIPELINE_ROOT, parts[2]).read_text(encoding="utf-8")))
             else:
@@ -82,6 +87,17 @@ class StudioHandler(SimpleHTTPRequestHandler):
             payload = self.read_body()
             if len(parts) == 3 and parts[:2] == ["api", "cases"]:
                 path = safe_file(CASE_ROOT, parts[2])
+                expected_body_raw = payload.pop("_expectedBodyRaw", None)
+                if expected_body_raw is not None:
+                    if not isinstance(expected_body_raw, str):
+                        raise ApiError("_expectedBodyRaw must be a string")
+                    expected = payload.get("expected")
+                    if not isinstance(expected, dict):
+                        raise ApiError("Case expected must be an object")
+                    if expected_body_raw.strip():
+                        expected["body"] = json.loads(expected_body_raw)
+                    else:
+                        expected.pop("body", None)
             elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
                 path = safe_file(PIPELINE_ROOT, parts[2])
             else:

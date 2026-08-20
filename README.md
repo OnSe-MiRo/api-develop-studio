@@ -121,7 +121,7 @@ python3 -m unittest discover -s tests -v
 python3 run_api_tests.py pipelines/sample.json --log-dir test-logs
 ```
 
-검증 실패 시 로그에는 `request_value`, `expected_response`, `actual_response`를 각각 구분해 기록합니다. 인증 토큰, 비밀번호, API key, cookie 등 민감한 키의 값은 `***REDACTED***`로 마스킹됩니다.
+검증 실패 시 로그에는 `request_value`, `expected_response`, `actual_response`를 각각 구분해 기록합니다. `strict`는 응답값이 아닌 `comparison_options`로 별도 기록되며 응답 데이터 비교 대상에는 포함되지 않습니다. 인증 토큰, 비밀번호, API key, cookie 등 민감한 키의 값은 `***REDACTED***`로 마스킹됩니다.
 
 파이프라인 종료 시 케이스 경로의 첫 번째 디렉터리인 API tag별 요약도 기록합니다. 실패 때문에 실행하지 못한 후속 단계는 `SKIPPED`입니다.
 
