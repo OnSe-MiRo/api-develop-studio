@@ -214,11 +214,18 @@ projects/
 ```json
 {
   "name": "회원 API",
-  "base_url": "https://api.example.com"
+  "base_url": "https://api.example.com",
+  "advanced": {
+    "proxy": "http://proxy.example.com:8080",
+    "verify": true
+  }
 }
 ```
 
 `projects/member-api.json`을 저장한 뒤 케이스에 `"project": "member-api.json"`, `"url": "/users"`를 지정하면 `https://api.example.com/users`를 호출합니다.
+
+- `advanced.proxy`: 선택 사항입니다. `http://` 또는 `https://` 프록시 URL을 지정하면 프로젝트의 모든 API 호출이 해당 프록시를 사용합니다. 비우면 직접 연결합니다.
+- `advanced.verify`: 기본값은 `true`입니다. `false`로 설정하면 TLS 인증서 검증을 생략합니다. 자체 서명 인증서를 사용하는 개발 환경에서만 사용하세요.
 
 ## 케이스 JSON
 

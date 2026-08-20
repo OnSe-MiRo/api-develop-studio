@@ -62,6 +62,19 @@ def validate_project_document(payload: dict[str, object]) -> None:
     parsed = urlparse(base_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ApiError("Project base_url must be an absolute HTTP URL")
+    advanced = payload.get("advanced", {})
+    if not isinstance(advanced, dict):
+        raise ApiError("Project advanced settings must be an object")
+    proxy = advanced.get("proxy", "")
+    if not isinstance(proxy, str):
+        raise ApiError("Project proxy must be a string")
+    if proxy.strip():
+        proxy_url = urlparse(proxy)
+        if proxy_url.scheme not in {"http", "https"} or not proxy_url.netloc:
+            raise ApiError("Project proxy must be an absolute HTTP URL")
+    verify = advanced.get("verify", True)
+    if not isinstance(verify, bool):
+        raise ApiError("Project verify must be true or false")
 
 
 def validate_project_reference(payload: dict[str, object]) -> None:

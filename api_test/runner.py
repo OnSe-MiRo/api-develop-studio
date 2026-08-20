@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+import ssl
 import time
 import urllib.error
 import urllib.request
@@ -19,6 +20,13 @@ REFERENCE_PATTERN = re.compile(r"\$\{([A-Za-z_][\w-]*)\.response\.(body|status)(
 
 class CaseConfigurationError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class ProjectRequestSettings:
+    base_url: str
+    proxy_url: str | None = None
+    verify_ssl: bool = True
 
 
 @dataclass
@@ -62,21 +70,47 @@ def resolve_case_path(case_root: Path, reference: str) -> Path:
     return candidate
 
 
-def project_base_url(case: dict[str, Any], project_root: Path) -> str | None:
-    """Read and validate the Base URL referenced by a project-aware case."""
+def project_request_settings(case: dict[str, Any], project_root: Path) -> ProjectRequestSettings | None:
+    """Read a project's Base URL and optional transport settings."""
     project_reference = case.get("project")
     if project_reference is None:
         return None
     if not isinstance(project_reference, str) or not project_reference:
         raise CaseConfigurationError("case.project must be a non-empty project JSON reference")
     project_path = resolve_case_path(project_root, project_reference)
-    base_url = read_json(project_path).get("base_url")
+    project = read_json(project_path)
+    base_url = project.get("base_url")
     if not isinstance(base_url, str) or not base_url.strip():
         raise CaseConfigurationError(f"project.base_url is required: {project_reference}")
     parsed = urlparse(base_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise CaseConfigurationError(f"project.base_url must be an absolute HTTP URL: {project_reference}")
-    return urlunparse(parsed._replace(path=parsed.path.rstrip("/")))
+    advanced = project.get("advanced", {})
+    if not isinstance(advanced, dict):
+        raise CaseConfigurationError(f"project.advanced must be an object: {project_reference}")
+    proxy_url = advanced.get("proxy")
+    if proxy_url is not None:
+        if not isinstance(proxy_url, str):
+            raise CaseConfigurationError(f"project.advanced.proxy must be a string: {project_reference}")
+        proxy_url = proxy_url.strip() or None
+        if proxy_url:
+            proxy_parsed = urlparse(proxy_url)
+            if proxy_parsed.scheme not in {"http", "https"} or not proxy_parsed.netloc:
+                raise CaseConfigurationError(f"project.advanced.proxy must be an absolute HTTP URL: {project_reference}")
+    verify_ssl = advanced.get("verify", True)
+    if not isinstance(verify_ssl, bool):
+        raise CaseConfigurationError(f"project.advanced.verify must be true or false: {project_reference}")
+    return ProjectRequestSettings(
+        base_url=urlunparse(parsed._replace(path=parsed.path.rstrip("/"))),
+        proxy_url=proxy_url,
+        verify_ssl=verify_ssl,
+    )
+
+
+def project_base_url(case: dict[str, Any], project_root: Path) -> str | None:
+    """Backward-compatible helper returning only the project Base URL."""
+    settings = project_request_settings(case, project_root)
+    return settings.base_url if settings else None
 
 
 def resolve_request_url(url: str, base_url: str | None) -> str:
@@ -137,6 +171,8 @@ class ApiTestRunner:
         retry: int = 0,
         retry_interval_seconds: float = 0,
         base_url: str | None = None,
+        proxy_url: str | None = None,
+        verify_ssl: bool = True,
     ) -> CaseResult:
         request_definition = case.get("request")
         expected = case.get("expected")
@@ -150,7 +186,7 @@ class ApiTestRunner:
         attempts = max(0, retry) + 1
         last_result: CaseResult | None = None
         for attempt in range(1, attempts + 1):
-            result = self._run_once(case_id, resolved_request, expected, attempt)
+            result = self._run_once(case_id, resolved_request, expected, attempt, proxy_url, verify_ssl)
             if result.status == "passed":
                 return result
             last_result = result
@@ -159,7 +195,10 @@ class ApiTestRunner:
         assert last_result is not None
         return last_result
 
-    def _run_once(self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int) -> CaseResult:
+    def _run_once(
+        self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int,
+        proxy_url: str | None = None, verify_ssl: bool = True,
+    ) -> CaseResult:
         method = str(request_definition.get("method", "GET")).upper()
         headers = {str(key): str(value) for key, value in request_definition.get("headers", {}).items()}
         payload = request_definition.get("body")
@@ -169,7 +208,17 @@ class ApiTestRunner:
             headers.setdefault("Content-Type", "application/json")
         request = urllib.request.Request(request_definition["url"], data=data, headers=headers, method=method)
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as opened:
+            if proxy_url or not verify_ssl:
+                handlers: list[Any] = []
+                if proxy_url:
+                    handlers.append(urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url}))
+                if not verify_ssl:
+                    handlers.append(urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+                opener = urllib.request.build_opener(*handlers)
+                opened_response = opener.open(request, timeout=self.timeout_seconds)
+            else:
+                opened_response = urllib.request.urlopen(request, timeout=self.timeout_seconds)
+            with opened_response as opened:
                 status = opened.status
                 response_headers = dict(opened.headers.items())
                 raw_body = opened.read().decode("utf-8")
