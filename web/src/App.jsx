@@ -2,11 +2,13 @@ import { Component, useEffect, useState } from 'react'
 
 const emptyCase = {
   tag: 'sample', apiName: 'api_name', fileName: 'new_case.json', method: 'GET', url: '',
-  params: [{ key: '', value: '' }], authType: 'No Auth', authValue: '', headers: '', body: '',
+  params: [{ key: '', value: '' }], authType: 'No Auth', authValue: '', headers: '', body: '', bodyMode: 'json', formData: [],
   expectedStatus: '200', strict: true, expectedBody: '',
 }
 
 const asText = value => typeof value === 'string' ? value : ''
+const emptyFormDataRow = () => ({ key: '', kind: 'text', value: '', file: null, storedFile: '', filename: '', contentType: '' })
+const newCaseForm = () => ({ ...emptyCase, params: [{ key: '', value: '' }], formData: [] })
 
 function jsonFileName(value) {
   const fileName = asText(value).trim()
@@ -29,6 +31,15 @@ async function api(path, options = {}) {
   const data = await response.json()
   if (!response.ok) throw new Error(data.error || '요청 처리에 실패했습니다.')
   return data
+}
+
+async function uploadAttachment(reference, file) {
+  const response = await fetch(`/api/uploads/${encodeURIComponent(reference)}`, {
+    method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file,
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.error || '파일 업로드에 실패했습니다.')
+  return data.path
 }
 
 function parseJson(value, name, required = false) {
@@ -107,7 +118,7 @@ function CaseList({ caseItems, projectRef, project, refresh, onNavigate, onProje
 }
 
 function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, onProjectList, onBack }) {
-  const [form, setForm] = useState(emptyCase)
+  const [form, setForm] = useState(newCaseForm)
   const [requestTab, setRequestTab] = useState('Params')
   const [selected, setSelected] = useState('')
   const [notice, setNotice] = useState('')
@@ -117,7 +128,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
   useEffect(() => {
     setResult(null)
     if (caseReference) load(caseReference)
-    else { setForm(emptyCase); setSelected(''); setNotice('새 API 케이스를 작성하세요.') }
+    else { setForm(newCaseForm()); setSelected(''); setNotice('새 API 케이스를 작성하세요.') }
   }, [caseReference, projectRef])
 
   const updateParam = (index, key, value) => setForm(current => {
@@ -126,6 +137,10 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     return { ...current, params }
   })
   const removeParam = index => setForm(current => ({ ...current, params: current.params.length === 1 ? [{ key: '', value: '' }] : current.params.filter((_, itemIndex) => itemIndex !== index) }))
+  const updateFormData = (index, key, value) => setForm(current => ({
+    ...current, formData: current.formData.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item),
+  }))
+  const removeFormData = index => setForm(current => ({ ...current, formData: current.formData.filter((_, itemIndex) => itemIndex !== index) }))
 
   const load = async reference => {
     if (!reference) return
@@ -138,19 +153,42 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       const headers = { ...(request.headers || {}) }
       const authorization = asText(headers.Authorization)
       delete headers.Authorization
+      const formData = Array.isArray(request.form_data) ? request.form_data.map(item => ({
+        key: asText(item?.key), kind: item?.file ? 'file' : 'text', value: item?.file ? '' : String(item?.value ?? ''), file: null,
+        storedFile: asText(item?.file), filename: asText(item?.filename) || asText(item?.file).split('/').pop(), contentType: asText(item?.content_type),
+      })) : []
       setForm({
         tag: asText(tag), apiName: asText(apiName), fileName: asText(fileName), method: asText(request.method) || 'GET', url: requestUrl.baseUrl,
         params: requestUrl.params.concat({ key: '', value: '' }),
         authType: authorization.startsWith('Bearer ') ? 'Bearer Token' : 'No Auth', authValue: authorization.replace(/^Bearer /, ''),
         headers: Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n'),
-        body: request.body === undefined ? '' : JSON.stringify(request.body, null, 2), expectedStatus: String(expected.status ?? 200),
+        body: request.body === undefined ? '' : JSON.stringify(request.body, null, 2), bodyMode: Array.isArray(request.form_data) ? 'form-data' : 'json', formData, expectedStatus: String(expected.status ?? 200),
         strict: expected.strict ?? true, expectedBody: data._expectedBodyRaw ?? (expected.body === undefined ? '' : JSON.stringify(expected.body, null, 2)),
       })
       setSelected(reference); setNotice(`불러옴: ${reference}`); setResult(null)
     } catch (error) { setNotice(error.message) }
   }
 
-  const document = () => {
+  const formDataDocument = async () => {
+    const entries = form.formData.filter(item => item.key || item.value || item.file || item.storedFile)
+    return Promise.all(entries.map(async (item, index) => {
+      const key = asText(item.key).trim()
+      if (!key) throw new Error(`form-data ${index + 1}번째 행의 Key를 입력하세요.`)
+      if (item.kind !== 'file') return { key, value: asText(item.value) }
+      let fileReference = asText(item.storedFile)
+      if (item.file) {
+        const safeName = `${index + 1}-${item.file.name.replace(/[\\/]/g, '_') || 'attachment'}`
+        fileReference = await uploadAttachment(`${asText(form.tag).trim()}/${asText(form.apiName).trim()}/files/${safeName}`, item.file)
+      }
+      if (!fileReference) throw new Error(`form-data ${index + 1}번째 행에서 파일을 선택하세요.`)
+      const attachment = { key, file: fileReference, filename: item.file?.name || asText(item.filename) || fileReference.split('/').pop() }
+      const contentType = item.file?.type || asText(item.contentType)
+      if (contentType) attachment.content_type = contentType
+      return attachment
+    }))
+  }
+
+  const document = async () => {
     if (!projectRef) throw new Error('프로젝트를 먼저 선택하세요.')
     if (!form.tag || !form.apiName || !form.fileName || !form.url) throw new Error('Tag, API 이름, 케이스 파일, URL을 입력하세요.')
     const headers = parseHeaders(form.headers)
@@ -159,9 +197,12 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       headers.Authorization = `Bearer ${form.authValue}`
     }
     const request = { method: form.method, url: appendParams(form.url, form.params) }
-    const body = parseJson(form.body, 'Request body')
     if (Object.keys(headers).length) request.headers = headers
-    if (body !== undefined) request.body = body
+    if (form.bodyMode === 'form-data') request.form_data = await formDataDocument()
+    else {
+      const body = parseJson(form.body, 'Request body')
+      if (body !== undefined) request.body = body
+    }
     const expected = { status: Number(form.expectedStatus), strict: form.strict }
     if (!Number.isInteger(expected.status)) throw new Error('Expected status는 정수여야 합니다.')
     const expectedBody = parseJson(form.expectedBody, 'Expected body')
@@ -169,18 +210,20 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     return { project: projectRef, request, expected }
   }
 
-  const casePayload = () => ({ ...document(), _expectedBodyRaw: form.expectedBody })
+  const casePayload = async () => ({ ...(await document()), _expectedBodyRaw: form.expectedBody })
 
   const save = async () => {
     try {
-      await api(`/api/cases/${encodeURIComponent(caseRef)}`, { method: 'PUT', body: JSON.stringify(casePayload()) })
+      const payload = await casePayload()
+      await api(`/api/cases/${encodeURIComponent(caseRef)}`, { method: 'PUT', body: JSON.stringify(payload) })
       await refresh(); setSelected(caseRef); setNotice(`저장됨: case/${caseRef}`); return true
     } catch (error) { setNotice(error.message); return false }
   }
   const runOnly = async () => {
     try {
       setResult(null); setNotice('현재 입력값을 저장하지 않고 실행 중입니다.')
-      setResult(await api('/api/run', { method: 'POST', body: JSON.stringify({ inlineCase: casePayload(), caseReference: caseRef }) }))
+      const payload = await casePayload()
+      setResult(await api('/api/run', { method: 'POST', body: JSON.stringify({ inlineCase: payload, caseReference: caseRef }) }))
       setNotice('저장하지 않고 실행했습니다.')
     } catch (error) { setResult({ error: error.message }); setNotice(error.message) }
   }
@@ -194,7 +237,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     if (!window.confirm(`${selected} 케이스를 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return
     try {
       await api(`/api/cases/${encodeURIComponent(selected)}`, { method: 'DELETE' })
-      await refresh(); setForm(emptyCase); setSelected(''); setResult(null); setNotice(`삭제됨: case/${selected}`)
+      await refresh(); setForm(newCaseForm()); setSelected(''); setResult(null); setNotice(`삭제됨: case/${selected}`)
     } catch (error) { setNotice(error.message) }
   }
 
@@ -209,7 +252,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
         <div className="tab-content">{requestTab === 'Params' && <><div className="param-header"><span>Key</span><span>Value</span><span /></div>{form.params.map((param, index) => <div className="param-row" key={index}><input value={param.key} placeholder="page" onChange={event => updateParam(index, 'key', event.target.value)} /><input value={param.value} placeholder="1" onChange={event => updateParam(index, 'value', event.target.value)} /><button className="icon" onClick={() => removeParam(index)}>×</button></div>)}<button className="text-button" onClick={() => setForm(current => ({ ...current, params: [...current.params, { key: '', value: '' }] }))}>＋ Parameter 추가</button></>}
           {requestTab === 'Authorization' && <div className="auth-form"><Field label="Type"><select value={form.authType} onChange={event => set('authType', event.target.value)}><option>No Auth</option><option>Bearer Token</option></select></Field>{form.authType === 'Bearer Token' && <Field label="Token" wide><input type="password" value={form.authValue} onChange={event => set('authValue', event.target.value)} placeholder="토큰 값" /></Field>}</div>}
           {requestTab === 'Headers' && <JsonArea value={form.headers} onChange={value => set('headers', value)} placeholder={'Content-Type: application/json\nX-Request-Id: example'} />}
-          {requestTab === 'Body' && <JsonArea value={form.body} onChange={value => set('body', value)} placeholder={'{\n  "name": "Ada"\n}'} />}
+          {requestTab === 'Body' && <div><div className="body-mode"><button className={form.bodyMode === 'json' ? 'active' : ''} onClick={() => set('bodyMode', 'json')}>raw JSON</button><button className={form.bodyMode === 'form-data' ? 'active' : ''} onClick={() => set('bodyMode', 'form-data')}>form-data</button></div>{form.bodyMode === 'form-data' ? <><div className="form-data-header"><span>Key</span><span>Type</span><span>Value / File</span><span /></div>{form.formData.map((item, index) => <div className="form-data-row" key={index}><input value={item.key} placeholder="file" onChange={event => updateFormData(index, 'key', event.target.value)} /><select value={item.kind} onChange={event => updateFormData(index, 'kind', event.target.value)}><option value="text">Text</option><option value="file">File</option></select>{item.kind === 'file' ? <label className="file-picker"><input type="file" onChange={event => updateFormData(index, 'file', event.target.files?.[0] || null)} /><span>{item.file?.name || item.filename || '파일 선택'}</span></label> : <input value={item.value} placeholder="value" onChange={event => updateFormData(index, 'value', event.target.value)} />}<button className="icon" onClick={() => removeFormData(index)}>×</button></div>)}<button className="text-button" onClick={() => setForm(current => ({ ...current, formData: [...current.formData, emptyFormDataRow()] }))}>＋ form-data 추가</button><p className="hint">선택한 파일은 저장·재실행할 수 있도록 <code>case/{'{tag}'}/{'{api_name}'}/files/</code>에 보관됩니다. multipart Content-Type은 자동으로 설정됩니다.</p></> : <JsonArea value={form.body} onChange={value => set('body', value)} placeholder={'{\n  "name": "Ada"\n}'} />}</div>}
         </div>
       </section>
       <section className="card"><div className="section-header"><div><p className="eyebrow">ASSERTION</p><h2>기대 응답</h2></div></div><div className="expected-controls"><Field label="Expected status"><input value={form.expectedStatus} onChange={event => set('expectedStatus', event.target.value)} /></Field><label className="toggle"><input type="checkbox" checked={form.strict} onChange={event => set('strict', event.target.checked)} /><span>strict 비교</span></label></div><JsonArea value={form.expectedBody} onChange={value => set('expectedBody', value)} placeholder={'{\n  "id": 1\n}'} /></section>
@@ -283,7 +326,7 @@ function PipelineEditor({ caseItems, refresh, projectRef, project, onNavigate, o
   return <div className="workspace"><TestSidebar active="pipeline" projectRef={projectRef} project={project} onNavigate={onNavigate} onProjectList={onProjectList} /><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">PIPELINE SETTINGS</p><h2>{selected ? '파이프라인 설정' : '새 파이프라인'}</h2></div><div className="actions"><button className="ghost" onClick={onBack}>목록으로</button>{selected && <button className="danger-button" onClick={removePipeline}>삭제</button>}<button className="ghost" onClick={save}>저장</button><button className="ghost" onClick={runOnly}>실행만</button><button className="primary" onClick={run}>저장 후 실행</button></div></div><div className="form-grid three"><Field label="파일명"><input value={fileName} onChange={event => setFileName(event.target.value)} /></Field><Field label="기본 재시도"><input type="number" min="0" value={defaults.retry} onChange={event => setDefaults(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="기본 간격 (초)"><input type="number" min="0" step="0.1" value={defaults.retry_interval_seconds} onChange={event => setDefaults(current => ({ ...current, retry_interval_seconds: event.target.value }))} /></Field></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">ADD STEP</p><h2>테스트 단계 추가</h2></div></div><div className="form-grid step-grid"><Field label="케이스" wide><select value={draft.case} onChange={event => setDraft(current => ({ ...current, case: event.target.value }))} disabled={!projectRef}>{caseItems.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="단계 이름"><input value={draft.name} onChange={event => setDraft(current => ({ ...current, name: event.target.value }))} placeholder="get_user" /></Field><Field label="재시도 (선택)"><input type="number" min="0" value={draft.retry} onChange={event => setDraft(current => ({ ...current, retry: event.target.value }))} /></Field><Field label="간격 (선택)"><input type="number" min="0" step="0.1" value={draft.interval} onChange={event => setDraft(current => ({ ...current, interval: event.target.value }))} /></Field></div><div className="step-actions"><label className="toggle"><input type="checkbox" checked={draft.continue} onChange={event => setDraft(current => ({ ...current, continue: event.target.checked }))} /><span>실패해도 다음 단계 실행</span></label><button className="primary" onClick={addStep}>＋ 단계 추가</button></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">EXECUTION ORDER</p><h2>실행 순서 <span className="count">{steps.length}</span></h2></div></div><div className="steps">{steps.length ? steps.map((step, index) => <div className="step" key={step.name}><span className="order">{String(index + 1).padStart(2, '0')}</span><div><strong>{step.name}</strong><small>{step.case}</small></div><div className="step-meta">재시도 {step.retry ?? '기본값'} · 간격 {step.retry_interval_seconds ?? '기본값'}</div><div className="row-actions"><button className="icon" onClick={() => move(index, -1)}>↑</button><button className="icon" onClick={() => move(index, 1)}>↓</button><button className="icon danger" onClick={() => setSteps(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div></div>) : <div className="empty">API 케이스를 먼저 저장한 뒤 단계로 추가하세요.</div>}</div></section>{notice && <p className="notice">{notice}</p>}<RunResult result={result} /></main></div>
 }
 
-function ProjectList({ projects, activeProject, onOpenProject, onCreateProject, refresh }) {
+function ProjectList({ projects, activeProject, onOpenProject, onCreateProject, onEditProject, refresh }) {
   const [notice, setNotice] = useState('')
   const removeProject = async reference => {
     if (!window.confirm(`${reference.replace(/\.json$/, '')} 프로젝트를 삭제할까요?\n연결된 API 케이스나 파이프라인이 있으면 삭제할 수 없습니다.`)) return
@@ -293,23 +336,44 @@ function ProjectList({ projects, activeProject, onOpenProject, onCreateProject, 
       setNotice(`삭제됨: projects/${reference}`)
     } catch (error) { setNotice(error.message) }
   }
-  return <main className="project-page"><section className="card project-list-card"><div className="section-header"><div><p className="eyebrow">SELECT PROJECT</p><h2>프로젝트 목록</h2></div><button className="primary" onClick={onCreateProject}>＋ 새 프로젝트 만들기</button></div>{projects.length ? <div className="project-grid">{projects.map(reference => <article className={`project-card ${activeProject === reference ? 'active' : ''}`} key={reference}><button className="project-card-open" onClick={() => onOpenProject(reference)}><span className="project-card-label">PROJECT</span><strong>{reference.replace(/\.json$/, '')}</strong><small>{reference}</small><span className="project-card-action">API 테스트 열기 <b>→</b></span></button><button className="project-card-delete" aria-label={`${reference} 프로젝트 삭제`} title="프로젝트 삭제" onClick={() => removeProject(reference)}>×</button></article>)}</div> : <div className="empty">등록된 프로젝트가 없습니다. 새 프로젝트를 만들어 시작하세요.</div>}</section>{notice && <p className="notice">{notice}</p>}</main>
+  return <main className="project-page"><section className="card project-list-card"><div className="section-header"><div><p className="eyebrow">SELECT PROJECT</p><h2>프로젝트 목록</h2></div><button className="primary" onClick={onCreateProject}>＋ 새 프로젝트 만들기</button></div>{projects.length ? <div className="project-grid">{projects.map(reference => <article className={`project-card ${activeProject === reference ? 'active' : ''}`} key={reference}><button className="project-card-open" onClick={() => onOpenProject(reference)}><span className="project-card-label">PROJECT</span><strong>{reference.replace(/\.json$/, '')}</strong><small>{reference}</small><span className="project-card-action">API 테스트 열기 <b>→</b></span></button><div className="project-card-actions"><button className="project-card-edit" aria-label={`${reference} 프로젝트 수정`} title="프로젝트 수정" onClick={() => onEditProject(reference)}>수정</button><button className="project-card-delete" aria-label={`${reference} 프로젝트 삭제`} title="프로젝트 삭제" onClick={() => removeProject(reference)}>×</button></div></article>)}</div> : <div className="empty">등록된 프로젝트가 없습니다. 새 프로젝트를 만들어 시작하세요.</div>}</section>{notice && <p className="notice">{notice}</p>}</main>
 }
 
-function ProjectSettings({ projects, onSaved, onCancel }) {
-  const [form, setForm] = useState({ name: '', baseUrl: '', proxy: '', verify: true })
+function ProjectSettings({ projects, projectReference, onSaved, onCancel }) {
+  const [form, setForm] = useState({ name: '', baseUrl: '', sameProxy: false, httpProxy: '', httpsProxy: '', verify: true })
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
+  const setSameProxy = checked => setForm(current => {
+    const commonProxy = current.httpProxy || current.httpsProxy
+    return { ...current, sameProxy: checked, httpProxy: checked ? commonProxy : current.httpProxy, httpsProxy: checked ? commonProxy : current.httpsProxy }
+  })
+  const setCommonProxy = value => setForm(current => ({ ...current, httpProxy: value, httpsProxy: value }))
+  const isEditing = Boolean(projectReference)
+  useEffect(() => {
+    if (!projectReference) { setForm({ name: '', baseUrl: '', sameProxy: false, httpProxy: '', httpsProxy: '', verify: true }); setAdvancedOpen(false); setNotice(''); return }
+    const load = async () => {
+      try {
+        const data = await api(`/api/projects/${encodeURIComponent(projectReference)}`)
+        const advanced = data.advanced || {}
+        const legacyProxy = asText(advanced.proxy)
+        const httpProxy = asText(advanced.http_proxy) || legacyProxy
+        const httpsProxy = asText(advanced.https_proxy) || legacyProxy
+        setForm({ name: asText(data.name), baseUrl: asText(data.base_url), sameProxy: Boolean(httpProxy && httpProxy === httpsProxy), httpProxy, httpsProxy, verify: advanced.verify ?? true })
+        setAdvancedOpen(Boolean(httpProxy || httpsProxy) || advanced.verify === false); setNotice('')
+      } catch (error) { setNotice(error.message) }
+    }
+    load()
+  }, [projectReference])
   const save = async () => {
     try {
       if (!form.name || !form.baseUrl) throw new Error('프로젝트 이름과 Base URL을 입력하세요.')
-      const reference = projectFileName(form.name, projects)
-      await api(`/api/projects/${encodeURIComponent(reference)}`, { method: 'PUT', body: JSON.stringify({ name: form.name, base_url: form.baseUrl, advanced: { proxy: form.proxy, verify: form.verify } }) })
+      const reference = projectReference || projectFileName(form.name, projects)
+      await api(`/api/projects/${encodeURIComponent(reference)}`, { method: 'PUT', body: JSON.stringify({ name: form.name, base_url: form.baseUrl, advanced: { http_proxy: form.httpProxy, https_proxy: form.httpsProxy, verify: form.verify } }) })
       await onSaved(reference)
     } catch (error) { setNotice(error.message) }
   }
-  return <main className="project-page"><section className="card"><div className="section-header"><div><p className="eyebrow">NEW PROJECT</p><h2>프로젝트 설정</h2></div><div className="actions"><button className="ghost" onClick={onCancel}>목록으로</button><button className="primary" onClick={save}>저장</button></div></div><div className="form-grid project-settings-grid"><Field label="프로젝트 이름"><input value={form.name} onChange={event => set('name', event.target.value)} placeholder="New Project" /></Field><Field label="Base URL"><input value={form.baseUrl} onChange={event => set('baseUrl', event.target.value)} placeholder="https://api.example.com" /></Field></div><section className="advanced-settings"><button className="advanced-toggle" onClick={() => setAdvancedOpen(current => !current)}><span>고급 설정</span><span>{advancedOpen ? '−' : '+'}</span></button>{advancedOpen && <div className="advanced-content"><Field label="Proxy URL"><input value={form.proxy} onChange={event => set('proxy', event.target.value)} placeholder="http://proxy.example.com:8080" /></Field><label className="toggle"><input type="checkbox" checked={form.verify} onChange={event => set('verify', event.target.checked)} /><span>TLS 인증서 검증 (verify)</span></label><p className="hint">프록시를 비우면 직접 연결합니다. verify를 끄면 자체 서명 인증서 등의 TLS 검증을 생략합니다.</p></div>}</section><p className="hint">프로젝트 JSON 파일은 프로젝트 이름을 기준으로 자동 생성됩니다. 케이스의 URL에 <code>/users</code>처럼 상대 경로를 입력하면 이 Base URL과 결합해 실행합니다. 절대 URL도 그대로 실행할 수 있습니다.</p></section>{notice && <p className="notice">{notice}</p>}</main>
+  return <main className="project-page"><section className="card"><div className="section-header"><div><p className="eyebrow">{isEditing ? 'EDIT PROJECT' : 'NEW PROJECT'}</p><h2>프로젝트 설정</h2></div><div className="actions"><button className="ghost" onClick={onCancel}>목록으로</button><button className="primary" onClick={save}>저장</button></div></div><div className="form-grid project-settings-grid"><Field label="프로젝트 이름"><input value={form.name} onChange={event => set('name', event.target.value)} placeholder="New Project" /></Field><Field label="Base URL"><input value={form.baseUrl} onChange={event => set('baseUrl', event.target.value)} placeholder="https://api.example.com" /></Field></div><section className="advanced-settings"><button className="advanced-toggle" onClick={() => setAdvancedOpen(current => !current)}><span>고급 설정</span><span>{advancedOpen ? '−' : '+'}</span></button>{advancedOpen && <div className="advanced-content"><section className="proxy-settings"><div className="proxy-settings-heading"><strong>Proxy 설정</strong></div>{form.sameProxy ? <Field label="Proxy URL (HTTP/HTTPS)"><input value={form.httpProxy} onChange={event => setCommonProxy(event.target.value)} placeholder="http://proxy.example.com:8080" /></Field> : <div className="form-grid project-settings-grid"><Field label="HTTP Proxy URL"><input value={form.httpProxy} onChange={event => set('httpProxy', event.target.value)} placeholder="http://proxy.example.com:8080" /></Field><Field label="HTTPS Proxy URL"><input value={form.httpsProxy} onChange={event => set('httpsProxy', event.target.value)} placeholder="http://proxy.example.com:8080" /></Field></div>}<label className="toggle"><input type="checkbox" checked={form.sameProxy} onChange={event => setSameProxy(event.target.checked)} /><span>HTTP/HTTPS 공통 주소 사용</span></label><p className="hint">HTTP 또는 HTTPS 프록시 주소가 입력되어 있으면 해당 프로토콜 요청에 자동 적용됩니다. 두 주소를 모두 비우면 직접 연결합니다. 많은 사내 프록시는 HTTPS 요청에도 <code>http://</code> 형식의 프록시 주소를 사용합니다.</p></section><label className="toggle"><input type="checkbox" checked={form.verify} onChange={event => set('verify', event.target.checked)} /><span>TLS 인증서 검증 (verify)</span></label><p className="hint">verify를 끄면 자체 서명 인증서 등의 TLS 검증을 생략합니다.</p></div>}</section><p className="hint">{isEditing ? <>프로젝트 파일명 <code>{projectReference}</code>은 유지됩니다. 변경한 Base URL과 고급 설정은 연결된 API 케이스와 파이프라인 실행에 즉시 적용됩니다.</> : <>프로젝트 JSON 파일은 프로젝트 이름을 기준으로 자동 생성됩니다. 케이스의 URL에 <code>/users</code>처럼 상대 경로를 입력하면 이 Base URL과 결합해 실행합니다. 절대 URL도 그대로 실행할 수 있습니다.</>}</p></section>{notice && <p className="notice">{notice}</p>}</main>
 }
 
 function StudioApp() {
@@ -317,6 +381,7 @@ function StudioApp() {
   const [projects, setProjects] = useState([])
   const [activeProject, setActiveProject] = useState('')
   const [project, setProject] = useState(null)
+  const [projectSettingsReference, setProjectSettingsReference] = useState('')
   const [caseItems, setCaseItems] = useState([])
   const [pipelineItems, setPipelineItems] = useState([])
   const [caseReference, setCaseReference] = useState('')
@@ -336,6 +401,8 @@ function StudioApp() {
   const selectProject = async reference => { setCaseReference(''); setPipelineReference(''); await refresh(reference) }
   const openProject = async reference => { await selectProject(reference); setTab('case-list') }
   const saveProjectAndOpen = async reference => { await openProject(reference) }
+  const createProject = () => { setProjectSettingsReference(''); setTab('project-settings') }
+  const editProject = reference => { setProjectSettingsReference(reference); setTab('project-settings') }
   const navigateTest = target => {
     if (target === 'cases') { setCaseReference(''); setTab('case-list') }
     else { setPipelineReference(''); setTab('pipeline-list') }
@@ -346,7 +413,7 @@ function StudioApp() {
   const createPipeline = () => { setPipelineReference(''); setTab('pipeline-settings') }
   useEffect(() => { refresh() }, [])
   const editorProps = { caseItems, pipelineItems, projects, projectRef: activeProject, project, onProjectChange: selectProject, refresh, onNavigate: navigateTest, onProjectList: () => setTab('project') }
-  return <><header className="topbar"><div className="brand"><span>⚡</span><div><strong>API Test Studio</strong><small>프로젝트별 JSON API 테스트</small></div></div><nav><button className={tab === 'project' || tab === 'project-settings' ? 'selected' : ''} onClick={() => setTab('project')}>프로젝트 목록</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} activeProject={activeProject} onOpenProject={openProject} onCreateProject={() => setTab('project-settings')} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} onSaved={saveProjectAndOpen} onCancel={() => setTab('project')} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} />}</>
+  return <><header className="topbar"><div className="brand"><span>⚡</span><div><strong>API Test Studio</strong><small>프로젝트별 JSON API 테스트</small></div></div><nav><button className={tab === 'project' || tab === 'project-settings' ? 'selected' : ''} onClick={() => setTab('project')}>API 검증</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => setTab('project')} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} />}</>
 }
 
 class ErrorBoundary extends Component {

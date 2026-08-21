@@ -14,6 +14,7 @@ from api_test import cli
 from api_test.cli import run_case_file, run_case_files, run_pipeline
 from api_test.comparison import compare_json
 from api_test.runner import ApiTestRunner, project_base_url, project_request_settings
+from react_server import ApiError, safe_attachment_file
 
 
 class FakeResponse:
@@ -71,7 +72,11 @@ class ApiRunnerTest(unittest.TestCase):
             project_root.mkdir()
             (project_root / "private-api.json").write_text(json.dumps({
                 "name": "Private API", "base_url": "https://example.test",
-                "advanced": {"proxy": "http://proxy.example.test:8080", "verify": False},
+                "advanced": {
+                    "http_proxy": "http://http-proxy.example.test:8080",
+                    "https_proxy": "http://https-proxy.example.test:8080",
+                    "verify": False,
+                },
             }), encoding="utf-8")
             case = {"project": "private-api.json", "request": {"url": "/health"}, "expected": {"status": 200}}
             settings = project_request_settings(case, project_root)
@@ -81,11 +86,67 @@ class ApiRunnerTest(unittest.TestCase):
             opener.open.return_value = FakeResponse(200, {"ok": True})
             with patch("api_test.runner.urllib.request.build_opener", return_value=opener) as build_opener:
                 result = ApiTestRunner().run_case(
-                    "health", case, base_url=settings.base_url, proxy_url=settings.proxy_url, verify_ssl=settings.verify_ssl,
+                    "health", case, base_url=settings.base_url, verify_ssl=settings.verify_ssl, proxy_urls=settings.proxy_urls,
                 )
             self.assertEqual(result.status, "passed")
             self.assertEqual(opener.open.call_args.args[0].full_url, "https://example.test/health")
             self.assertEqual(build_opener.call_count, 1)
+            self.assertEqual(build_opener.call_args.args[0].proxies, {
+                "http": "http://http-proxy.example.test:8080",
+                "https": "http://https-proxy.example.test:8080",
+            })
+
+    def test_project_proxy_addresses_are_used_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_root = root / "projects"
+            project_root.mkdir()
+            (project_root / "direct-api.json").write_text(json.dumps({
+                "name": "Direct API", "base_url": "https://example.test",
+                "advanced": {"use_proxy": False, "http_proxy": "http://proxy.example.test:8080", "https_proxy": "http://proxy.example.test:8080"},
+            }), encoding="utf-8")
+            settings = project_request_settings({"project": "direct-api.json"}, project_root)
+            self.assertIsNotNone(settings)
+            assert settings is not None
+            self.assertEqual(settings.proxy_urls, {"http": "http://proxy.example.test:8080", "https": "http://proxy.example.test:8080"})
+
+    def test_runs_multipart_form_data_with_file_attachment(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            attachment = root / "member" / "documents" / "files" / "profile.txt"
+            attachment.parent.mkdir(parents=True)
+            attachment.write_text("hello from attachment", encoding="utf-8")
+            case = {
+                "request": {
+                    "method": "POST", "url": "https://example.test/documents",
+                    "headers": {"Content-Type": "application/json"},
+                    "form_data": [
+                        {"key": "title", "value": "profile"},
+                        {"key": "file", "file": "member/documents/files/profile.txt", "filename": "profile.txt", "content_type": "text/plain"},
+                    ],
+                },
+                "expected": {"status": 200, "body": {"ok": True}},
+            }
+            with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})) as urlopen:
+                result = ApiTestRunner().run_case("upload", case, file_root=root)
+            self.assertEqual(result.status, "passed")
+            request = urlopen.call_args.args[0]
+            headers = dict(request.header_items())
+            self.assertTrue(headers["Content-type"].startswith("multipart/form-data; boundary="))
+            self.assertIn(b'name="title"', request.data)
+            self.assertIn(b"profile", request.data)
+            self.assertIn(b'filename="profile.txt"', request.data)
+            self.assertIn(b"hello from attachment", request.data)
+
+    def test_attachment_paths_are_restricted_to_case_files_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "case"
+            self.assertEqual(
+                safe_attachment_file(root, "member/documents/files/profile.txt"),
+                (root / "member" / "documents" / "files" / "profile.txt").resolve(),
+            )
+            with self.assertRaises(ApiError):
+                safe_attachment_file(root, "member/documents/profile.txt")
 
     def test_pipeline_resolves_previous_response_and_retries(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
