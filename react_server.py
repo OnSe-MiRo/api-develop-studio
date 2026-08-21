@@ -19,6 +19,7 @@ CASE_ROOT = ROOT / "case"
 PIPELINE_ROOT = ROOT / "pipelines"
 PROJECT_ROOT = ROOT / "projects"
 WEB_DIST = ROOT / "web" / "dist"
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 
 class ApiError(ValueError):
@@ -29,6 +30,18 @@ def safe_file(root: Path, reference: str) -> Path:
     candidate = (root / reference).resolve()
     if root.resolve() not in candidate.parents or candidate.suffix != ".json":
         raise ApiError("Invalid JSON file path")
+    return candidate
+
+
+def safe_attachment_file(root: Path, reference: str) -> Path:
+    """Allow binary form-data attachments only below case/{tag}/{api}/files/."""
+    resolved_root = root.resolve()
+    candidate = (root / reference).resolve()
+    if resolved_root not in candidate.parents:
+        raise ApiError("Invalid attachment file path")
+    relative = candidate.relative_to(resolved_root)
+    if len(relative.parts) != 4 or relative.parts[2] != "files":
+        raise ApiError("Attachments must be stored in case/{tag}/{api_name}/files")
     return candidate
 
 
@@ -65,13 +78,14 @@ def validate_project_document(payload: dict[str, object]) -> None:
     advanced = payload.get("advanced", {})
     if not isinstance(advanced, dict):
         raise ApiError("Project advanced settings must be an object")
-    proxy = advanced.get("proxy", "")
-    if not isinstance(proxy, str):
-        raise ApiError("Project proxy must be a string")
-    if proxy.strip():
-        proxy_url = urlparse(proxy)
-        if proxy_url.scheme not in {"http", "https"} or not proxy_url.netloc:
-            raise ApiError("Project proxy must be an absolute HTTP URL")
+    for key in ("proxy", "http_proxy", "https_proxy"):
+        proxy = advanced.get(key, "")
+        if not isinstance(proxy, str):
+            raise ApiError(f"Project {key} must be a string")
+        if proxy.strip():
+            proxy_url = urlparse(proxy)
+            if proxy_url.scheme not in {"http", "https"} or not proxy_url.netloc:
+                raise ApiError(f"Project {key} must be an absolute HTTP URL")
     verify = advanced.get("verify", True)
     if not isinstance(verify, bool):
         raise ApiError("Project verify must be true or false")
@@ -134,6 +148,12 @@ class StudioHandler(SimpleHTTPRequestHandler):
             raise ApiError("Request body must be a JSON object")
         return payload
 
+    def read_upload(self) -> bytes:
+        length = int(self.headers.get("Content-Length", "0"))
+        if length <= 0 or length > MAX_UPLOAD_BYTES:
+            raise ApiError("Upload size must be between 1 byte and 25 MB")
+        return self.rfile.read(length)
+
     def api_path(self) -> list[str]:
         return [unquote(part) for part in urlparse(self.path).path.split("/") if part]
 
@@ -190,7 +210,14 @@ class StudioHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         try:
-            if self.api_path() != ["api", "run"]:
+            parts = self.api_path()
+            if len(parts) == 3 and parts[:2] == ["api", "uploads"]:
+                path = safe_attachment_file(CASE_ROOT, parts[2])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(self.read_upload())
+                self.send_json(200, {"path": path.relative_to(CASE_ROOT).as_posix()})
+                return
+            if parts != ["api", "run"]:
                 raise ApiError("Unknown run endpoint")
             body = self.read_body()
             pipelines = body.get("pipelines", [])
@@ -218,7 +245,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
                         encoding="utf-8",
                     )
                     command = [
-                        sys.executable, "run_api_tests.py", "--case-root", str(temporary_case_root), "--case", reference,
+                        sys.executable, "run_api_tests.py", "--case-root", str(temporary_case_root), "--file-root", str(CASE_ROOT), "--case", reference,
                     ]
                 elif inline_pipeline is not None:
                     if not isinstance(inline_pipeline, dict):

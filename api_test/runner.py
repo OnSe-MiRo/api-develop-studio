@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import copy
 import json
+import mimetypes
 import re
 import ssl
 import time
 import urllib.error
 import urllib.request
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -26,6 +28,7 @@ class CaseConfigurationError(ValueError):
 class ProjectRequestSettings:
     base_url: str
     proxy_url: str | None = None
+    proxy_urls: dict[str, str] = field(default_factory=dict)
     verify_ssl: bool = True
 
 
@@ -70,6 +73,53 @@ def resolve_case_path(case_root: Path, reference: str) -> Path:
     return candidate
 
 
+def resolve_attachment_path(file_root: Path, reference: str) -> Path:
+    candidate = (file_root / reference).resolve()
+    root = file_root.resolve()
+    if root not in candidate.parents or not candidate.is_file():
+        raise CaseConfigurationError(f"Attachment file not found: {reference}")
+    return candidate
+
+
+def encode_multipart_form_data(items: Any, file_root: Path | None) -> tuple[bytes, str]:
+    if not isinstance(items, list):
+        raise CaseConfigurationError("request.form_data must be an array")
+    if file_root is None:
+        raise CaseConfigurationError("A file root is required for request.form_data")
+    boundary = f"----ApiTestStudio{uuid.uuid4().hex}"
+    chunks: list[bytes] = []
+    for index, item in enumerate(items, start=1):
+        if not isinstance(item, dict) or not isinstance(item.get("key"), str) or not item["key"]:
+            raise CaseConfigurationError(f"request.form_data[{index}] needs a non-empty key")
+        key = item["key"]
+        if "\r" in key or "\n" in key:
+            raise CaseConfigurationError(f"request.form_data[{index}].key contains an invalid character")
+        chunks.append(f"--{boundary}\r\n".encode())
+        file_reference = item.get("file")
+        if file_reference is not None:
+            if not isinstance(file_reference, str) or not file_reference:
+                raise CaseConfigurationError(f"request.form_data[{index}].file must be a file reference")
+            path = resolve_attachment_path(file_root, file_reference)
+            filename = item.get("filename", path.name)
+            if not isinstance(filename, str) or not filename:
+                raise CaseConfigurationError(f"request.form_data[{index}].filename must be a string")
+            content_type = item.get("content_type") or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+            if not isinstance(content_type, str):
+                raise CaseConfigurationError(f"request.form_data[{index}].content_type must be a string")
+            if any("\r" in value or "\n" in value for value in (filename, content_type)):
+                raise CaseConfigurationError(f"request.form_data[{index}] contains an invalid header value")
+            chunks.append(f'Content-Disposition: form-data; name="{key}"; filename="{filename}"\r\n'.encode())
+            chunks.append(f"Content-Type: {content_type}\r\n\r\n".encode())
+            chunks.append(path.read_bytes())
+        else:
+            value = item.get("value", "")
+            chunks.append(f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode())
+            chunks.append(str(value).encode("utf-8"))
+        chunks.append(b"\r\n")
+    chunks.append(f"--{boundary}--\r\n".encode())
+    return b"".join(chunks), f"multipart/form-data; boundary={boundary}"
+
+
 def project_request_settings(case: dict[str, Any], project_root: Path) -> ProjectRequestSettings | None:
     """Read a project's Base URL and optional transport settings."""
     project_reference = case.get("project")
@@ -88,21 +138,33 @@ def project_request_settings(case: dict[str, Any], project_root: Path) -> Projec
     advanced = project.get("advanced", {})
     if not isinstance(advanced, dict):
         raise CaseConfigurationError(f"project.advanced must be an object: {project_reference}")
-    proxy_url = advanced.get("proxy")
-    if proxy_url is not None:
-        if not isinstance(proxy_url, str):
-            raise CaseConfigurationError(f"project.advanced.proxy must be a string: {project_reference}")
-        proxy_url = proxy_url.strip() or None
-        if proxy_url:
-            proxy_parsed = urlparse(proxy_url)
-            if proxy_parsed.scheme not in {"http", "https"} or not proxy_parsed.netloc:
-                raise CaseConfigurationError(f"project.advanced.proxy must be an absolute HTTP URL: {project_reference}")
+    legacy_proxy = advanced.get("proxy")
+    if legacy_proxy is not None and not isinstance(legacy_proxy, str):
+        raise CaseConfigurationError(f"project.advanced.proxy must be a string: {project_reference}")
+    proxy_values = {
+        "http": advanced.get("http_proxy", legacy_proxy),
+        "https": advanced.get("https_proxy", legacy_proxy),
+    }
+    normalized_proxies: dict[str, str] = {}
+    for protocol, value in proxy_values.items():
+        if value is None:
+            continue
+        if not isinstance(value, str):
+            raise CaseConfigurationError(f"project.advanced.{protocol}_proxy must be a string: {project_reference}")
+        proxy_url = value.strip()
+        if not proxy_url:
+            continue
+        proxy_parsed = urlparse(proxy_url)
+        if proxy_parsed.scheme not in {"http", "https"} or not proxy_parsed.netloc:
+            raise CaseConfigurationError(f"project.advanced.{protocol}_proxy must be an absolute HTTP URL: {project_reference}")
+        normalized_proxies[protocol] = proxy_url
     verify_ssl = advanced.get("verify", True)
     if not isinstance(verify_ssl, bool):
         raise CaseConfigurationError(f"project.advanced.verify must be true or false: {project_reference}")
     return ProjectRequestSettings(
         base_url=urlunparse(parsed._replace(path=parsed.path.rstrip("/"))),
-        proxy_url=proxy_url,
+        proxy_url=legacy_proxy.strip() if isinstance(legacy_proxy, str) and legacy_proxy.strip() else None,
+        proxy_urls=normalized_proxies,
         verify_ssl=verify_ssl,
     )
 
@@ -173,6 +235,8 @@ class ApiTestRunner:
         base_url: str | None = None,
         proxy_url: str | None = None,
         verify_ssl: bool = True,
+        file_root: Path | None = None,
+        proxy_urls: dict[str, str] | None = None,
     ) -> CaseResult:
         request_definition = case.get("request")
         expected = case.get("expected")
@@ -186,7 +250,7 @@ class ApiTestRunner:
         attempts = max(0, retry) + 1
         last_result: CaseResult | None = None
         for attempt in range(1, attempts + 1):
-            result = self._run_once(case_id, resolved_request, expected, attempt, proxy_url, verify_ssl)
+            result = self._run_once(case_id, resolved_request, expected, attempt, proxy_url, verify_ssl, file_root, proxy_urls)
             if result.status == "passed":
                 return result
             last_result = result
@@ -197,20 +261,26 @@ class ApiTestRunner:
 
     def _run_once(
         self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int,
-        proxy_url: str | None = None, verify_ssl: bool = True,
+        proxy_url: str | None = None, verify_ssl: bool = True, file_root: Path | None = None, proxy_urls: dict[str, str] | None = None,
     ) -> CaseResult:
         method = str(request_definition.get("method", "GET")).upper()
         headers = {str(key): str(value) for key, value in request_definition.get("headers", {}).items()}
+        form_data = request_definition.get("form_data")
         payload = request_definition.get("body")
         data = None
-        if payload is not None:
+        if form_data is not None:
+            data, content_type = encode_multipart_form_data(form_data, file_root)
+            headers["Content-Type"] = content_type
+        elif payload is not None:
             data = json.dumps(payload).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
         request = urllib.request.Request(request_definition["url"], data=data, headers=headers, method=method)
         try:
-            if proxy_url or not verify_ssl:
+            if proxy_url or proxy_urls or not verify_ssl:
                 handlers: list[Any] = []
-                if proxy_url:
+                if proxy_urls:
+                    handlers.append(urllib.request.ProxyHandler(proxy_urls))
+                elif proxy_url:
                     handlers.append(urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url}))
                 if not verify_ssl:
                     handlers.append(urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))

@@ -94,7 +94,7 @@ def _tag_summary_lines(steps: list[Any], results: dict[str, CaseResult]) -> list
 
 
 def run_pipeline(
-    pipeline_path: Path, case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"),
+    pipeline_path: Path, case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None,
 ) -> int:
     logger, log_path = create_run_logger(log_dir)
 
@@ -131,7 +131,8 @@ def run_pipeline(
             name, case_document, results, retry, interval,
             project_settings.base_url if project_settings else None,
             project_settings.proxy_url if project_settings else None,
-            project_settings.verify_ssl if project_settings else True,
+            project_settings.verify_ssl if project_settings else True, file_root or case_root,
+            project_settings.proxy_urls if project_settings else None,
         )
         results[name] = result
         for line in _result_lines(result):
@@ -149,7 +150,7 @@ def run_pipeline(
 
 
 def run_case_files(
-    case_references: list[str], case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"),
+    case_references: list[str], case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None,
 ) -> int:
     """Run independent case files directly, without requiring a pipeline JSON file."""
     logger, log_path = create_run_logger(log_dir)
@@ -171,7 +172,8 @@ def run_case_files(
             case_id, case_document,
             base_url=project_settings.base_url if project_settings else None,
             proxy_url=project_settings.proxy_url if project_settings else None,
-            verify_ssl=project_settings.verify_ssl if project_settings else True,
+            verify_ssl=project_settings.verify_ssl if project_settings else True, file_root=file_root or case_root,
+            proxy_urls=project_settings.proxy_urls if project_settings else None,
         )
         results[case_id] = result
         steps.append({"name": case_id, "case": case_reference})
@@ -198,6 +200,7 @@ def main() -> int:
     parser.add_argument("pipelines", nargs="*", type=Path, help="One or more pipeline JSON files")
     parser.add_argument("--case-root", type=Path, default=Path("case"), help="Root directory containing test cases")
     parser.add_argument("--project-root", type=Path, default=Path("projects"), help="Root directory containing project Base URL JSON files")
+    parser.add_argument("--file-root", type=Path, help="Root directory containing form-data attachment files; defaults to --case-root")
     parser.add_argument("--timeout", type=float, default=10.0, help="HTTP timeout in seconds")
     parser.add_argument("--log-dir", type=Path, default=Path("logs"), help="Directory for per-run log files")
     parser.add_argument("--case", dest="case_references", nargs="+", help="Run one or more case files relative to --case-root")
@@ -211,14 +214,14 @@ def main() -> int:
     exit_code = 0
     for pipeline_path in args.pipelines:
         try:
-            exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir, args.project_root))
+            exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root))
         except CaseConfigurationError as exc:
             print(f"Configuration error in {pipeline_path}: {exc}")
             exit_code = 2
 
     if args.case_references:
         try:
-            exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir, args.project_root))
+            exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root))
         except CaseConfigurationError as exc:
             print(f"Configuration error in direct cases: {exc}")
             exit_code = 2

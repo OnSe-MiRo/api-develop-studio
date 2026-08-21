@@ -18,9 +18,9 @@ API 케이스와 파이프라인 목록에서도 각 항목 오른쪽의 `×` �
 
 ### 화면에서 작업하는 순서
 
-1. 첫 화면의 `프로젝트 목록`에서 `새 프로젝트 만들기`를 누르고 프로젝트 이름과 Base URL을 입력합니다. 프로젝트 JSON 파일은 이름을 기준으로 자동 생성됩니다.
+1. 첫 화면의 `프로젝트 목록`에서 `새 프로젝트 만들기`를 누르고 프로젝트 이름과 Base URL을 입력합니다. 프로젝트 JSON 파일은 이름을 기준으로 자동 생성됩니다. 저장된 프로젝트 카드의 `수정` 버튼에서는 프로젝트 이름, Base URL, Proxy, verify를 변경할 수 있으며 파일명과 연결된 케이스·파이프라인은 유지됩니다.
 2. 저장하면 해당 프로젝트의 `API 케이스 목록` 화면으로 바로 이동합니다. 목록의 `새 케이스`를 누르면 케이스 설정 화면에서 Tag, API 이름, 케이스 파일, HTTP method, URL을 입력하고 저장할 수 있습니다. 목록의 기존 케이스를 누르면 같은 설정 화면에서 수정하거나 실행할 수 있습니다.
-3. `Params`, `Authorization`, `Headers`, `Body` 탭에서 요청 값을 입력합니다. Params의 마지막 행에 값을 입력하거나 `Parameter 추가`를 누르면 다음 입력 행을 만들 수 있습니다.
+3. `Params`, `Authorization`, `Headers`, `Body` 탭에서 요청 값을 입력합니다. Params의 마지막 행에 값을 입력하거나 `Parameter 추가`를 누르면 다음 입력 행을 만들 수 있습니다. Body는 `raw JSON` 또는 `form-data`를 선택할 수 있으며, form-data에서는 텍스트와 파일 행을 추가할 수 있습니다.
 4. 기대 HTTP 상태와 응답 body를 입력하고, 필요에 따라 `strict 비교`를 설정합니다.
 5. 저장하지 않은 현재 값만 확인하려면 `실행만`을 누릅니다. 케이스 파일까지 저장하려면 `저장` 또는 `저장 후 실행`을 사용합니다.
 6. 왼쪽 사이드바의 `파이프라인` 목록에서 새 파이프라인을 만들거나 기존 항목을 선택합니다. 설정 화면에서 같은 프로젝트의 저장된 케이스를 단계로 추가하고 순서·재시도 정책을 지정합니다. 파이프라인도 `실행만`으로 저장 없이 현재 구성만 실행할 수 있습니다.
@@ -64,7 +64,7 @@ docker compose up --build
 - `PIP_PROXY`, `PIP_TRUSTED_HOST`, `PIP_INDEX_URL`, `PIP_EXTRA_INDEX_URL`: Docker 빌드 중 Python 패키지 설치에 사용할 프록시, 신뢰 호스트 및 패키지 저장소입니다.
 - `HTTP_PROXY`, `HTTPS_PROXY`는 Docker 빌드 중 `npm ci`에도 동일하게 적용됩니다. `NPM_REGISTRY`, `NPM_STRICT_SSL`로 npm registry 및 TLS 검증 설정을 추가로 지정할 수 있습니다.
 - `API_PORT`, `WEB_PORT`: 호스트에 노출할 포트입니다. 기본값은 각각 `8765`, `5173`입니다.
-- `CASE_VOLUME_PATH`, `LOG_VOLUME_PATH`: 각각 컨테이너의 `/app/case`, `/app/logs`에 마운트할 호스트 경로입니다. 기본값은 `./case`, `./logs`입니다.
+- `CASE_VOLUME_PATH`, `LOG_VOLUME_PATH`: 각각 컨테이너의 `/app/case`, `/app/logs`에 마운트할 호스트 경로입니다. 기본값은 `./case`, `./logs`입니다. form-data로 올린 파일도 `/app/case` 아래에 저장되므로 `CASE_VOLUME_PATH`를 유지해야 저장 후 재실행할 수 있습니다.
 - `PROJECT_VOLUME_PATH`: 프로젝트 Base URL 설정을 보관할 컨테이너의 `/app/projects`에 마운트할 호스트 경로입니다. 기본값은 `./projects`입니다.
 
 예를 들어 케이스와 로그를 프로젝트 밖에 보관하려면 `.env`에서 다음처럼 변경합니다. Windows 경로는 `C:/api-test/case`처럼 `/`를 사용합니다.
@@ -160,6 +160,12 @@ python3 run_api_tests.py pipelines/http-methods.json --log-dir test-logs
 python3 run_api_tests.py pipelines/my_pipeline.json --case-root case --timeout 15
 ```
 
+form-data 첨부 파일을 `case`와 다른 위치에 보관하는 경우에는 `--file-root`를 지정합니다. 지정하지 않으면 `--case-root`를 사용합니다.
+
+```bash
+python3 run_api_tests.py pipelines/upload.json --case-root case --file-root case
+```
+
 프로젝트 Base URL 설정이 다른 경로에 있다면 `--project-root`를 지정합니다.
 
 ```bash
@@ -199,6 +205,8 @@ case/
     {api_name}/
       get_success.json
       get_not_found.json
+      files/
+        profile.png
 pipelines/
   smoke.json
 projects/
@@ -216,7 +224,8 @@ projects/
   "name": "회원 API",
   "base_url": "https://api.example.com",
   "advanced": {
-    "proxy": "http://proxy.example.com:8080",
+    "http_proxy": "http://proxy.example.com:8080",
+    "https_proxy": "http://proxy.example.com:8080",
     "verify": true
   }
 }
@@ -224,7 +233,7 @@ projects/
 
 `projects/member-api.json`을 저장한 뒤 케이스에 `"project": "member-api.json"`, `"url": "/users"`를 지정하면 `https://api.example.com/users`를 호출합니다.
 
-- `advanced.proxy`: 선택 사항입니다. `http://` 또는 `https://` 프록시 URL을 지정하면 프로젝트의 모든 API 호출이 해당 프록시를 사용합니다. 비우면 직접 연결합니다.
+- `advanced.http_proxy`, `advanced.https_proxy`: 선택 사항입니다. 값이 있으면 각각 HTTP와 HTTPS 요청에 자동으로 적용되며, 비우면 해당 프로토콜은 직접 연결합니다. 화면의 `HTTP/HTTPS 공통 주소 사용`을 선택하면 한 번의 입력으로 두 값에 같은 주소를 저장합니다. 많은 사내 프록시는 HTTPS 요청에도 `http://proxy.example.com:8080` 형식의 프록시 주소를 사용합니다.
 - `advanced.verify`: 기본값은 `true`입니다. `false`로 설정하면 TLS 인증서 검증을 생략합니다. 자체 서명 인증서를 사용하는 개발 환경에서만 사용하세요.
 
 ## 케이스 JSON
@@ -259,6 +268,7 @@ projects/
 - `request.method`: 선택 사항이며 기본값은 `GET`입니다.
 - `request.url`: 필수입니다. 프로젝트가 있으면 `/users` 같은 상대 URL 또는 절대 URL을 사용할 수 있습니다.
 - `request.headers`, `request.body`: 선택 사항입니다. `body`는 JSON으로 직렬화됩니다.
+- `request.form_data`: 선택 사항입니다. 지정하면 `body` 대신 `multipart/form-data` 요청을 만듭니다. 각 행은 텍스트 `{ "key": "title", "value": "profile" }` 또는 파일 `{ "key": "file", "file": "member/users/files/profile.png", "filename": "profile.png" }` 형식입니다. `content_type`을 선택적으로 지정할 수 있습니다. 파일 참조는 `case` 루트 기준이며, 화면에서 고른 파일은 `case/{tag}/{api_name}/files/`에 저장됩니다.
 - `expected.status`: 기대 HTTP 상태 코드입니다.
 - `expected.body`: 기대 JSON 응답입니다.
 - `expected.strict`: 기본값은 `true`입니다. `true`면 객체의 키, 배열 길이와 순서, 값과 타입이 모두 일치해야 합니다. `false`면 기대 객체에 없는 추가 키와 배열의 뒤쪽 요소를 허용하고, 값이 같은 int·float(예: `9`, `9.0`)는 동일하게 비교합니다. boolean과 숫자(예: `true`, `1`)는 서로 다른 타입입니다.
