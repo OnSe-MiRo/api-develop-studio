@@ -195,6 +195,36 @@ class ApiRunnerTest(unittest.TestCase):
             self.assertIn("[PASSED] retry (attempts: 2)", log_content)
             self.assertIn("account: TOTAL 3 | PASS 3 | FAIL 0 | ERROR 0 | SKIPPED 0", log_content)
 
+    def test_pipeline_applies_previous_response_value_mappings(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case_root = root / "case"
+            api_dir = case_root / "member" / "users"
+            api_dir.mkdir(parents=True)
+            (api_dir / "create.json").write_text(json.dumps({
+                "request": {"method": "POST", "url": "https://example.test/users"},
+                "expected": {"status": 201, "body": {"id": 7}},
+            }), encoding="utf-8")
+            (api_dir / "detail.json").write_text(json.dumps({
+                "request": {"method": "POST", "url": "https://example.test/users", "body": {"from_case": True}},
+                "expected": {"status": 200, "body": {"ok": True}},
+            }), encoding="utf-8")
+            pipeline = root / "pipeline.json"
+            pipeline.write_text(json.dumps({"steps": [
+                {"name": "create_user", "case": "member/users/create.json"},
+                {"name": "get_user", "case": "member/users/detail.json", "input_mappings": [
+                    {"source_step": "create_user", "response_path": "body.id", "target": "url", "template": "https://example.test/users/{{value}}"},
+                    {"source_step": "create_user", "response_path": "body.id", "target": "header", "target_key": "X-User-Id"},
+                    {"source_step": "create_user", "response_path": "body.id", "target": "body", "target_key": "user.id"},
+                ]},
+            ]}), encoding="utf-8")
+            with patch("api_test.runner.urllib.request.urlopen", side_effect=[FakeResponse(201, {"id": 7}), FakeResponse(200, {"ok": True})]) as urlopen:
+                self.assertEqual(run_pipeline(pipeline, case_root, 2, root / "logs"), 0)
+            mapped_request = urlopen.call_args_list[1].args[0]
+            self.assertEqual(mapped_request.full_url, "https://example.test/users/7")
+            self.assertEqual(dict(mapped_request.header_items())["X-user-id"], "7")
+            self.assertEqual(json.loads(mapped_request.data), {"from_case": True, "user": {"id": 7}})
+
     def test_tag_summary_counts_failed_and_skipped_steps(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -255,7 +285,7 @@ class ApiRunnerTest(unittest.TestCase):
 
     def test_cli_runs_pipeline_and_direct_cases_in_one_command(self) -> None:
         with patch("sys.argv", [
-            "run_api_tests.py", "pipelines/sample.json", "--case", "sample/jsonplaceholder/get_post.json",
+            "run_api_tests.py", "pipelines/member.json", "--case", "member/users/get.json",
         ]), patch.object(cli, "run_pipeline", return_value=0) as run_pipeline_mock, patch.object(
             cli, "run_case_files", return_value=0
         ) as run_case_files_mock:
@@ -277,3 +307,18 @@ class ApiRunnerTest(unittest.TestCase):
             finally:
                 os.chdir(original_cwd)
             self.assertEqual(run_pipeline_mock.call_count, 2)
+
+    def test_cli_skips_disabled_example_pipeline_in_implicit_run_all(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "pipelines").mkdir()
+            (root / "pipelines" / "example.json").write_text(json.dumps({"project": "example-api.json"}), encoding="utf-8")
+            (root / "pipelines" / "member.json").write_text(json.dumps({"project": "member-api.json"}), encoding="utf-8")
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(root)
+                with patch.dict(os.environ, {"EXAMPLE_PROJECT": "false"}, clear=False), patch("sys.argv", ["run_api_tests.py"]), patch.object(cli, "run_pipeline", return_value=0) as run_pipeline_mock:
+                    self.assertEqual(cli.main(), 0)
+            finally:
+                os.chdir(original_cwd)
+            self.assertEqual([call.args[0].name for call in run_pipeline_mock.call_args_list], ["member.json"])

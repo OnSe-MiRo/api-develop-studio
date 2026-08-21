@@ -1,6 +1,6 @@
 # JSON API Test Runner
 
-JSON으로 HTTP 요청과 기대 응답을 정의하고, 응답 데이터가 정확히 같은지 검증하는 Python API 테스트 도구입니다. Python 표준 라이브러리만 사용하므로 별도 패키지 설치가 필요 없습니다.
+JSON으로 HTTP 요청과 기대 응답을 정의하고, 응답 데이터가 정확히 같은지 검증하는 Python API 테스트 도구입니다.
 
 ## React 웹 화면
 
@@ -14,16 +14,22 @@ API 케이스와 파이프라인 목록에서도 각 항목 오른쪽의 `×` �
 
 저장된 파이프라인도 같은 방식으로 삭제할 수 있습니다.
 
-프로젝트 목록의 `×` 버튼으로 프로젝트를 삭제할 수 있습니다. 연결된 API 케이스 또는 파이프라인이 남아 있으면 프로젝트를 삭제할 수 없습니다.
+프로젝트 목록의 `×` 버튼으로 프로젝트를 삭제할 수 있습니다. 연결된 파이프라인은 프로젝트와 함께 삭제됩니다. 연결된 API 케이스가 있으면 프로젝트를 삭제할 수 없으므로 케이스를 먼저 삭제해야 합니다.
 
 ### 화면에서 작업하는 순서
 
-1. 첫 화면의 `프로젝트 목록`에서 `새 프로젝트 만들기`를 누르고 프로젝트 이름과 Base URL을 입력합니다. 프로젝트 JSON 파일은 이름을 기준으로 자동 생성됩니다. 저장된 프로젝트 카드의 `수정` 버튼에서는 프로젝트 이름, Base URL, Proxy, verify를 변경할 수 있으며 파일명과 연결된 케이스·파이프라인은 유지됩니다.
-2. 저장하면 해당 프로젝트의 `API 케이스 목록` 화면으로 바로 이동합니다. 목록의 `새 케이스`를 누르면 케이스 설정 화면에서 Tag, API 이름, 케이스 파일, HTTP method, URL을 입력하고 저장할 수 있습니다. 목록의 기존 케이스를 누르면 같은 설정 화면에서 수정하거나 실행할 수 있습니다.
+1. 첫 화면의 `프로젝트 목록`에서 `새 프로젝트 만들기`를 누르고 프로젝트 이름과 Base URL을 입력합니다. 필요하면 `설정 > OpenAPI 설정`에 문서 URL을 입력합니다. 프로젝트 JSON 파일은 이름을 기준으로 자동 생성됩니다. 저장된 프로젝트 카드의 `수정` 버튼에서는 프로젝트 이름, Base URL, API 문서 URL, Proxy, verify를 변경할 수 있으며 파일명과 연결된 케이스·파이프라인은 유지됩니다.
+2. 저장하면 해당 프로젝트의 `API 케이스 목록` 화면으로 바로 이동합니다. 목록의 `새 케이스`를 누르면 케이스 설정 화면에서 Tag, API 이름, 케이스 명, HTTP method, URL을 입력하고 저장할 수 있습니다. 목록의 기존 케이스를 누르면 같은 설정 화면에서 수정하거나 실행할 수 있습니다.
 3. `Params`, `Authorization`, `Headers`, `Body` 탭에서 요청 값을 입력합니다. Params의 마지막 행에 값을 입력하거나 `Parameter 추가`를 누르면 다음 입력 행을 만들 수 있습니다. Body는 `raw JSON` 또는 `form-data`를 선택할 수 있으며, form-data에서는 텍스트와 파일 행을 추가할 수 있습니다.
 4. 기대 HTTP 상태와 응답 body를 입력하고, 필요에 따라 `strict 비교`를 설정합니다.
 5. 저장하지 않은 현재 값만 확인하려면 `실행만`을 누릅니다. 케이스 파일까지 저장하려면 `저장` 또는 `저장 후 실행`을 사용합니다.
 6. 왼쪽 사이드바의 `파이프라인` 목록에서 새 파이프라인을 만들거나 기존 항목을 선택합니다. 설정 화면에서 같은 프로젝트의 저장된 케이스를 단계로 추가하고 순서·재시도 정책을 지정합니다. 파이프라인도 `실행만`으로 저장 없이 현재 구성만 실행할 수 있습니다.
+
+### API 문서에서 케이스 초안 채우기
+
+프로젝트 생성 또는 수정 화면의 `설정 > OpenAPI 설정`에서 OpenAPI / Swagger 문서 URL에 OpenAPI 3.x 또는 Swagger 2.0의 원본 JSON/YAML 문서 URL(예: `https://api.example.com/openapi.json`)을 입력하고 저장합니다. Swagger UI HTML 페이지 주소가 아니라 해당 UI가 참조하는 원본 문서 URL을 입력해야 합니다.
+
+해당 프로젝트의 케이스 설정을 열면 문서가 자동으로 불러와집니다. `문서 API 선택`에서 API를 선택하면 문서의 경로와 method, query/header/path 파라미터 키와 예시값, JSON 요청 body, 기대 HTTP 상태, 응답 body 예시가 케이스 편집기에 자동 반영됩니다. 문서가 갱신된 경우에는 `문서 새로 불러오기`를 사용하세요. 문서에 `example`, `examples`, `default`, `enum`이 없으면 schema 타입을 기반으로 편집 가능한 기본 예시를 만듭니다. 반영 후 실제 서비스 규칙에 맞게 값과 strict 비교 여부를 검토한 뒤 저장하세요.
 
 프로젝트 Base URL이 `https://api.example.com`일 때 케이스 URL에 `/users`를 입력하면 `https://api.example.com/users`로 실행됩니다. 외부 API처럼 절대 URL을 입력한 경우에는 Base URL을 붙이지 않습니다.
 
@@ -39,6 +45,12 @@ python3 react_server.py
 cd web
 npm install
 npm run dev
+```
+
+처음 로컬 실행할 때는 프로젝트 루트에서 Python 의존성도 설치합니다.
+
+```bash
+python3 -m pip install -r requirements.txt
 ```
 
 브라우저에서 `http://127.0.0.1:5173`을 엽니다. 개발 서버가 `/api` 요청을 Python 서버(`127.0.0.1:8765`)로 전달합니다.
@@ -64,6 +76,7 @@ docker compose up --build
 - `PIP_PROXY`, `PIP_TRUSTED_HOST`, `PIP_INDEX_URL`, `PIP_EXTRA_INDEX_URL`: Docker 빌드 중 Python 패키지 설치에 사용할 프록시, 신뢰 호스트 및 패키지 저장소입니다.
 - `HTTP_PROXY`, `HTTPS_PROXY`는 Docker 빌드 중 `npm ci`에도 동일하게 적용됩니다. `NPM_REGISTRY`, `NPM_STRICT_SSL`로 npm registry 및 TLS 검증 설정을 추가로 지정할 수 있습니다.
 - `API_PORT`, `WEB_PORT`: 호스트에 노출할 포트입니다. 기본값은 각각 `8765`, `5173`입니다.
+- `EXAMPLE_PROJECT`: `true`일 때만 컨테이너 안의 예제 API와 `example-api` 프로젝트·케이스·파이프라인이 보입니다. 기본값 `false`에서는 예제 API가 404로 비활성화되고 웹 프로젝트 목록에도 표시되지 않습니다.
 - `CASE_VOLUME_PATH`, `LOG_VOLUME_PATH`: 각각 컨테이너의 `/app/case`, `/app/logs`에 마운트할 호스트 경로입니다. 기본값은 `./case`, `./logs`입니다. form-data로 올린 파일도 `/app/case` 아래에 저장되므로 `CASE_VOLUME_PATH`를 유지해야 저장 후 재실행할 수 있습니다.
 - `PROJECT_VOLUME_PATH`: 프로젝트 Base URL 설정을 보관할 컨테이너의 `/app/projects`에 마운트할 호스트 경로입니다. 기본값은 `./projects`입니다.
 
@@ -81,12 +94,16 @@ PROJECT_VOLUME_PATH=/data/api-test/projects
 docker compose down
 ```
 
+### 컨테이너 내장 예제 API
+
+외부 네트워크 없이 API 케이스와 파이프라인을 확인하려면 `.env`에서 `EXAMPLE_PROJECT=true`로 설정한 뒤 컨테이너를 다시 시작하세요. `example-api` 프로젝트를 열어 개별 케이스를 실행하거나 `example-api.json` 파이프라인을 실행할 수 있습니다. 예제 API는 `POST /example-api/users`로 사용자 생성 결과를 반환하고, 다음 단계가 그 응답의 `id`를 사용해 `GET /example-api/users/{id}`를 호출합니다.
+
 ## 빠른 실행
 
 ### 하나의 파이프라인 실행
 
 ```bash
-python3 run_api_tests.py pipelines/sample.json
+EXAMPLE_PROJECT=true python3 run_api_tests.py pipelines/example-api.json
 ```
 
 ### 기본 실행: 모든 파이프라인 실행
@@ -102,7 +119,7 @@ python3 run_api_tests.py
 파이프라인 파일을 공백으로 구분해 나열합니다. 앞 파이프라인이 실패해도 나머지 파이프라인은 계속 실행하며, 실패한 실행이 하나라도 있으면 프로세스 종료 코드는 `1`입니다.
 
 ```bash
-python3 run_api_tests.py pipelines/sample.json pipelines/http-methods.json --log-dir test-logs
+EXAMPLE_PROJECT=true python3 run_api_tests.py pipelines/example-api.json --log-dir test-logs
 ```
 
 ### 개별 API 케이스 실행
@@ -110,14 +127,13 @@ python3 run_api_tests.py pipelines/sample.json pipelines/http-methods.json --log
 `--case`에 `case` 루트 기준 경로를 넣으면 파이프라인 없이 API 하나 또는 여러 개를 실행합니다. 여러 케이스는 명령 한 번으로 입력되며, 결과와 로그 순서를 보장하기 위해 입력한 순서대로 실행됩니다.
 
 ```bash
-python3 run_api_tests.py --case sample/jsonplaceholder/get_post.json --log-dir test-logs
+EXAMPLE_PROJECT=true python3 run_api_tests.py --case example/users/get_user.json --log-dir test-logs
 ```
 
 ```bash
 python3 run_api_tests.py --case \
-  sample/jsonplaceholder/get_post.json \
-  sample/jsonplaceholder/create_post.json \
-  sample/jsonplaceholder/delete_post.json \
+  example/users/create_user.json \
+  example/users/get_user.json \
   --log-dir test-logs
 ```
 
@@ -126,32 +142,28 @@ python3 run_api_tests.py --case \
 파이프라인 파일을 먼저 쓰고 `--case`를 뒤에 붙이면 한 명령에서 함께 실행할 수 있습니다. 파이프라인들이 먼저 실행된 뒤 개별 API 케이스들이 실행됩니다. 두 종류 모두 실패하더라도 남은 대상은 계속 실행됩니다.
 
 ```bash
-python3 run_api_tests.py \
-  pipelines/sample.json \
-  pipelines/http-methods.json \
-  --case sample/jsonplaceholder/get_post.json sample/jsonplaceholder/delete_post.json \
+EXAMPLE_PROJECT=true python3 run_api_tests.py \
+  pipelines/example-api.json \
+  --case example/users/get_user.json \
   --log-dir test-logs
 ```
 
-`pipelines/sample.json`은 다음 2단계 예제입니다.
+`pipelines/example-api.json`은 다음 2단계 예제입니다. 실행하려면 API 서버를 `EXAMPLE_PROJECT=true`로 시작해야 합니다.
 
-1. `get_post`: 게시글 1번을 조회합니다.
-2. `get_post_by_id`: 첫 단계 응답의 `id`를 `${get_post.response.body.id}`로 URL에 넣어 같은 게시글을 다시 조회합니다. 이 단계는 기본 재시도 설정 대신 최대 2회 재시도, 1초 간격을 사용합니다.
+1. `create_user`: 예제 사용자를 생성합니다.
+2. `get_user`: 첫 단계 응답의 `id`를 URL 값 전달 설정으로 전달해 사용자를 조회합니다.
 
-## HTTP Method별 예제
+## 내장 예제 API 케이스
 
-`pipelines/http-methods.json`은 JSONPlaceholder API의 CRUD 메서드를 순서대로 검증합니다. JSONPlaceholder는 테스트용 API이므로 POST, PUT, PATCH, DELETE 요청이 영구 데이터를 변경하지 않습니다.
+`EXAMPLE_PROJECT=true`이면 외부 네트워크 없이 다음 케이스를 실행할 수 있습니다.
 
 | Method | 케이스 파일 | 검증 내용 |
 | --- | --- | --- |
-| GET | `sample/jsonplaceholder/get_post.json` | 게시글 조회 및 응답 body 일치 |
-| POST | `sample/jsonplaceholder/create_post.json` | JSON body 생성 및 `201` 응답 |
-| PUT | `sample/jsonplaceholder/replace_post.json` | 전체 리소스 교체 및 `200` 응답 |
-| PATCH | `sample/jsonplaceholder/update_post_title.json` | 일부 필드 수정 및 `200` 응답 |
-| DELETE | `sample/jsonplaceholder/delete_post.json` | 삭제 요청 및 빈 JSON 응답 |
+| POST | `example/users/create_user.json` | 사용자 생성 및 `201` 응답 |
+| GET | `example/users/get_user.json` | 사용자 조회 및 `200` 응답 |
 
 ```bash
-python3 run_api_tests.py pipelines/http-methods.json --log-dir test-logs
+EXAMPLE_PROJECT=true python3 run_api_tests.py pipelines/example-api.json --log-dir test-logs
 ```
 
 다른 케이스 루트를 사용하거나 타임아웃을 바꾸려면 다음처럼 실행합니다.
@@ -295,7 +307,21 @@ projects/
       "name": "get_user",
       "case": "member/users/get_success.json",
       "retry": 3,
-      "retry_interval_seconds": 2
+      "retry_interval_seconds": 2,
+      "input_mappings": [
+        {
+          "source_step": "create_user",
+          "response_path": "body.id",
+          "target": "url",
+          "template": "/users/{{value}}"
+        },
+        {
+          "source_step": "create_user",
+          "response_path": "body.id",
+          "target": "body",
+          "target_key": "user_id"
+        }
+      ]
     }
   ]
 }
@@ -309,6 +335,11 @@ projects/
 - 단계별 `retry`, `retry_interval_seconds`가 지정되면 기본값을 덮어씁니다.
 - HTTP 상태/응답 검증 실패(`failed`)와 네트워크 오류(`error`) 모두 지정 횟수만큼 다시 시도합니다.
 - 기본적으로 실패 또는 오류가 나면 이후 단계를 실행하지 않습니다. 해당 단계에 `"continue_on_failure": true`를 넣으면 다음 단계도 진행합니다.
+- `steps[].input_mappings`: 이전 단계의 응답값을 이 단계 요청에 전달하는 선택 설정입니다. 파이프라인 화면에서 각 단계의 `값 전달` 버튼으로 구성할 수 있으며 원본 API 케이스는 변경하지 않습니다.
+  - `source_step`: 값을 가져올 이전 단계 이름입니다.
+  - `response_path`: `body.id`, `body.user.id`, `status` 형식의 응답 경로입니다.
+  - `target`: `url`, `header`, `body` 중 적용 위치입니다. `header`, `body`에는 `target_key`가 필요하며 Body는 `user.id`처럼 중첩 키를 지정할 수 있습니다.
+  - `template`: 기본값은 `{{value}}`입니다. URL 조합은 `/users/{{value}}`, Header 조합은 `Bearer {{value}}`처럼 입력합니다.
 
 ## 이전 단계 응답 사용
 
