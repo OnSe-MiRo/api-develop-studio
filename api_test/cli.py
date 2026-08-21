@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import logging
+import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +14,25 @@ from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, project_r
 
 
 SENSITIVE_FIELD_PARTS = ("authorization", "token", "secret", "password", "api_key", "apikey", "cookie")
+MAPPING_RESPONSE_PATH = re.compile(r"(?:body(?:\.[\w-]+)*|status)$")
+MAPPING_TARGET_KEY = re.compile(r"[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)*$")
+EXAMPLE_PROJECT_REFERENCE = "example-api.json"
+EXAMPLE_PROJECT_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def example_project_enabled() -> bool:
+    return os.environ.get("EXAMPLE_PROJECT", "false").strip().lower() in EXAMPLE_PROJECT_TRUE_VALUES
+
+
+def is_disabled_example_pipeline(path: Path) -> bool:
+    """Keep the optional sample out of an implicit run-all command when disabled."""
+    if example_project_enabled():
+        return False
+    try:
+        document = read_json(path)
+    except (OSError, json.JSONDecodeError):
+        return False
+    return document.get("project") == EXAMPLE_PROJECT_REFERENCE
 
 
 def _redact(value: Any, key: str = "") -> Any:
@@ -36,6 +58,69 @@ def _retry_config(item: dict[str, Any], defaults: dict[str, Any]) -> tuple[int, 
     if not isinstance(interval, (int, float)) or interval < 0:
         raise CaseConfigurationError("retry_interval_seconds must be a non-negative number")
     return retry, float(interval)
+
+
+def _set_body_value(body: dict[str, Any], path: str, value: Any) -> None:
+    target = body
+    parts = path.split(".")
+    for key in parts[:-1]:
+        current = target.get(key)
+        if current is None:
+            current = {}
+            target[key] = current
+        if not isinstance(current, dict):
+            raise CaseConfigurationError(f"Cannot map a value below non-object body field: {path}")
+        target = current
+    target[parts[-1]] = value
+
+
+def apply_input_mappings(case: dict[str, Any], mappings: Any, completed_steps: dict[str, CaseResult], step_index: int) -> dict[str, Any]:
+    """Apply pipeline-only previous-step values to a case request before it runs."""
+    if mappings is None:
+        return case
+    if not isinstance(mappings, list):
+        raise CaseConfigurationError(f"steps[{step_index}].input_mappings must be an array")
+    document = copy.deepcopy(case)
+    request = document.get("request")
+    if not isinstance(request, dict):
+        raise CaseConfigurationError("A case needs an object-valued request")
+    for mapping_index, mapping in enumerate(mappings, start=1):
+        prefix = f"steps[{step_index}].input_mappings[{mapping_index}]"
+        if not isinstance(mapping, dict):
+            raise CaseConfigurationError(f"{prefix} must be an object")
+        source_step = mapping.get("source_step")
+        response_path = mapping.get("response_path")
+        target = mapping.get("target")
+        template = mapping.get("template", "{{value}}")
+        if not isinstance(source_step, str) or source_step not in completed_steps:
+            raise CaseConfigurationError(f"{prefix}.source_step must reference an earlier pipeline step")
+        if not isinstance(response_path, str) or not MAPPING_RESPONSE_PATH.fullmatch(response_path):
+            raise CaseConfigurationError(f"{prefix}.response_path must be body, body.field, or status")
+        if target not in {"url", "header", "body"}:
+            raise CaseConfigurationError(f"{prefix}.target must be url, header, or body")
+        if not isinstance(template, str) or "{{value}}" not in template:
+            raise CaseConfigurationError(f"{prefix}.template must contain {{value}}")
+        reference = f"${{{source_step}.response.{response_path}}}"
+        value = template.replace("{{value}}", reference)
+        if target == "url":
+            request["url"] = value
+            continue
+        target_key = mapping.get("target_key")
+        if not isinstance(target_key, str) or not MAPPING_TARGET_KEY.fullmatch(target_key):
+            raise CaseConfigurationError(f"{prefix}.target_key is required for header and body mappings")
+        if target == "header":
+            headers = request.setdefault("headers", {})
+            if not isinstance(headers, dict):
+                raise CaseConfigurationError("request.headers must be an object for a header mapping")
+            headers[target_key] = value
+            continue
+        if "form_data" in request:
+            raise CaseConfigurationError("Body mappings cannot be used with request.form_data")
+        body = request.setdefault("body", {})
+        if not isinstance(body, dict):
+            raise CaseConfigurationError("request.body must be an object for a body mapping")
+        _set_body_value(body, target_key, value)
+    return document
 
 
 def _result_lines(result: CaseResult) -> list[str]:
@@ -125,7 +210,7 @@ def run_pipeline(
         retry, interval = _retry_config(raw_step, defaults)
         case_path = resolve_case_path(case_root, raw_step["case"])
         logger.info("Step started: name=%s case=%s retry=%s retry_interval_seconds=%s", name, case_path, retry, interval)
-        case_document = read_json(case_path)
+        case_document = apply_input_mappings(read_json(case_path), raw_step.get("input_mappings"), results, index)
         project_settings = project_request_settings(case_document, project_root)
         result = runner.run_case(
             name, case_document, results, retry, interval,
@@ -206,7 +291,7 @@ def main() -> int:
     parser.add_argument("--case", dest="case_references", nargs="+", help="Run one or more case files relative to --case-root")
     args = parser.parse_args()
     if not args.case_references and not args.pipelines:
-        args.pipelines = sorted(Path("pipelines").rglob("*.json"))
+        args.pipelines = [path for path in sorted(Path("pipelines").rglob("*.json")) if not is_disabled_example_pipeline(path)]
         if not args.pipelines:
             parser.error("no pipeline files found under pipelines/; provide a pipeline file or --case")
         print(f"No pipeline specified. Running all {len(args.pipelines)} pipeline file(s) under pipelines/.")

@@ -11,7 +11,11 @@ from tempfile import TemporaryDirectory
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, unquote, urlparse
+from urllib.request import Request, urlopen
+
+import yaml
 
 
 ROOT = Path(__file__).resolve().parent
@@ -20,10 +24,198 @@ PIPELINE_ROOT = ROOT / "pipelines"
 PROJECT_ROOT = ROOT / "projects"
 WEB_DIST = ROOT / "web" / "dist"
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
+HTTP_METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
+EXAMPLE_PROJECT_REFERENCE = "example-api.json"
+EXAMPLE_PROJECT_TRUE_VALUES = {"1", "true", "yes", "on"}
+MISSING = object()
 
 
 class ApiError(ValueError):
     pass
+
+
+def example_project_enabled() -> bool:
+    """Return whether the built-in example API and project are available."""
+    return os.environ.get("EXAMPLE_PROJECT", "false").strip().lower() in EXAMPLE_PROJECT_TRUE_VALUES
+
+
+def ensure_example_project_enabled(reference: str) -> None:
+    if reference == EXAMPLE_PROJECT_REFERENCE and not example_project_enabled():
+        raise ApiError("The example project is disabled. Set EXAMPLE_PROJECT=true to enable it.")
+
+
+def resolve_openapi_reference(document: dict[str, object], value: object) -> object:
+    """Resolve local OpenAPI/Swagger JSON pointers without following external references."""
+    current = value
+    visited: set[str] = set()
+    while isinstance(current, dict) and isinstance(current.get("$ref"), str):
+        reference = current["$ref"]
+        if not reference.startswith("#/") or reference in visited:
+            return current
+        visited.add(reference)
+        target: object = document
+        for segment in reference[2:].split("/"):
+            if not isinstance(target, dict):
+                return current
+            target = target.get(segment.replace("~1", "/").replace("~0", "~"), MISSING)
+        if target is MISSING:
+            return current
+        current = target
+    return current
+
+
+def schema_example(schema: object, document: dict[str, object], depth: int = 0) -> object:
+    """Create an editor-friendly example from an OpenAPI schema."""
+    if depth > 8:
+        return MISSING
+    resolved = resolve_openapi_reference(document, schema)
+    if not isinstance(resolved, dict):
+        return MISSING
+    for key in ("example", "default"):
+        if key in resolved:
+            return resolved[key]
+    enum = resolved.get("enum")
+    if isinstance(enum, list) and enum:
+        return enum[0]
+    for composition in ("allOf", "oneOf", "anyOf"):
+        variants = resolved.get(composition)
+        if isinstance(variants, list) and variants:
+            return schema_example(variants[0], document, depth + 1)
+    schema_type = resolved.get("type")
+    if schema_type == "object" or isinstance(resolved.get("properties"), dict):
+        example: dict[str, object] = {}
+        properties = resolved.get("properties", {})
+        if isinstance(properties, dict):
+            for name, property_schema in properties.items():
+                value = schema_example(property_schema, document, depth + 1)
+                if value is not MISSING:
+                    example[name] = value
+        return example
+    if schema_type == "array":
+        item = schema_example(resolved.get("items"), document, depth + 1)
+        return [] if item is MISSING else [item]
+    if schema_type in {"integer", "number"}:
+        return 0
+    if schema_type == "boolean":
+        return False
+    if schema_type == "string":
+        return ""
+    return MISSING
+
+
+def content_example(content: object, document: dict[str, object]) -> object:
+    if not isinstance(content, dict) or not content:
+        return MISSING
+    content_type = next((key for key in content if key == "application/json"), None)
+    content_type = content_type or next((key for key in content if key.endswith("+json")), None)
+    content_type = content_type or next(iter(content))
+    media = resolve_openapi_reference(document, content[content_type])
+    if not isinstance(media, dict):
+        return MISSING
+    if "example" in media:
+        return media["example"]
+    examples = media.get("examples")
+    if isinstance(examples, dict) and examples:
+        first = resolve_openapi_reference(document, next(iter(examples.values())))
+        if isinstance(first, dict) and "value" in first:
+            return first["value"]
+    return schema_example(media.get("schema"), document)
+
+
+def parameter_example(parameter: dict[str, object], document: dict[str, object]) -> object:
+    if "example" in parameter:
+        return parameter["example"]
+    return schema_example(parameter.get("schema"), document)
+
+
+def openapi_operations(document: dict[str, object]) -> list[dict[str, object]]:
+    """Normalize OpenAPI 3.x and Swagger 2.0 operations for the React editor."""
+    paths = document.get("paths")
+    if not isinstance(paths, dict):
+        raise ApiError("The API document must contain an OpenAPI/Swagger paths object")
+    operations: list[dict[str, object]] = []
+    for path, raw_path_item in paths.items():
+        if not isinstance(path, str):
+            continue
+        path_item = resolve_openapi_reference(document, raw_path_item)
+        if not isinstance(path_item, dict):
+            continue
+        path_parameters = path_item.get("parameters", [])
+        if not isinstance(path_parameters, list):
+            path_parameters = []
+        for method in HTTP_METHODS:
+            raw_operation = path_item.get(method)
+            operation = resolve_openapi_reference(document, raw_operation)
+            if not isinstance(operation, dict):
+                continue
+            raw_parameters = [*path_parameters, *(operation.get("parameters", []) if isinstance(operation.get("parameters"), list) else [])]
+            parameters: dict[tuple[str, str], dict[str, object]] = {}
+            for raw_parameter in raw_parameters:
+                parameter = resolve_openapi_reference(document, raw_parameter)
+                if not isinstance(parameter, dict):
+                    continue
+                name, location = parameter.get("name"), parameter.get("in")
+                if not isinstance(name, str) or not isinstance(location, str):
+                    continue
+                value = parameter_example(parameter, document)
+                parameters[(name, location)] = {"name": name, "in": location, "value": "" if value is MISSING else value}
+
+            request_body = MISSING
+            raw_request_body = resolve_openapi_reference(document, operation.get("requestBody"))
+            if isinstance(raw_request_body, dict):
+                request_body = content_example(raw_request_body.get("content"), document)
+            else:  # Swagger 2.0 body parameter
+                body_parameter = next((item for item in parameters.values() if item["in"] == "body"), None)
+                if body_parameter:
+                    raw_body_parameter = next((resolve_openapi_reference(document, item) for item in raw_parameters if isinstance(resolve_openapi_reference(document, item), dict) and resolve_openapi_reference(document, item).get("in") == "body"), None)
+                    if isinstance(raw_body_parameter, dict):
+                        request_body = schema_example(raw_body_parameter.get("schema"), document)
+
+            responses = operation.get("responses", {})
+            responses = responses if isinstance(responses, dict) else {}
+            response_key = next((key for key in sorted(responses, key=str) if str(key).startswith("2")), None)
+            response_key = response_key or ("default" if "default" in responses else next(iter(responses), "200"))
+            response = resolve_openapi_reference(document, responses.get(response_key, {}))
+            response = response if isinstance(response, dict) else {}
+            response_body = content_example(response.get("content"), document)
+            if response_body is MISSING:  # Swagger 2.0 response schema
+                response_body = schema_example(response.get("schema"), document)
+            status = int(response_key) if str(response_key).isdigit() else 200
+            summary = operation.get("summary") or operation.get("operationId") or ""
+            operations.append({
+                "id": f"{method.upper()} {path}", "method": method.upper(), "path": path,
+                "summary": summary if isinstance(summary, str) else "", "parameters": list(parameters.values()),
+                "has_request_body": request_body is not MISSING, "request_body": None if request_body is MISSING else request_body,
+                "expected_status": status, "has_response_body": response_body is not MISSING,
+                "response_body": None if response_body is MISSING else response_body,
+            })
+    return operations
+
+
+def load_openapi_document(url: str) -> list[dict[str, object]]:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ApiError("API docs URL must be an absolute HTTP URL")
+    try:
+        with urlopen(Request(url, headers={"Accept": "application/json, application/yaml, text/yaml"}), timeout=20) as response:
+            content = response.read(MAX_DOCUMENT_BYTES + 1)
+    except HTTPError as exc:
+        raise ApiError(f"API docs request failed: HTTP {exc.code}") from exc
+    except URLError as exc:
+        raise ApiError(f"API docs request failed: {exc.reason}") from exc
+    if len(content) > MAX_DOCUMENT_BYTES:
+        raise ApiError("API docs file must be 5 MB or smaller")
+    try:
+        document = json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        try:
+            document = yaml.safe_load(content.decode("utf-8"))
+        except (UnicodeDecodeError, yaml.YAMLError) as exc:
+            raise ApiError("API docs must be valid OpenAPI/Swagger JSON or YAML") from exc
+    if not isinstance(document, dict):
+        raise ApiError("API docs root must be an object")
+    return openapi_operations(document)
 
 
 def safe_file(root: Path, reference: str) -> Path:
@@ -65,6 +257,59 @@ def project_json_files(root: Path, project_reference: str | None) -> list[str]:
     return items
 
 
+def visible_project_files(root: Path = PROJECT_ROOT) -> list[str]:
+    """List projects that may be shown in the browser for the current environment."""
+    references = json_files(root)
+    if example_project_enabled():
+        return references
+    return [reference for reference in references if reference != EXAMPLE_PROJECT_REFERENCE]
+
+
+def example_openapi_document() -> dict[str, object]:
+    return {
+        "openapi": "3.0.3",
+        "info": {"title": "API Test Studio Example API", "version": "1.0.0"},
+        "paths": {
+            "/example-api/health": {
+                "get": {
+                    "summary": "Example API health check",
+                    "responses": {"200": {"content": {"application/json": {"example": {"status": "ok", "service": "example-api"}}}}},
+                },
+            },
+            "/example-api/users": {
+                "post": {
+                    "summary": "Create an example user",
+                    "requestBody": {
+                        "required": True,
+                        "content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string", "example": "Ada"}}}}},
+                    },
+                    "responses": {"201": {"content": {"application/json": {"example": {"id": 1, "name": "Ada"}}}}},
+                },
+            },
+            "/example-api/users/{userId}": {
+                "get": {
+                    "summary": "Get an example user",
+                    "parameters": [{"name": "userId", "in": "path", "required": True, "schema": {"type": "integer", "example": 1}}],
+                    "responses": {"200": {"content": {"application/json": {"example": {"id": 1, "name": "Ada"}}}}},
+                },
+            },
+        },
+    }
+
+
+def case_summaries(root: Path, references: list[str]) -> dict[str, dict[str, str]]:
+    """Return the request details needed to identify saved cases in the UI."""
+    summaries: dict[str, dict[str, str]] = {}
+    for reference in references:
+        document = json.loads(safe_file(root, reference).read_text(encoding="utf-8"))
+        request = document.get("request", {})
+        if not isinstance(request, dict):
+            request = {}
+        url = request.get("url", "")
+        summaries[reference] = {"url": url if isinstance(url, str) else ""}
+    return summaries
+
+
 def validate_project_document(payload: dict[str, object]) -> None:
     name = payload.get("name")
     base_url = payload.get("base_url")
@@ -75,6 +320,13 @@ def validate_project_document(payload: dict[str, object]) -> None:
     parsed = urlparse(base_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ApiError("Project base_url must be an absolute HTTP URL")
+    docs_url = payload.get("docs_url", "")
+    if not isinstance(docs_url, str):
+        raise ApiError("Project docs_url must be a string")
+    if docs_url.strip():
+        parsed_docs_url = urlparse(docs_url)
+        if parsed_docs_url.scheme not in {"http", "https"} or not parsed_docs_url.netloc:
+            raise ApiError("Project docs_url must be an absolute HTTP URL")
     advanced = payload.get("advanced", {})
     if not isinstance(advanced, dict):
         raise ApiError("Project advanced settings must be an object")
@@ -99,13 +351,23 @@ def validate_project_reference(payload: dict[str, object]) -> None:
         raise ApiError("Selected project does not exist")
 
 
-def project_is_in_use(reference: str) -> bool:
-    for root in (CASE_ROOT, PIPELINE_ROOT):
-        for item in json_files(root):
-            document = json.loads(safe_file(root, item).read_text(encoding="utf-8"))
-            if document.get("project") == reference:
-                return True
-    return False
+def project_document_references(root: Path, project_reference: str) -> list[str]:
+    return [
+        reference for reference in json_files(root)
+        if json.loads(safe_file(root, reference).read_text(encoding="utf-8")).get("project") == project_reference
+    ]
+
+
+def project_has_cases(reference: str, case_root: Path = CASE_ROOT) -> bool:
+    return bool(project_document_references(case_root, reference))
+
+
+def delete_project_pipelines(reference: str, pipeline_root: Path = PIPELINE_ROOT) -> list[str]:
+    deleted: list[str] = []
+    for pipeline_reference in project_document_references(pipeline_root, reference):
+        safe_file(pipeline_root, pipeline_reference).unlink()
+        deleted.append(pipeline_reference)
+    return deleted
 
 
 def normalize_case_document(payload: dict[str, object]) -> dict[str, object]:
@@ -161,15 +423,43 @@ class StudioHandler(SimpleHTTPRequestHandler):
         values = parse_qs(urlparse(self.path).query).get(name)
         return values[0] if values else None
 
+    def serve_example_api(self) -> bool:
+        """Serve the optional deterministic API used by the bundled example tests."""
+        parts = self.api_path()
+        if not parts or parts[0] != "example-api":
+            return False
+        if not example_project_enabled():
+            self.send_json(HTTPStatus.NOT_FOUND, {"error": "Example API is disabled. Set EXAMPLE_PROJECT=true to enable it."})
+            return True
+
+        if self.command == "GET" and parts == ["example-api", "openapi.json"]:
+            self.send_json(200, example_openapi_document())
+        elif self.command == "GET" and parts == ["example-api", "health"]:
+            self.send_json(200, {"status": "ok", "service": "example-api"})
+        elif self.command == "GET" and parts == ["example-api", "users", "1"]:
+            self.send_json(200, {"id": 1, "name": "Ada"})
+        elif self.command == "POST" and parts == ["example-api", "users"]:
+            payload = self.read_body()
+            name = payload.get("name")
+            if not isinstance(name, str) or not name.strip():
+                raise ApiError("Example user name is required")
+            self.send_json(201, {"id": 1, "name": name})
+        else:
+            self.send_json(HTTPStatus.NOT_FOUND, {"error": "Example API endpoint not found"})
+        return True
+
     def do_GET(self) -> None:  # noqa: N802
         try:
+            if self.serve_example_api():
+                return
             parts = self.api_path()
             if parts == ["api", "cases"]:
-                self.send_json(200, {"items": project_json_files(CASE_ROOT, self.query_value("project"))})
+                references = project_json_files(CASE_ROOT, self.query_value("project"))
+                self.send_json(200, {"items": references, "details": case_summaries(CASE_ROOT, references)})
             elif parts == ["api", "pipelines"]:
                 self.send_json(200, {"items": project_json_files(PIPELINE_ROOT, self.query_value("project"))})
             elif parts == ["api", "projects"]:
-                self.send_json(200, {"items": json_files(PROJECT_ROOT)})
+                self.send_json(200, {"items": visible_project_files()})
             elif len(parts) == 3 and parts[:2] == ["api", "cases"]:
                 document = json.loads(safe_file(CASE_ROOT, parts[2]).read_text(encoding="utf-8"))
                 expected = document.get("expected", {})
@@ -180,6 +470,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
             elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
                 self.send_json(200, json.loads(safe_file(PIPELINE_ROOT, parts[2]).read_text(encoding="utf-8")))
             elif len(parts) == 3 and parts[:2] == ["api", "projects"]:
+                ensure_example_project_enabled(parts[2])
                 self.send_json(200, json.loads(safe_file(PROJECT_ROOT, parts[2]).read_text(encoding="utf-8")))
             else:
                 self.serve_frontend()
@@ -198,6 +489,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 path = safe_file(PIPELINE_ROOT, parts[2])
                 validate_project_reference(payload)
             elif len(parts) == 3 and parts[:2] == ["api", "projects"]:
+                ensure_example_project_enabled(parts[2])
                 path = safe_file(PROJECT_ROOT, parts[2])
                 validate_project_document(payload)
             else:
@@ -210,12 +502,22 @@ class StudioHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         try:
+            if self.serve_example_api():
+                return
             parts = self.api_path()
             if len(parts) == 3 and parts[:2] == ["api", "uploads"]:
                 path = safe_attachment_file(CASE_ROOT, parts[2])
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(self.read_upload())
                 self.send_json(200, {"path": path.relative_to(CASE_ROOT).as_posix()})
+                return
+            if parts == ["api", "docs"]:
+                body = self.read_body()
+                url = body.get("url")
+                if not isinstance(url, str) or not url.strip():
+                    raise ApiError("API docs URL is required")
+                operations = load_openapi_document(url.strip())
+                self.send_json(200, {"operations": operations})
                 return
             if parts != ["api", "run"]:
                 raise ApiError("Unknown run endpoint")
@@ -273,12 +575,17 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 raise ApiError("Unknown delete endpoint")
             root = {"cases": CASE_ROOT, "pipelines": PIPELINE_ROOT, "projects": PROJECT_ROOT}[parts[1]]
             path = safe_file(root, parts[2])
-            if parts[1] == "projects" and project_is_in_use(parts[2]):
-                raise ApiError("Delete the project's cases and pipelines before deleting the project")
+            if parts[1] == "projects":
+                ensure_example_project_enabled(parts[2])
             if not path.is_file():
                 raise ApiError("JSON file not found")
+            deleted_pipelines: list[str] = []
+            if parts[1] == "projects":
+                if project_has_cases(parts[2]):
+                    raise ApiError("Delete the project's API cases before deleting the project")
+                deleted_pipelines = delete_project_pipelines(parts[2])
             path.unlink()
-            self.send_json(200, {"deleted": str(path.relative_to(ROOT))})
+            self.send_json(200, {"deleted": str(path.relative_to(ROOT)), "deleted_pipelines": deleted_pipelines})
         except (ApiError, OSError) as exc:
             self.send_json(400, {"error": str(exc)})
 

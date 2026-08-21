@@ -1,0 +1,25 @@
+{
+  "project": "example-api.json",
+  "defaults": {
+    "retry": 0,
+    "retry_interval_seconds": 0
+  },
+  "steps": [
+    {
+      "name": "create_user",
+      "case": "example/users/create_user.json"
+    },
+    {
+      "name": "get_user",
+      "case": "example/users/get_user.json",
+      "input_mappings": [
+        {
+          "source_step": "create_user",
+          "response_path": "body.id",
+          "target": "url",
+          "template": "/example-api/users/{{value}}"
+        }
+      ]
+    }
+  ]
+}

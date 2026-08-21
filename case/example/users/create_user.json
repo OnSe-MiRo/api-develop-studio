@@ -1,0 +1,21 @@
+{
+  "project": "example-api.json",
+  "request": {
+    "method": "POST",
+    "url": "/example-api/users",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "name": "Ada"
+    }
+  },
+  "expected": {
+    "status": 201,
+    "strict": true,
+    "body": {
+      "id": 1,
+      "name": "Ada"
+    }
+  }
+}

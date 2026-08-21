@@ -1,2 +1,2 @@
-# The application currently uses only the Python standard library.
-# Add Python runtime dependencies here when they are introduced.
+# OpenAPI/Swagger YAML document import.
+PyYAML>=6.0,<7

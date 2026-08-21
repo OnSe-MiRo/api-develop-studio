@@ -16,6 +16,7 @@ services:
     environment:
       API_TEST_HOST: 0.0.0.0
       API_TEST_PORT: "8765"
+      EXAMPLE_PROJECT: ${EXAMPLE_PROJECT:-false}
     ports:
       - "${API_PORT:-8765}:8765"
     volumes:
