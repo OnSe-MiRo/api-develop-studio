@@ -6,5 +6,11 @@
     "http_proxy": "",
     "https_proxy": "",
     "verify": true
+  },
+  "variables": {
+    "plain": {},
+    "secret": {
+      "api_key": "gAAAAABqjntbWz6zC7MBkSbqWDxUGy5IxbbszuwLIOQATUSBqaWk-k-g4WJ6iamy5ZtHYcmYRhsNAd_PaKzByKlNeNJi3vWxbA=="
+    }
   }
 }

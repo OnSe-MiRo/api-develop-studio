@@ -15,9 +15,20 @@ from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 from .comparison import Difference, compare_json
+from .project_variables import (
+    ProjectVariableError,
+    resolve_case_references,
+    resolve_project_references,
+    stored_case_variables,
+    stored_project_variables,
+)
 
 
 REFERENCE_PATTERN = re.compile(r"\$\{([A-Za-z_][\w-]*)\.response\.(body|status)(?:\.([\w.]+))?\}")
+ASSERTION_PATH_PATTERN = re.compile(r"^(?:\$\.)?(?:body(?:\.(?:[A-Za-z_][\w-]*|\d+))*|status)$")
+ASSERTION_OPERATORS = {"gt", "gte", "lt", "lte", "between", "exists", "not_exists", "type", "length_between"}
+JSON_TYPE_NAMES = {"number", "integer", "string", "boolean", "object", "array", "null"}
+MISSING = object()
 
 
 class CaseConfigurationError(ValueError):
@@ -30,6 +41,8 @@ class ProjectRequestSettings:
     proxy_url: str | None = None
     proxy_urls: dict[str, str] = field(default_factory=dict)
     verify_ssl: bool = True
+    variables: dict[str, str] = field(default_factory=dict)
+    encrypted_variables: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -39,6 +52,16 @@ class HttpResponse:
     body: Any
 
 
+@dataclass(frozen=True)
+class AssertionResult:
+    path: str
+    operator: str
+    passed: bool
+    expected: dict[str, Any]
+    actual: Any
+    message: str
+
+
 @dataclass
 class CaseResult:
     case_id: str
@@ -46,9 +69,11 @@ class CaseResult:
     attempts: int
     response: HttpResponse | None = None
     differences: list[Difference] = field(default_factory=list)
+    assertion_results: list[AssertionResult] = field(default_factory=list)
     error: str | None = None
     request_definition: dict[str, Any] | None = None
     expected_definition: dict[str, Any] | None = None
+    sensitive_values: set[str] = field(default_factory=set)
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -161,11 +186,17 @@ def project_request_settings(case: dict[str, Any], project_root: Path) -> Projec
     verify_ssl = advanced.get("verify", True)
     if not isinstance(verify_ssl, bool):
         raise CaseConfigurationError(f"project.advanced.verify must be true or false: {project_reference}")
+    try:
+        variables, encrypted_variables = stored_project_variables(project, project_reference)
+    except ProjectVariableError as exc:
+        raise CaseConfigurationError(str(exc)) from exc
     return ProjectRequestSettings(
         base_url=urlunparse(parsed._replace(path=parsed.path.rstrip("/"))),
         proxy_url=legacy_proxy.strip() if isinstance(legacy_proxy, str) and legacy_proxy.strip() else None,
         proxy_urls=normalized_proxies,
         verify_ssl=verify_ssl,
+        variables=variables,
+        encrypted_variables=encrypted_variables,
     )
 
 
@@ -221,6 +252,166 @@ def resolve_references(value: Any, context: dict[str, CaseResult]) -> Any:
     return REFERENCE_PATTERN.sub(lambda item: str(resolve(item)), value)
 
 
+def _is_number(value: Any) -> bool:
+    return type(value) in {int, float}
+
+
+def _assertion_path_value(response: HttpResponse, path: str) -> Any:
+    normalized = path.removeprefix("$.")
+    current: Any = {"status": response.status, "body": response.body}
+    for piece in normalized.split("."):
+        if isinstance(current, dict) and piece in current:
+            current = current[piece]
+        elif isinstance(current, list) and piece.isdigit() and int(piece) < len(current):
+            current = current[int(piece)]
+        else:
+            return MISSING
+    return current
+
+
+def _json_type_matches(value: Any, expected_type: str) -> bool:
+    return {
+        "number": _is_number(value),
+        "integer": type(value) is int,
+        "string": isinstance(value, str),
+        "boolean": isinstance(value, bool),
+        "object": isinstance(value, dict),
+        "array": isinstance(value, list),
+        "null": value is None,
+    }[expected_type]
+
+
+def validate_assertions(assertions: Any) -> None:
+    """Validate response conditions before an HTTP request is sent."""
+    if assertions is None:
+        return
+    if not isinstance(assertions, list):
+        raise CaseConfigurationError("expected.assertions must be an array")
+    for index, assertion in enumerate(assertions, start=1):
+        prefix = f"expected.assertions[{index}]"
+        if not isinstance(assertion, dict):
+            raise CaseConfigurationError(f"{prefix} must be an object")
+        path = assertion.get("path")
+        if not isinstance(path, str) or not ASSERTION_PATH_PATTERN.fullmatch(path):
+            raise CaseConfigurationError(f"{prefix}.path must be body, body.field, body.items.0, or status")
+        operator = assertion.get("operator")
+        if operator not in ASSERTION_OPERATORS:
+            raise CaseConfigurationError(f"{prefix}.operator is not supported: {operator}")
+        if operator in {"gt", "gte", "lt", "lte"}:
+            if not _is_number(assertion.get("value")):
+                raise CaseConfigurationError(f"{prefix}.value must be a number for {operator}")
+        elif operator == "between":
+            minimum, maximum = assertion.get("min"), assertion.get("max")
+            if not _is_number(minimum) or not _is_number(maximum):
+                raise CaseConfigurationError(f"{prefix}.min and max must be numbers for between")
+            if minimum > maximum:
+                raise CaseConfigurationError(f"{prefix}.min must be less than or equal to max")
+            for option in ("include_min", "include_max"):
+                if option in assertion and not isinstance(assertion[option], bool):
+                    raise CaseConfigurationError(f"{prefix}.{option} must be true or false")
+        elif operator == "length_between":
+            minimum, maximum = assertion.get("min"), assertion.get("max")
+            if type(minimum) is not int or type(maximum) is not int or minimum < 0 or maximum < 0:
+                raise CaseConfigurationError(f"{prefix}.min and max must be non-negative integers for length_between")
+            if minimum > maximum:
+                raise CaseConfigurationError(f"{prefix}.min must be less than or equal to max")
+        elif operator == "type" and assertion.get("value") not in JSON_TYPE_NAMES:
+            raise CaseConfigurationError(f"{prefix}.value must be one of: {', '.join(sorted(JSON_TYPE_NAMES))}")
+
+
+def response_validation_modes(expected: dict[str, Any]) -> tuple[bool, bool]:
+    """Return exact-body and condition validation flags with legacy-case defaults."""
+    modes = expected.get("validation_modes")
+    if modes is None:
+        return "body" in expected, "assertions" in expected
+    if not isinstance(modes, dict):
+        raise CaseConfigurationError("expected.validation_modes must be an object")
+    exact_body = modes.get("exact_body", "body" in expected)
+    conditions = modes.get("conditions", "assertions" in expected)
+    if not isinstance(exact_body, bool):
+        raise CaseConfigurationError("expected.validation_modes.exact_body must be true or false")
+    if not isinstance(conditions, bool):
+        raise CaseConfigurationError("expected.validation_modes.conditions must be true or false")
+    if exact_body and "body" not in expected:
+        raise CaseConfigurationError("expected.body is required when exact_body validation is enabled")
+    if conditions and not expected.get("assertions"):
+        raise CaseConfigurationError("expected.assertions needs at least one condition when conditions validation is enabled")
+    return exact_body, conditions
+
+
+def evaluate_assertions(assertions: Any, response: HttpResponse) -> tuple[list[AssertionResult], list[Difference]]:
+    """Evaluate every response condition and return its result plus failed differences."""
+    validate_assertions(assertions)
+    results: list[AssertionResult] = []
+    differences: list[Difference] = []
+    for assertion in assertions or []:
+        path = assertion["path"].removeprefix("$.")
+        display_path = f"$.{path}"
+        operator = assertion["operator"]
+        actual = _assertion_path_value(response, path)
+        expected_condition = {key: value for key, value in assertion.items() if key != "path"}
+
+        def record(passed: bool, result_actual: Any, message: str) -> None:
+            results.append(AssertionResult(display_path, operator, passed, expected_condition, result_actual, message))
+            if not passed:
+                differences.append(Difference(display_path, expected_condition, result_actual, message))
+
+        if operator == "exists":
+            if actual is MISSING:
+                record(False, None, "assertion path missing")
+            else:
+                record(True, actual, "path exists")
+            continue
+        if operator == "not_exists":
+            if actual is not MISSING:
+                record(False, actual, "condition not met: expected path to be absent")
+            else:
+                record(True, None, "path is absent")
+            continue
+        if actual is MISSING:
+            record(False, None, "assertion path missing")
+            continue
+        if operator == "type":
+            passed = _json_type_matches(actual, assertion["value"])
+            record(passed, actual, f"type matched: {assertion['value']}" if passed else f"type mismatch: expected {assertion['value']}")
+            continue
+        if operator == "length_between":
+            if not isinstance(actual, (str, list)):
+                record(False, actual, "length assertion requires a string or array")
+                continue
+            actual_length = len(actual)
+            passed = assertion["min"] <= actual_length <= assertion["max"]
+            description = f"expected {assertion['min']} <= length <= {assertion['max']}, actual length {actual_length}"
+            record(passed, actual_length, description if passed else f"length condition not met: {description}")
+            continue
+        if not _is_number(actual):
+            record(False, actual, "numeric assertion requires a number")
+            continue
+
+        passed = False
+        description = ""
+        if operator == "gt":
+            passed, description = actual > assertion["value"], f"> {assertion['value']}"
+        elif operator == "gte":
+            passed, description = actual >= assertion["value"], f">= {assertion['value']}"
+        elif operator == "lt":
+            passed, description = actual < assertion["value"], f"< {assertion['value']}"
+        elif operator == "lte":
+            passed, description = actual <= assertion["value"], f"<= {assertion['value']}"
+        elif operator == "between":
+            include_min = assertion.get("include_min", True)
+            include_max = assertion.get("include_max", True)
+            lower_passed = actual >= assertion["min"] if include_min else actual > assertion["min"]
+            upper_passed = actual <= assertion["max"] if include_max else actual < assertion["max"]
+            passed = lower_passed and upper_passed
+            description = (
+                f"{'<=' if include_min else '<'} value {'<=' if include_max else '<'} {assertion['max']}"
+            )
+            description = f"{assertion['min']} {description}"
+        record(passed, actual, f"condition met: expected {description}" if passed else f"condition not met: expected {description}")
+    return results, differences
+
+
 class ApiTestRunner:
     def __init__(self, timeout_seconds: float = 10.0) -> None:
         self.timeout_seconds = timeout_seconds
@@ -237,6 +428,8 @@ class ApiTestRunner:
         verify_ssl: bool = True,
         file_root: Path | None = None,
         proxy_urls: dict[str, str] | None = None,
+        project_variables: dict[str, str] | None = None,
+        encrypted_project_variables: dict[str, str] | None = None,
     ) -> CaseResult:
         request_definition = case.get("request")
         expected = case.get("expected")
@@ -244,13 +437,32 @@ class ApiTestRunner:
             raise CaseConfigurationError("A case needs object-valued request and expected fields")
         if not isinstance(request_definition.get("url"), str):
             raise CaseConfigurationError("request.url is required")
+        _, validate_conditions = response_validation_modes(expected)
+        if validate_conditions:
+            validate_assertions(expected.get("assertions"))
 
         resolved_request = resolve_references(copy.deepcopy(request_definition), context or {})
+        try:
+            resolved_request, sensitive_values = resolve_project_references(
+                resolved_request,
+                project_variables or {},
+                encrypted_project_variables or {},
+            )
+            resolved_request, case_sensitive_values = resolve_case_references(
+                resolved_request,
+                stored_case_variables(case, case_id),
+            )
+            sensitive_values.update(case_sensitive_values)
+        except ProjectVariableError as exc:
+            raise CaseConfigurationError(str(exc)) from exc
         resolved_request["url"] = resolve_request_url(resolved_request["url"], base_url)
         attempts = max(0, retry) + 1
         last_result: CaseResult | None = None
         for attempt in range(1, attempts + 1):
-            result = self._run_once(case_id, resolved_request, expected, attempt, proxy_url, verify_ssl, file_root, proxy_urls)
+            result = self._run_once(
+                case_id, resolved_request, expected, attempt, proxy_url, verify_ssl,
+                file_root, proxy_urls, sensitive_values,
+            )
             if result.status == "passed":
                 return result
             last_result = result
@@ -261,7 +473,8 @@ class ApiTestRunner:
 
     def _run_once(
         self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int,
-        proxy_url: str | None = None, verify_ssl: bool = True, file_root: Path | None = None, proxy_urls: dict[str, str] | None = None,
+        proxy_url: str | None = None, verify_ssl: bool = True, file_root: Path | None = None,
+        proxy_urls: dict[str, str] | None = None, sensitive_values: set[str] | None = None,
     ) -> CaseResult:
         method = str(request_definition.get("method", "GET")).upper()
         headers = {str(key): str(value) for key, value in request_definition.get("headers", {}).items()}
@@ -300,6 +513,7 @@ class ApiTestRunner:
             return CaseResult(
                 case_id, "error", attempt, error=str(exc),
                 request_definition=request_definition, expected_definition=expected,
+                sensitive_values=set(sensitive_values or ()),
             )
 
         try:
@@ -308,11 +522,18 @@ class ApiTestRunner:
             body = raw_body
         response = HttpResponse(status, response_headers, body)
         differences: list[Difference] = []
+        assertion_results: list[AssertionResult] = []
         if "status" in expected and expected["status"] != status:
             differences.append(Difference("$.status", expected["status"], status, "status mismatch"))
-        if "body" in expected:
+        validate_exact_body, validate_conditions = response_validation_modes(expected)
+        if validate_exact_body:
             differences.extend(compare_json(expected["body"], body, "$.body", strict=expected.get("strict", True)))
+        if validate_conditions:
+            assertion_results, assertion_differences = evaluate_assertions(expected.get("assertions"), response)
+            differences.extend(assertion_differences)
         return CaseResult(
             case_id, "passed" if not differences else "failed", attempt, response, differences,
+            assertion_results=assertion_results,
             request_definition=request_definition, expected_definition=expected,
+            sensitive_values=set(sensitive_values or ()),
         )

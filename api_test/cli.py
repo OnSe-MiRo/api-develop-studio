@@ -13,7 +13,7 @@ from .run_log import create_run_logger
 from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, project_request_settings, read_json, resolve_case_path
 
 
-SENSITIVE_FIELD_PARTS = ("authorization", "token", "secret", "password", "api_key", "apikey", "cookie")
+SENSITIVE_FIELD_PARTS = ("authorization", "token", "secret", "password", "apikey", "cookie")
 MAPPING_RESPONSE_PATH = re.compile(r"(?:body(?:\.[\w-]+)*|status)$")
 MAPPING_TARGET_KEY = re.compile(r"[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)*$")
 EXAMPLE_PROJECT_REFERENCE = "example-api.json"
@@ -21,7 +21,7 @@ EXAMPLE_PROJECT_TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
 def example_project_enabled() -> bool:
-    return os.environ.get("EXAMPLE_PROJECT", "false").strip().lower() in EXAMPLE_PROJECT_TRUE_VALUES
+    return os.environ.get("EXAMPLE_PROJECT", "true").strip().lower() in EXAMPLE_PROJECT_TRUE_VALUES
 
 
 def is_disabled_example_pipeline(path: Path) -> bool:
@@ -35,19 +35,27 @@ def is_disabled_example_pipeline(path: Path) -> bool:
     return document.get("project") == EXAMPLE_PROJECT_REFERENCE
 
 
-def _redact(value: Any, key: str = "") -> Any:
+def _redact(value: Any, key: str = "", sensitive_values: set[str] | None = None) -> Any:
     """Keep failure diagnostics useful without writing credentials to disk."""
-    if any(part in key.lower() for part in SENSITIVE_FIELD_PARTS):
+    normalized_key = re.sub(r"[^a-z0-9]", "", key.lower())
+    if any(part in normalized_key for part in SENSITIVE_FIELD_PARTS):
         return "***REDACTED***"
     if isinstance(value, dict):
-        return {str(item_key): _redact(item_value, str(item_key)) for item_key, item_value in value.items()}
+        return {
+            str(item_key): _redact(item_value, str(item_key), sensitive_values)
+            for item_key, item_value in value.items()
+        }
     if isinstance(value, list):
-        return [_redact(item) for item in value]
+        return [_redact(item, sensitive_values=sensitive_values) for item in value]
+    if isinstance(value, str):
+        for secret in sensitive_values or ():
+            if secret:
+                value = value.replace(secret, "***REDACTED***")
     return value
 
 
-def _json_log_value(value: Any) -> str:
-    return json.dumps(_redact(value), ensure_ascii=False, default=str)
+def _json_log_value(value: Any, sensitive_values: set[str] | None = None) -> str:
+    return json.dumps(_redact(value, sensitive_values=sensitive_values), ensure_ascii=False, default=str)
 
 
 def _retry_config(item: dict[str, Any], defaults: dict[str, Any]) -> tuple[int, float]:
@@ -126,12 +134,28 @@ def apply_input_mappings(case: dict[str, Any], mappings: Any, completed_steps: d
 def _result_lines(result: CaseResult) -> list[str]:
     lines = [f"[{result.status.upper()}] {result.case_id} (attempts: {result.attempts})"]
     if result.error:
-        lines.append(f"  error: {result.error}")
+        lines.append(f"  error: {_redact(result.error, sensitive_values=result.sensitive_values)}")
+    if result.assertion_results:
+        passed = sum(item.passed for item in result.assertion_results)
+        failed = len(result.assertion_results) - passed
+        lines.append(f"  Condition results: TOTAL {len(result.assertion_results)} | PASS {passed} | FAIL {failed}")
+        for item in result.assertion_results:
+            lines.append(
+                f"  [{'PASS' if item.passed else 'FAIL'}] {item.path} {item.operator}: {item.message}; "
+                f"expected={_json_log_value(item.expected, result.sensitive_values)}, "
+                f"actual={_json_log_value(item.actual, result.sensitive_values)}"
+            )
     for difference in result.differences:
+        if any(
+            not item.passed and item.path == difference.path and item.expected == difference.expected
+            and item.actual == difference.actual and item.message == difference.reason
+            for item in result.assertion_results
+        ):
+            continue
         lines.append(
             f"  {difference.path}: {difference.reason}; "
-            f"expected={json.dumps(difference.expected, ensure_ascii=False)}, "
-            f"actual={json.dumps(difference.actual, ensure_ascii=False)}"
+            f"expected={_json_log_value(difference.expected, result.sensitive_values)}, "
+            f"actual={_json_log_value(difference.actual, result.sensitive_values)}"
         )
     if result.status != "passed":
         request_value = result.request_definition or {}
@@ -141,13 +165,20 @@ def _result_lines(result: CaseResult) -> list[str]:
         if result.response:
             actual_value = {"status": result.response.status, "body": result.response.body}
         lines.extend([
-            f"  request_value={_json_log_value(request_value)}",
-            f"  expected_response={_json_log_value(expected_value)}",
-            f"  actual_response={_json_log_value(actual_value)}",
+            f"  request_value={_json_log_value(request_value, result.sensitive_values)}",
+            f"  expected_response={_json_log_value(expected_value, result.sensitive_values)}",
+            f"  actual_response={_json_log_value(actual_value, result.sensitive_values)}",
         ])
         if strict is not None:
             lines.append(f"  comparison_options={_json_log_value({'strict': strict})}")
     return lines
+
+
+def _result_line_level(result: CaseResult, line: str) -> int:
+    """Keep passed condition details informational even when another condition fails."""
+    if result.status == "passed" or line.startswith("  [PASS]"):
+        return logging.INFO
+    return logging.ERROR
 
 
 def _tag_summary_lines(steps: list[Any], results: dict[str, CaseResult]) -> list[str]:
@@ -176,6 +207,35 @@ def _tag_summary_lines(steps: list[Any], results: dict[str, CaseResult]) -> list
         f"ERROR {counts['ERROR']} | SKIPPED {counts['SKIPPED']}"
         for tag, counts in summary.items()
     ]
+
+
+def _run_case_with_project_settings(
+    runner: ApiTestRunner,
+    case_id: str,
+    case_document: dict[str, Any],
+    project_root: Path,
+    file_root: Path,
+    *,
+    context: dict[str, CaseResult] | None = None,
+    retry: int = 0,
+    retry_interval_seconds: float = 0,
+) -> CaseResult:
+    """Run a case with its project's shared request settings applied."""
+    project_settings = project_request_settings(case_document, project_root)
+    return runner.run_case(
+        case_id,
+        case_document,
+        context=context,
+        retry=retry,
+        retry_interval_seconds=retry_interval_seconds,
+        base_url=project_settings.base_url if project_settings else None,
+        proxy_url=project_settings.proxy_url if project_settings else None,
+        verify_ssl=project_settings.verify_ssl if project_settings else True,
+        file_root=file_root,
+        proxy_urls=project_settings.proxy_urls if project_settings else None,
+        project_variables=project_settings.variables if project_settings else None,
+        encrypted_project_variables=project_settings.encrypted_variables if project_settings else None,
+    )
 
 
 def run_pipeline(
@@ -211,17 +271,19 @@ def run_pipeline(
         case_path = resolve_case_path(case_root, raw_step["case"])
         logger.info("Step started: name=%s case=%s retry=%s retry_interval_seconds=%s", name, case_path, retry, interval)
         case_document = apply_input_mappings(read_json(case_path), raw_step.get("input_mappings"), results, index)
-        project_settings = project_request_settings(case_document, project_root)
-        result = runner.run_case(
-            name, case_document, results, retry, interval,
-            project_settings.base_url if project_settings else None,
-            project_settings.proxy_url if project_settings else None,
-            project_settings.verify_ssl if project_settings else True, file_root or case_root,
-            project_settings.proxy_urls if project_settings else None,
+        result = _run_case_with_project_settings(
+            runner,
+            name,
+            case_document,
+            project_root,
+            file_root or case_root,
+            context=results,
+            retry=retry,
+            retry_interval_seconds=interval,
         )
         results[name] = result
         for line in _result_lines(result):
-            report(line, logging.INFO if result.status == "passed" else logging.ERROR)
+            report(line, _result_line_level(result, line))
         if result.status != "passed":
             failures += 1
             if raw_step.get("continue_on_failure", False) is not True:
@@ -245,6 +307,7 @@ def run_case_files(
         logger.log(level, message)
 
     logger.info("Direct case run started: case_count=%s case_root=%s timeout=%s", len(case_references), case_root, timeout)
+    runner = ApiTestRunner(timeout)
     results: dict[str, CaseResult] = {}
     steps: list[dict[str, str]] = []
     for index, case_reference in enumerate(case_references, start=1):
@@ -252,18 +315,11 @@ def run_case_files(
         case_id = f"case_{index}_{case_path.stem}"
         logger.info("Case started: case=%s", case_path)
         case_document = read_json(case_path)
-        project_settings = project_request_settings(case_document, project_root)
-        result = ApiTestRunner(timeout).run_case(
-            case_id, case_document,
-            base_url=project_settings.base_url if project_settings else None,
-            proxy_url=project_settings.proxy_url if project_settings else None,
-            verify_ssl=project_settings.verify_ssl if project_settings else True, file_root=file_root or case_root,
-            proxy_urls=project_settings.proxy_urls if project_settings else None,
-        )
+        result = _run_case_with_project_settings(runner, case_id, case_document, project_root, file_root or case_root)
         results[case_id] = result
         steps.append({"name": case_id, "case": case_reference})
         for line in _result_lines(result):
-            report(line, logging.INFO if result.status == "passed" else logging.ERROR)
+            report(line, _result_line_level(result, line))
     passed = sum(result.status == "passed" for result in results.values())
     failed = len(results) - passed
     report(f"Cases result: {passed} passed, {failed} failed/error")

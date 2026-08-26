@@ -10,10 +10,13 @@ from email.message import Message
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from cryptography.fernet import Fernet
+
 from api_test import cli
 from api_test.cli import run_case_file, run_case_files, run_pipeline
 from api_test.comparison import compare_json
-from api_test.runner import ApiTestRunner, project_base_url, project_request_settings
+from api_test.project_variables import encrypt_secret
+from api_test.runner import ApiTestRunner, CaseConfigurationError, project_base_url, project_request_settings
 from react_server import ApiError, safe_attachment_file
 
 
@@ -46,6 +49,196 @@ class ApiRunnerTest(unittest.TestCase):
         self.assertEqual(strict_differences[0].reason, "type mismatch")
         boolean_differences = compare_json({"enabled": True}, {"enabled": 1}, strict=False)
         self.assertEqual(boolean_differences[0].reason, "type mismatch")
+
+    def test_response_assertions_pass_for_ranges_types_and_presence(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/metrics"},
+            "expected": {
+                "status": 200,
+                "assertions": [
+                    {"path": "body.age", "operator": "between", "min": 18, "max": 65},
+                    {"path": "body.score", "operator": "gte", "value": 80},
+                    {"path": "body.rate", "operator": "gt", "value": 0},
+                    {"path": "body.rate", "operator": "lt", "value": 1},
+                    {"path": "body.age", "operator": "lte", "value": 30},
+                    {"path": "body.name", "operator": "length_between", "min": 1, "max": 10},
+                    {"path": "body.items", "operator": "type", "value": "array"},
+                    {"path": "body.active", "operator": "type", "value": "boolean"},
+                    {"path": "body.optional", "operator": "type", "value": "null"},
+                    {"path": "body.name", "operator": "exists"},
+                    {"path": "body.password", "operator": "not_exists"},
+                ],
+            },
+        }
+        response = {"age": 24, "score": 80, "rate": 0.5, "name": "Ada", "items": [1, 2], "active": True, "optional": None}
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, response)):
+            result = ApiTestRunner().run_case("range", case)
+        self.assertEqual(result.status, "passed")
+        self.assertEqual(result.differences, [])
+        self.assertEqual(len(result.assertion_results), 11)
+        self.assertTrue(all(item.passed for item in result.assertion_results))
+
+    def test_response_assertions_report_every_failed_condition(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/metrics"},
+            "expected": {
+                "status": 200,
+                "assertions": [
+                    {"path": "body.age", "operator": "between", "min": 18, "max": 65},
+                    {"path": "body.score", "operator": "gte", "value": 80},
+                    {"path": "body.items", "operator": "length_between", "min": 1, "max": 2},
+                    {"path": "body.email", "operator": "exists"},
+                    {"path": "body.secret", "operator": "not_exists"},
+                ],
+            },
+        }
+        response = {"age": 72, "score": "90", "items": [1, 2, 3], "secret": "present"}
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, response)):
+            result = ApiTestRunner().run_case("range", case)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual([difference.path for difference in result.differences], [
+            "$.body.age", "$.body.score", "$.body.items", "$.body.email", "$.body.secret",
+        ])
+        self.assertIn("18 <= value <= 65", result.differences[0].reason)
+        self.assertEqual(result.differences[1].reason, "numeric assertion requires a number")
+        self.assertIn("actual length 3", result.differences[2].reason)
+        self.assertEqual(result.differences[3].reason, "assertion path missing")
+        self.assertEqual(len(result.assertion_results), 5)
+        self.assertTrue(all(not item.passed for item in result.assertion_results))
+
+    def test_every_assertion_operator_records_both_pass_and_fail_results(self) -> None:
+        assertions = [
+            {"path": "body.score", "operator": "gt", "value": 4},
+            {"path": "body.score", "operator": "gt", "value": 5},
+            {"path": "body.score", "operator": "gte", "value": 5},
+            {"path": "body.score", "operator": "gte", "value": 6},
+            {"path": "body.score", "operator": "lt", "value": 6},
+            {"path": "body.score", "operator": "lt", "value": 5},
+            {"path": "body.score", "operator": "lte", "value": 5},
+            {"path": "body.score", "operator": "lte", "value": 4},
+            {"path": "body.score", "operator": "between", "min": 5, "max": 5},
+            {"path": "body.score", "operator": "between", "min": 6, "max": 7},
+            {"path": "body.name", "operator": "exists"},
+            {"path": "body.missing", "operator": "exists"},
+            {"path": "body.missing", "operator": "not_exists"},
+            {"path": "body.name", "operator": "not_exists"},
+            {"path": "body.name", "operator": "type", "value": "string"},
+            {"path": "body.name", "operator": "type", "value": "integer"},
+            {"path": "body.name", "operator": "length_between", "min": 1, "max": 3},
+            {"path": "body.name", "operator": "length_between", "min": 1, "max": 2},
+        ]
+        case = {
+            "request": {"url": "https://example.test/metrics"},
+            "expected": {
+                "assertions": assertions,
+                "validation_modes": {"exact_body": False, "conditions": True},
+            },
+        }
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"score": 5, "name": "Ada"})):
+            result = ApiTestRunner().run_case("all_operators", case)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(len(result.assertion_results), 18)
+        self.assertEqual(sum(item.passed for item in result.assertion_results), 9)
+        self.assertEqual(len(result.differences), 9)
+        for operator in {assertion["operator"] for assertion in assertions}:
+            states = {item.passed for item in result.assertion_results if item.operator == operator}
+            self.assertEqual(states, {True, False}, operator)
+
+    def test_string_length_condition_reports_value_longer_than_maximum(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {
+                "status": 200,
+                "assertions": [{"path": "body.name", "operator": "length_between", "min": 1, "max": 2}],
+                "validation_modes": {"exact_body": False, "conditions": True},
+            },
+        }
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"name": "Ada"})):
+            result = ApiTestRunner().run_case("name_length", case)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.differences[0].path, "$.body.name")
+        self.assertEqual(
+            result.differences[0].reason,
+            "length condition not met: expected 1 <= length <= 2, actual length 3",
+        )
+
+    def test_exclusive_range_rejects_boundary_value(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/metrics"},
+            "expected": {"assertions": [{
+                "path": "body.score", "operator": "between", "min": 0, "max": 100,
+                "include_min": False, "include_max": False,
+            }]},
+        }
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"score": 100})):
+            result = ApiTestRunner().run_case("exclusive", case)
+        self.assertEqual(result.status, "failed")
+        self.assertIn("0 < value < 100", result.differences[0].reason)
+
+    def test_invalid_assertion_is_rejected_before_request(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/metrics"},
+            "expected": {"assertions": [{"path": "body.age", "operator": "between", "min": 65, "max": 18}]},
+        }
+        with patch("api_test.runner.urllib.request.urlopen") as urlopen:
+            with self.assertRaisesRegex(CaseConfigurationError, "min must be less than or equal to max"):
+                ApiTestRunner().run_case("invalid", case)
+        urlopen.assert_not_called()
+
+    def test_validation_modes_can_run_conditions_only(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {
+                "status": 200,
+                "body": {"id": 1, "name": "Grace"},
+                "assertions": [{"path": "body.id", "operator": "between", "min": 1, "max": 1}],
+                "validation_modes": {"exact_body": False, "conditions": True},
+            },
+        }
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"id": 1, "name": "Ada"})):
+            result = ApiTestRunner().run_case("conditions_only", case)
+        self.assertEqual(result.status, "passed")
+        self.assertEqual(result.differences, [])
+
+    def test_validation_modes_can_run_exact_body_only(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {
+                "status": 200,
+                "body": {"id": 1, "name": "Grace"},
+                "assertions": [{"path": "body.id", "operator": "between", "min": 2, "max": 3}],
+                "validation_modes": {"exact_body": True, "conditions": False},
+            },
+        }
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"id": 1, "name": "Ada"})):
+            result = ApiTestRunner().run_case("exact_only", case)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual([difference.path for difference in result.differences], ["$.body.name"])
+
+    def test_validation_modes_can_run_exact_body_and_conditions_together(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {
+                "status": 200,
+                "body": {"id": 1, "name": "Grace"},
+                "assertions": [{"path": "body.id", "operator": "between", "min": 2, "max": 3}],
+                "validation_modes": {"exact_body": True, "conditions": True},
+            },
+        }
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"id": 1, "name": "Ada"})):
+            result = ApiTestRunner().run_case("combined", case)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual([difference.path for difference in result.differences], ["$.body.name", "$.body.id"])
+
+    def test_validation_modes_are_checked_before_request(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {"body": {}, "validation_modes": {"exact_body": "yes", "conditions": False}},
+        }
+        with patch("api_test.runner.urllib.request.urlopen") as urlopen:
+            with self.assertRaisesRegex(CaseConfigurationError, "exact_body must be true or false"):
+                ApiTestRunner().run_case("invalid_modes", case)
+        urlopen.assert_not_called()
 
     def test_project_base_url_resolves_relative_case_url(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -109,6 +302,116 @@ class ApiRunnerTest(unittest.TestCase):
             self.assertIsNotNone(settings)
             assert settings is not None
             self.assertEqual(settings.proxy_urls, {"http": "http://proxy.example.test:8080", "https": "http://proxy.example.test:8080"})
+
+    def test_project_plain_and_encrypted_variables_are_resolved_in_requests(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project_root = root / "projects"
+            project_root.mkdir()
+            encryption_key = Fernet.generate_key().decode()
+            with patch.dict(os.environ, {"API_TEST_ENCRYPTION_KEY": encryption_key}, clear=False):
+                encrypted_api_key = encrypt_secret("private-api-key")
+            (project_root / "member.json").write_text(json.dumps({
+                "name": "Member API",
+                "base_url": "https://example.test/api",
+                "variables": {
+                    "plain": {"tenant": "alpha", "user_id": "7"},
+                    "secret": {"api_key": encrypted_api_key},
+                },
+            }), encoding="utf-8")
+            case = {
+                "project": "member.json",
+                "request": {
+                    "method": "POST",
+                    "url": "/{{project.tenant}}/users/{{project.user_id}}",
+                    "headers": {"X-API-Key": "{{project.api_key}}"},
+                    "body": {"tenant": "{{project.tenant}}"},
+                },
+                "expected": {"status": 200, "body": {"ok": True}},
+            }
+            settings = project_request_settings(case, project_root)
+            assert settings is not None
+            with patch.dict(os.environ, {"API_TEST_ENCRYPTION_KEY": encryption_key}, clear=False), patch(
+                "api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})
+            ) as urlopen:
+                result = ApiTestRunner().run_case(
+                    "users", case, base_url=settings.base_url,
+                    project_variables=settings.variables,
+                    encrypted_project_variables=settings.encrypted_variables,
+                )
+
+            self.assertEqual(result.status, "passed")
+            request = urlopen.call_args.args[0]
+            self.assertEqual(request.full_url, "https://example.test/api/alpha/users/7")
+            self.assertEqual(request.get_header("X-api-key"), "private-api-key")
+            self.assertEqual(json.loads(request.data), {"tenant": "alpha"})
+            self.assertEqual(result.sensitive_values, {"private-api-key"})
+
+    def test_case_encrypted_variables_are_resolved_and_redacted(self) -> None:
+        encryption_key = Fernet.generate_key().decode()
+        with patch.dict(os.environ, {"API_TEST_ENCRYPTION_KEY": encryption_key, "API_TEST_ENCRYPTION_URL": ""}, clear=False):
+            encrypted_api_key = encrypt_secret("case-private-api-key")
+            case = {
+                "request": {
+                    "method": "GET",
+                    "url": "https://example.test/secure?key={{case.api_key}}",
+                    "headers": {"X-API-Key": "{{case.api_key}}"},
+                },
+                "expected": {"status": 200, "body": {"ok": True}},
+                "variables": {"secret": {"api_key": encrypted_api_key}},
+            }
+            with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})) as urlopen:
+                result = ApiTestRunner().run_case("secure", case)
+
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "https://example.test/secure?key=case-private-api-key")
+        self.assertEqual(request.get_header("X-api-key"), "case-private-api-key")
+        self.assertEqual(result.sensitive_values, {"case-private-api-key"})
+
+    def test_missing_project_variable_is_rejected_before_request(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/{{project.missing}}"},
+            "expected": {"status": 200},
+        }
+        with patch("api_test.runner.urllib.request.urlopen") as urlopen:
+            with self.assertRaisesRegex(CaseConfigurationError, "not defined: missing"):
+                ApiTestRunner().run_case("missing", case, project_variables={"tenant": "alpha"})
+        urlopen.assert_not_called()
+
+    def test_encrypted_project_variable_is_redacted_from_failure_log(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case_root = root / "case"
+            project_root = root / "projects"
+            log_root = root / "logs"
+            (case_root / "member" / "security").mkdir(parents=True)
+            project_root.mkdir()
+            encryption_key = Fernet.generate_key().decode()
+            with patch.dict(os.environ, {"API_TEST_ENCRYPTION_KEY": encryption_key}, clear=False):
+                encrypted_api_key = encrypt_secret("private-api-key")
+            (project_root / "member.json").write_text(json.dumps({
+                "name": "Member API",
+                "base_url": "https://example.test",
+                "variables": {"plain": {}, "secret": {"api_key": encrypted_api_key}},
+            }), encoding="utf-8")
+            reference = "member/security/get.json"
+            (case_root / reference).write_text(json.dumps({
+                "project": "member.json",
+                "request": {
+                    "url": "/secure?key={{project.api_key}}",
+                    "headers": {"X-API-Key": "{{project.api_key}}"},
+                },
+                "expected": {"status": 200, "body": {"error": "expected-error"}},
+            }), encoding="utf-8")
+
+            with patch.dict(os.environ, {"API_TEST_ENCRYPTION_KEY": encryption_key}, clear=False), patch(
+                "api_test.runner.urllib.request.urlopen", return_value=FakeResponse(500, {"error": "private-api-key"})
+            ):
+                self.assertEqual(run_case_files([reference], case_root, 2, log_root, project_root), 1)
+
+            log_content = next(log_root.glob("api-test_*.log")).read_text(encoding="utf-8")
+            self.assertNotIn("private-api-key", log_content)
+            self.assertIn("***REDACTED***", log_content)
 
     def test_runs_multipart_form_data_with_file_attachment(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -263,6 +566,55 @@ class ApiRunnerTest(unittest.TestCase):
             }), encoding="utf-8")
             with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})):
                 self.assertEqual(run_case_file("single/health/get.json", case_root, 2, root / "logs"), 0)
+
+    def test_success_log_lists_every_condition_result(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case_root = root / "case"
+            api_dir = case_root / "sample" / "users"
+            api_dir.mkdir(parents=True)
+            (api_dir / "get.json").write_text(json.dumps({
+                "request": {"url": "https://example.test/users/1"},
+                "expected": {
+                    "status": 200,
+                    "assertions": [
+                        {"path": "body.name", "operator": "length_between", "min": 1, "max": 3},
+                        {"path": "body.id", "operator": "gte", "value": 1},
+                    ],
+                    "validation_modes": {"exact_body": False, "conditions": True},
+                },
+            }), encoding="utf-8")
+            log_dir = root / "logs"
+            with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"id": 1, "name": "Ada"})):
+                self.assertEqual(run_case_file("sample/users/get.json", case_root, 2, log_dir), 0)
+            log_content = next(log_dir.glob("api-test_*.log")).read_text(encoding="utf-8")
+            self.assertIn("Condition results: TOTAL 2 | PASS 2 | FAIL 0", log_content)
+            self.assertIn("[PASS] $.body.name length_between: expected 1 <= length <= 3, actual length 3", log_content)
+            self.assertIn("[PASS] $.body.id gte: condition met: expected >= 1", log_content)
+
+    def test_failure_log_keeps_passed_and_failed_condition_results(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case_root = root / "case"
+            api_dir = case_root / "sample" / "users"
+            api_dir.mkdir(parents=True)
+            (api_dir / "get.json").write_text(json.dumps({
+                "request": {"url": "https://example.test/users/1"},
+                "expected": {
+                    "assertions": [
+                        {"path": "body.name", "operator": "length_between", "min": 1, "max": 2},
+                        {"path": "body.id", "operator": "gte", "value": 1},
+                    ],
+                    "validation_modes": {"exact_body": False, "conditions": True},
+                },
+            }), encoding="utf-8")
+            log_dir = root / "logs"
+            with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"id": 1, "name": "Ada"})):
+                self.assertEqual(run_case_file("sample/users/get.json", case_root, 2, log_dir), 1)
+            log_content = next(log_dir.glob("api-test_*.log")).read_text(encoding="utf-8")
+            self.assertIn("Condition results: TOTAL 2 | PASS 1 | FAIL 1", log_content)
+            self.assertIn("ERROR   [FAIL] $.body.name length_between", log_content)
+            self.assertIn("INFO   [PASS] $.body.id gte", log_content)
 
     def test_runs_multiple_case_files_and_summarizes_tags(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

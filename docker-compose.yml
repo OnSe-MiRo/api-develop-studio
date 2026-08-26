@@ -1,4 +1,29 @@
 services:
+  encryption:
+    build:
+      context: .
+      dockerfile: Dockerfile.encryption
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+        PIP_PROXY: ${PIP_PROXY:-}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        PIP_EXTRA_INDEX_URL: ${PIP_EXTRA_INDEX_URL:-}
+    environment:
+      ENCRYPTION_KEY_FILE: /var/lib/api-test-encryption/key
+      ENCRYPTION_INITIAL_KEY: ${API_TEST_ENCRYPTION_KEY:-}
+    volumes:
+      - encryption_keys:/var/lib/api-test-encryption
+    networks:
+      - encryption_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8766/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build:
       context: .
@@ -16,7 +41,9 @@ services:
     environment:
       API_TEST_HOST: 0.0.0.0
       API_TEST_PORT: "8765"
-      EXAMPLE_PROJECT: ${EXAMPLE_PROJECT:-false}
+      EXAMPLE_PROJECT: ${EXAMPLE_PROJECT:-true}
+      API_TEST_ENCRYPTION_URL: http://encryption:8766
+      STUDIO_DB_PATH: /app/data/studio.db
     ports:
       - "${API_PORT:-8765}:8765"
     volumes:
@@ -24,6 +51,13 @@ services:
       - ./pipelines:/app/pipelines
       - "${LOG_VOLUME_PATH:-./logs}:/app/logs"
       - "${PROJECT_VOLUME_PATH:-./projects}:/app/projects"
+      - "${DATA_VOLUME_PATH:-./data}:/app/data"
+    networks:
+      - app_network
+      - encryption_network
+    depends_on:
+      encryption:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/cases')"]
       interval: 5s
@@ -42,8 +76,6 @@ services:
         NPM_HTTPS_PROXY: ${HTTPS_PROXY:-}
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
         NPM_STRICT_SSL: ${NPM_STRICT_SSL:-true}
-    env_file:
-      - .env
     environment:
       VITE_HOST: 0.0.0.0
       VITE_API_PROXY_TARGET: http://api:8765
@@ -52,9 +84,17 @@ services:
     volumes:
       - ./web:/app
       - web_node_modules:/app/node_modules
+    networks:
+      - app_network
     depends_on:
       api:
         condition: service_healthy
 
 volumes:
   web_node_modules:
+  encryption_keys:
+
+networks:
+  app_network:
+  encryption_network:
+    internal: true

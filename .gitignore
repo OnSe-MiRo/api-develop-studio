@@ -2,5 +2,6 @@ __pycache__/
 *.py[cod]
 logs/
 test-logs/
+data/
 .DS_Store
 .env
