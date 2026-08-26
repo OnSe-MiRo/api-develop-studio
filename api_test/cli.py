@@ -157,17 +157,15 @@ def _result_lines(result: CaseResult) -> list[str]:
             f"expected={_json_log_value(difference.expected, result.sensitive_values)}, "
             f"actual={_json_log_value(difference.actual, result.sensitive_values)}"
         )
+    if result.response:
+        lines.append(f"  actual_response={_json_log_value({'status': result.response.status, 'body': result.response.body}, result.sensitive_values)}")
     if result.status != "passed":
         request_value = result.request_definition or {}
         expected_value = dict(result.expected_definition or {})
         strict = expected_value.pop("strict", None)
-        actual_value: dict[str, Any] | None = None
-        if result.response:
-            actual_value = {"status": result.response.status, "body": result.response.body}
         lines.extend([
             f"  request_value={_json_log_value(request_value, result.sensitive_values)}",
             f"  expected_response={_json_log_value(expected_value, result.sensitive_values)}",
-            f"  actual_response={_json_log_value(actual_value, result.sensitive_values)}",
         ])
         if strict is not None:
             lines.append(f"  comparison_options={_json_log_value({'strict': strict})}")
