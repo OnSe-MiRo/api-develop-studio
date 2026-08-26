@@ -12,11 +12,21 @@
     "strict": true,
     "validation_modes": {
       "exact_body": true,
-      "conditions": false
+      "conditions": true
     },
     "body": {
       "authorized": true,
       "message": "API key accepted"
-    }
+    },
+    "assertions": [
+      {
+        "path": "body.authorized",
+        "operator": "type",
+        "value": "boolean"
+      }
+    ]
+  },
+  "variables": {
+    "secret": {}
   }
 }
