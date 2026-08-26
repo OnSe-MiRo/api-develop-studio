@@ -50,6 +50,12 @@ class ApiRunnerTest(unittest.TestCase):
         boolean_differences = compare_json({"enabled": True}, {"enabled": 1}, strict=False)
         self.assertEqual(boolean_differences[0].reason, "type mismatch")
 
+    def test_success_output_includes_actual_response(self) -> None:
+        case = {"request": {"url": "https://example.test/health"}, "expected": {"status": 200}}
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})):
+            result = ApiTestRunner().run_case("health", case)
+        self.assertIn('  actual_response={"status": 200, "body": {"ok": true}}', cli._result_lines(result))
+
     def test_response_assertions_pass_for_ranges_types_and_presence(self) -> None:
         case = {
             "request": {"url": "https://example.test/metrics"},
