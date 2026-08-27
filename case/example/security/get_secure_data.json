@@ -23,6 +23,12 @@
         "path": "body.authorized",
         "operator": "type",
         "value": "boolean"
+      },
+      {
+        "path": "body.message",
+        "operator": "type",
+        "value": "string",
+        "format": "time"
       }
     ]
   },

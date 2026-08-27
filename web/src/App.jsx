@@ -1,4 +1,5 @@
 import { Component, useEffect, useState } from 'react'
+import './format-menu.css'
 
 const emptyCase = {
   tag: 'sample', apiName: 'api_name', fileName: 'new_case', method: 'GET', url: '',
@@ -14,19 +15,40 @@ const typeLabel = type => ({ number: '숫자', integer: '정수', string: '문�
 const defaultAssertionOperator = type => type === 'string' || type === 'array' ? 'length_between' : ['boolean', 'object', 'null'].includes(type) ? 'type' : 'between'
 const emptyAssertionRow = variable => {
   const operator = defaultAssertionOperator(variable?.type)
-  return { path: variable?.path || 'body.', operator, value: operator === 'type' ? variable?.type || 'number' : '', min: '', max: '', includeMin: true, includeMax: true, confirmed: false }
+  return { path: variable?.path || 'body.', operator, value: operator === 'type' ? variable?.type || 'number' : '', format: 'none', pattern: '', min: '', max: '', includeMin: true, includeMax: true, confirmed: false }
 }
 const assertionOperators = [
   ['between', '범위 내'], ['gte', '이상'], ['gt', '초과'], ['lte', '이하'], ['lt', '미만'],
   ['exists', '필드 존재'], ['not_exists', '필드 미존재'], ['type', '데이터 타입'], ['length_between', '길이 범위'],
 ]
 const assertionTypes = [['number', '숫자'], ['integer', '정수'], ['string', '문자열'], ['boolean', 'boolean'], ['object', '객체'], ['array', '배열'], ['null', 'null']]
-const assertionFormRow = assertion => ({
-  path: asText(assertion?.path), operator: asText(assertion?.operator) || 'between',
-  value: assertion?.value === undefined ? '' : String(assertion.value),
-  min: assertion?.min === undefined ? '' : String(assertion.min), max: assertion?.max === undefined ? '' : String(assertion.max),
-  includeMin: assertion?.include_min ?? true, includeMax: assertion?.include_max ?? true, confirmed: true,
-})
+const stringFormats = [
+  ['none', '검증 안 함'],
+  ['base64url', 'Base64 URL (base64url, deprecated)'], ['binary', '바이너리 (binary, deprecated)'], ['byte', 'Base64 (byte, deprecated)'], ['char', '단일 문자 (char)'],
+  ['commonmark', 'CommonMark (commonmark)'], ['date-time-local', '로컬 날짜·시간 (date-time-local)'], ['date-time', '날짜·시간 (date-time)'], ['date', '날짜 (date)'],
+  ['decimal', '고정 소수 (decimal)'], ['decimal128', 'Decimal128 (decimal128)'], ['duration', '기간 (duration)'], ['email', '이메일 (email)'],
+  ['hostname', '호스트명 (hostname)'], ['html', 'HTML (html)'], ['http-date', 'HTTP 날짜 (http-date)'], ['idn-email', '국제화 이메일 (idn-email)'],
+  ['idn-hostname', '국제화 호스트명 (idn-hostname)'], ['int64', '64비트 정수 (int64)'], ['ipv4-cidr', 'IPv4 CIDR (ipv4-cidr)'], ['ipv4', 'IPv4 (ipv4)'],
+  ['ipv6-cidr', 'IPv6 CIDR (ipv6-cidr)'], ['ipv6', 'IPv6 (ipv6)'], ['iri-reference', 'IRI 참조 (iri-reference)'], ['iri', 'IRI (iri)'],
+  ['json-pointer', 'JSON 포인터 (json-pointer)'], ['language', '언어 태그 (language)'], ['media-range', '미디어 범위 (media-range)'], ['password', '비밀번호 (password)'],
+  ['regex', '정규식 문자열 (regex)'], ['relative-json-pointer', '상대 JSON 포인터 (relative-json-pointer)'], ['sf-binary', 'Structured Field 이진값 (sf-binary)'],
+  ['sf-boolean', 'Structured Field 불리언 (sf-boolean)'], ['sf-string', 'Structured Field 문자열 (sf-string)'], ['sf-token', 'Structured Field 토큰 (sf-token)'],
+  ['time-local', '로컬 시간 (time-local)'], ['time', '시간 (time)'], ['uint64', '부호 없는 64비트 정수 (uint64)'], ['unixtime', 'Unix 시간 (unixtime)'],
+  ['uri-reference', 'URI 참조 (uri-reference)'], ['uri-template', 'URI 템플릿 (uri-template)'], ['uri', 'URI (uri)'], ['uuid', 'UUID (uuid)'],
+  ['custom', '기타 (정규식)'],
+]
+const stringFormatLabel = format => stringFormats.find(([value]) => value === format)?.[1] || format
+const assertionFormRow = assertion => {
+  const legacyFormat = assertion?.operator === 'format'
+  return {
+    path: asText(assertion?.path), operator: legacyFormat ? 'type' : asText(assertion?.operator) || 'between',
+    value: legacyFormat ? 'string' : assertion?.value === undefined ? '' : String(assertion.value),
+    format: legacyFormat ? asText(assertion?.value) || 'none' : asText(assertion?.format) || 'none',
+    pattern: asText(assertion?.pattern),
+    min: assertion?.min === undefined ? '' : String(assertion.min), max: assertion?.max === undefined ? '' : String(assertion.max),
+    includeMin: assertion?.include_min ?? true, includeMax: assertion?.include_max ?? true, confirmed: true,
+  }
+}
 const assertionCanConfirm = assertion => {
   if (!asText(assertion.path).trim()) return false
   if (assertion.operator === 'between' || assertion.operator === 'length_between') {
@@ -36,14 +58,23 @@ const assertionCanConfirm = assertion => {
     return assertion.operator !== 'length_between' || (Number.isInteger(min) && Number.isInteger(max) && min >= 0)
   }
   if (['gt', 'gte', 'lt', 'lte'].includes(assertion.operator)) return asText(assertion.value).trim() !== '' && Number.isFinite(Number(assertion.value))
-  if (assertion.operator === 'type') return assertionTypes.some(([value]) => value === assertion.value)
+  if (assertion.operator === 'type') {
+    if (!assertionTypes.some(([value]) => value === assertion.value)) return false
+    if (assertion.value !== 'string') return true
+    const format = assertion.format || 'none'
+    return stringFormats.some(([value]) => value === format) && (format !== 'custom' || asText(assertion.pattern).trim() !== '')
+  }
   return true
 }
 const assertionSummary = assertion => {
   const path = asText(assertion.path).trim() || '응답 경로 미지정'
   if (assertion.operator === 'between') return `${path} · ${assertion.min} ${assertion.includeMin ? '이상' : '초과'} · ${assertion.max} ${assertion.includeMax ? '이하' : '미만'}`
   if (assertion.operator === 'length_between') return `${path} · 길이 ${assertion.min}~${assertion.max}`
-  if (assertion.operator === 'type') return `${path} · 타입 ${typeLabel(assertion.value)}`
+  if (assertion.operator === 'type') {
+    if (assertion.value !== 'string') return `${path} · 타입 ${typeLabel(assertion.value)}`
+    const format = assertion.format || 'none'
+    return format === 'custom' ? `${path} · 타입 문자열 · 정규식 ${assertion.pattern}` : `${path} · 타입 문자열 · 형식 ${stringFormatLabel(format)}`
+  }
   if (assertion.operator === 'exists') return `${path} · 필드 존재`
   if (assertion.operator === 'not_exists') return `${path} · 필드 미존재`
   const operatorLabel = Object.fromEntries(assertionOperators)[assertion.operator] || assertion.operator
@@ -167,6 +198,84 @@ function JsonArea({ value, onChange, placeholder }) {
   return <textarea className="json-area" value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} spellCheck="false" />
 }
 
+function StringFormatPicker({ assertion, onUpdate }) {
+  const selectedFormat = assertion.format || 'none'
+  const [open, setOpen] = useState(false)
+  const selectedLabel = stringFormatLabel(selectedFormat)
+  const [query, setQuery] = useState(selectedLabel)
+  useEffect(() => setQuery(selectedLabel), [selectedLabel])
+  const normalizedQuery = query.trim().toLowerCase()
+  const matches = stringFormats.filter(([value, label]) => !normalizedQuery || value.includes(normalizedQuery) || label.toLowerCase().includes(normalizedQuery))
+  const selectFormat = value => {
+    onUpdate('format', value)
+    setOpen(false)
+  }
+  const handleQueryChange = event => {
+    const nextQuery = event.target.value
+    setQuery(nextQuery)
+    setOpen(true)
+    if (!nextQuery.trim()) {
+      onUpdate('format', 'none')
+    }
+  }
+  const handleBlur = () => {
+    setOpen(false)
+    if (!query.trim()) {
+      onUpdate('format', 'none')
+      setQuery(stringFormatLabel('none'))
+    } else {
+      setQuery(stringFormatLabel(assertion.format || 'none'))
+    }
+  }
+  const selectFirstMatch = event => {
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    if (!query.trim()) {
+      selectFormat('none')
+    } else if (matches.length) {
+      selectFormat(matches[0][0])
+    }
+  }
+  const handleFocus = () => {
+    setOpen(true)
+    setQuery('')
+    onUpdate('format', 'none')
+  }
+  return <div className="format-control field">
+    <span>format</span>
+    <div className="format-combobox">
+      <input
+        className="format-input"
+        aria-label="format"
+        placeholder=""
+        value={query}
+        onFocus={handleFocus}
+        onChange={handleQueryChange}
+        onBlur={handleBlur}
+        onKeyDown={selectFirstMatch}
+      />
+      {open && <div className="format-menu" role="listbox" aria-label="format 목록">
+        {matches.length ? matches.map(([value, label]) => (
+          <button
+            type="button"
+            role="option"
+            aria-selected={value === selectedFormat}
+            className={value === selectedFormat ? 'selected' : ''}
+            key={value}
+            onMouseDown={event => {
+              event.preventDefault()
+              selectFormat(value)
+            }}
+          >
+            {label}
+          </button>
+        )) : <p>검색 결과가 없습니다.</p>}
+      </div>}
+    </div>
+    {selectedFormat === 'custom' && <Field label="정규식"><input aria-label="정규식" value={assertion.pattern} placeholder="예: ^[A-Z]{3}-\\d{4}$" onChange={event => onUpdate('pattern', event.target.value)} /></Field>}
+  </div>
+}
+
 function AssertionEditor({ assertions, variables, enabled, onAdd, onUpdate, onConfirm, onSelectVariable, onRemove }) {
   return <div className={`assertion-builder ${enabled ? '' : 'inactive'}`}>
     <div className="assertion-heading"><div><div className="assertion-title"><strong>변수별 조건 설정</strong><span className={`method-status ${enabled ? 'enabled' : ''}`}>{enabled ? '실행 대상' : '실행 제외'}</span></div><p className="hint">{variables.length ? `기대 응답에서 ${variables.length}개 변수를 찾았습니다. ` : '기대 응답 JSON을 입력하면 변수를 자동으로 찾습니다. '}각 변수에 독립적인 조건을 등록할 수 있습니다.{enabled ? ' 등록한 모든 조건을 만족해야 통과합니다.' : ' 설정은 보존되지만 현재 실행에서는 검사하지 않습니다.'}</p></div><button className="ghost" onClick={onAdd}>＋ 변수 조건 추가</button></div>
@@ -181,7 +290,7 @@ function AssertionEditor({ assertions, variables, enabled, onAdd, onUpdate, onCo
       return <div className="assertion-row" key={index}>
         <div className="assertion-target"><Field label={`응답 변수 ${index + 1}`}><select value={selectedVariable?.path || '__custom__'} onChange={event => { const variable = variables.find(item => item.path === event.target.value); onSelectVariable(index, variable) }}><option value="__custom__">직접 경로 입력</option>{variables.map(variable => <option key={variable.path} value={variable.path}>{variable.path} · {typeLabel(variable.type)} · {variable.example}</option>)}</select></Field>{selectedVariable ? <small>{typeLabel(selectedVariable.type)} 변수 · 예시 {selectedVariable.example}</small> : <Field label="직접 경로"><input value={assertion.path} placeholder="body.age 또는 body.items.0" onChange={event => onUpdate(index, 'path', event.target.value)} /></Field>}</div>
         <Field label="조건"><select value={assertion.operator} onChange={event => onUpdate(index, 'operator', event.target.value)}>{assertionOperators.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
-        {rangeOperator ? <div className="assertion-range"><Field label="최솟값"><input type="number" min={assertion.operator === 'length_between' ? '0' : undefined} step={assertion.operator === 'length_between' ? '1' : 'any'} value={assertion.min} onChange={event => onUpdate(index, 'min', event.target.value)} /></Field><Field label="최댓값"><input type="number" min={assertion.operator === 'length_between' ? '0' : undefined} step={assertion.operator === 'length_between' ? '1' : 'any'} value={assertion.max} onChange={event => onUpdate(index, 'max', event.target.value)} /></Field>{assertion.operator === 'between' && <div className="assertion-boundaries"><label><input type="checkbox" checked={assertion.includeMin} onChange={event => onUpdate(index, 'includeMin', event.target.checked)} />최솟값 포함</label><label><input type="checkbox" checked={assertion.includeMax} onChange={event => onUpdate(index, 'includeMax', event.target.checked)} />최댓값 포함</label></div>}</div> : assertion.operator === 'type' ? <Field label="기대 타입"><select value={assertion.value || 'number'} onChange={event => onUpdate(index, 'value', event.target.value)}>{assertionTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field> : valueOperator ? <Field label="기준값"><input type="number" step="any" value={assertion.value} onChange={event => onUpdate(index, 'value', event.target.value)} /></Field> : <div className="assertion-no-value">추가 값 없이 경로만 검사합니다.</div>}
+        {rangeOperator ? <div className="assertion-range"><Field label="최솟값"><input type="number" min={assertion.operator === 'length_between' ? '0' : undefined} step={assertion.operator === 'length_between' ? '1' : 'any'} value={assertion.min} onChange={event => onUpdate(index, 'min', event.target.value)} /></Field><Field label="최댓값"><input type="number" min={assertion.operator === 'length_between' ? '0' : undefined} step={assertion.operator === 'length_between' ? '1' : 'any'} value={assertion.max} onChange={event => onUpdate(index, 'max', event.target.value)} /></Field>{assertion.operator === 'between' && <div className="assertion-boundaries"><label><input type="checkbox" checked={assertion.includeMin} onChange={event => onUpdate(index, 'includeMin', event.target.checked)} />최솟값 포함</label><label><input type="checkbox" checked={assertion.includeMax} onChange={event => onUpdate(index, 'includeMax', event.target.checked)} />최댓값 포함</label></div>}</div> : assertion.operator === 'type' ? <div className="type-condition"><Field label="데이터 타입"><select value={assertion.value || 'number'} onChange={event => onUpdate(index, 'value', event.target.value)}>{assertionTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>{assertion.value === 'string' && <StringFormatPicker assertion={assertion} onUpdate={(key, value) => onUpdate(index, key, value)} />}</div> : valueOperator ? <Field label="기준값"><input type="number" step="any" value={assertion.value} onChange={event => onUpdate(index, 'value', event.target.value)} /></Field> : <div className="assertion-no-value">추가 값 없이 경로만 검사합니다.</div>}
         <div className="assertion-row-actions"><button className="icon assertion-confirm" aria-label={`${index + 1}번째 조건 확인`} title={assertionCanConfirm(assertion) ? '입력 완료 및 조건 검증 활성화' : '조건 값을 모두 올바르게 입력하세요.'} disabled={!assertionCanConfirm(assertion)} onClick={() => onConfirm(index)}>✓</button><button className="icon danger" aria-label={`${index + 1}번째 조건 삭제`} title="조건 삭제" onClick={() => onRemove(index)}>×</button></div>
       </div>
     })}</div> : <div className="assertion-empty">등록된 조건이 없습니다. 기존 기대 응답 값 비교만 실행됩니다.</div>}
@@ -228,6 +337,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
   const [savedCaseSignature, setSavedCaseSignature] = useState('')
   const [storageMeta, setStorageMeta] = useState(null)
   const [docOperations, setDocOperations] = useState([])
+  const [selectedDocOperationId, setSelectedDocOperationId] = useState('')
   const [docsExpanded, setDocsExpanded] = useState(false)
   const [projectVariablesExpanded, setProjectVariablesExpanded] = useState(false)
   const [caseVariablesExpanded, setCaseVariablesExpanded] = useState(false)
@@ -303,7 +413,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     assertions: current.assertions.map((item, itemIndex) => {
       if (itemIndex !== index) return item
       if (key !== 'operator') return { ...item, [key]: value }
-      return { ...item, operator: value, value: value === 'type' ? 'number' : '', min: '', max: '', includeMin: true, includeMax: true }
+      return { ...item, operator: value, value: value === 'type' ? 'number' : '', format: 'none', pattern: '', min: '', max: '', includeMin: true, includeMax: true }
     }),
   }))
   const confirmAssertion = index => setForm(current => ({
@@ -317,6 +427,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       if (!docsSource) throw new Error('프로젝트 설정에서 OpenAPI/Swagger 문서 URL 또는 JSON 파일을 등록하세요.')
       const data = await api('/api/docs', { method: 'POST', body: JSON.stringify(docsSource.request) })
       setDocOperations(data.operations || [])
+      setSelectedDocOperationId('')
       setNotice(`${automatic ? '프로젝트 API 문서에서' : 'API 문서에서'} ${data.operations?.length || 0}개 API를 불러왔습니다.`)
     } catch (error) { setNotice(error.message) }
   }
@@ -329,6 +440,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
   const applyDocOperation = operationId => {
     const operation = docOperations.find(item => item.id === operationId)
     if (!operation) return
+    setSelectedDocOperationId(operationId)
     let url = operation.path
     const queryParams = []
     const headers = []
@@ -445,7 +557,25 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
           result.include_max = assertion.includeMax
         }
       }
-      if (assertion.operator === 'type') result.value = assertion.value || 'number'
+      if (assertion.operator === 'type') {
+        result.value = assertion.value || 'number'
+        if (result.value === 'string') {
+          result.format = assertion.format || 'none'
+          if (!stringFormats.some(([value]) => value === result.format)) throw new Error(`조건 ${row}의 문자열 format을 선택하세요.`)
+          if (result.format === 'custom') {
+            result.pattern = asText(assertion.pattern).trim()
+            if (!result.pattern) throw new Error(`조건 ${row}의 정규식을 입력하세요.`)
+          }
+        }
+      }
+      if (assertion.operator === 'format') {
+        result.value = assertion.value || 'none'
+        if (!stringFormats.some(([value]) => value === result.value)) throw new Error(`조건 ${row}의 형식을 선택하세요.`)
+        if (result.value === 'custom') {
+          result.pattern = asText(assertion.pattern).trim()
+          if (!result.pattern) throw new Error(`조건 ${row}의 정규식을 입력하세요.`)
+        }
+      }
       return result
     })
     const secret = {}
@@ -497,7 +627,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     <main className="editor">
       <section className="card"><div className="section-header"><div><p className="eyebrow">CASE SETTINGS</p><h2>{selected ? 'API 케이스 설정' : '새 API 케이스'}</h2></div><div className="actions"><button className="ghost" onClick={onBack}>목록으로</button>{selected && <button className="danger-button" onClick={removeCase}>삭제</button>}<button className="ghost" onClick={save}>저장</button></div></div>
         <div className="form-grid three"><Field label="Tag"><input value={form.tag} onChange={event => set('tag', event.target.value)} /></Field><Field label="API 이름"><input value={form.apiName} onChange={event => set('apiName', event.target.value)} /></Field><Field label="케이스 명"><input value={form.fileName} onChange={event => set('fileName', event.target.value)} /></Field></div>
-        <div className="case-resource-grid"><section className="docs-import"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT API DOCUMENT</p><h3>프로젝트 API 문서</h3></div><button className="ghost icon variable-expand" aria-label={docsExpanded ? '프로젝트 API 문서 접기' : '프로젝트 API 문서 확장'} title={docsExpanded ? '접기' : '확장'} aria-expanded={docsExpanded} onClick={() => setDocsExpanded(current => !current)}>{docsExpanded ? '−' : '+'}</button></div>{docsExpanded && <div className="variable-panel-content">{docsSource ? <><div className="docs-source"><span>문서 원본</span><code>{docsSource.label}</code></div><button className="ghost" onClick={() => loadDocs()}>문서 새로 불러오기</button>{docOperations.length > 0 && <Field label="문서 API 선택" wide><select value="" onChange={event => applyDocOperation(event.target.value)}><option value="">API를 선택하세요. ({docOperations.length}개)</option>{docOperations.map(operation => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}{operation.summary ? ` — ${operation.summary}` : ''}</option>)}</select></Field>}</> : <p className="hint">프로젝트 설정에서 OpenAPI / Swagger 문서 URL 또는 JSON 파일을 등록하면 API 목록을 자동으로 불러옵니다.</p>}<p className="hint">API를 선택하면 Params·Headers·Body와 기대 응답 예시가 자동 입력됩니다.</p></div>}</section>{availableProjectVariables.length > 0 && <section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT VARIABLES</p><h3>프로젝트 공통 변수 <span className="count">{availableProjectVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={projectVariablesExpanded ? '프로젝트 공통 변수 접기' : '프로젝트 공통 변수 확장'} title={projectVariablesExpanded ? '접기' : '확장'} aria-expanded={projectVariablesExpanded} onClick={() => setProjectVariablesExpanded(current => !current)}>{projectVariablesExpanded ? '−' : '+'}</button></div>{projectVariablesExpanded && <div className="variable-panel-content"><p className="hint">URL·Params·Authorization·Headers·Body에서 참조식을 사용할 수 있습니다.</p><div className="project-variable-chips">{availableProjectVariables.map(variable => <button className={variable.secret ? 'secret' : ''} key={variable.name} onClick={() => copyProjectVariable(variable.name)}><span>{variable.secret ? '보안' : '일반'}</span><code>{`{{project.${variable.name}}}`}</code><small>복사</small></button>)}</div></div>}</section>}<section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">CASE SECRET VARIABLES</p><h3>케이스 전용 보안 변수 <span className="count">{availableCaseVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={caseVariablesExpanded ? '케이스 전용 보안 변수 접기' : '케이스 전용 보안 변수 확장'} title={caseVariablesExpanded ? '접기' : '확장'} aria-expanded={caseVariablesExpanded} onClick={() => setCaseVariablesExpanded(current => !current)}>{caseVariablesExpanded ? '−' : '+'}</button></div>{caseVariablesExpanded && <div className="variable-panel-content"><p className="hint">이 케이스에서만 사용할 API Key·토큰을 암호화해 저장합니다.</p><ProjectVariableRows secret items={form.secretVariables} onAdd={addCaseSecretVariable} onUpdate={updateCaseSecretVariable} onRemove={removeCaseSecretVariable} />{availableCaseVariables.length > 0 && <div className="project-variable-chips">{availableCaseVariables.map(variable => <button className="secret" key={variable.name} onClick={() => copyCaseVariable(variable.name)}><span>보안</span><code>{`{{case.${variable.name}}}`}</code><small>복사</small></button>)}</div>}</div>}</section></div>
+        <div className="case-resource-grid"><section className="docs-import"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT API DOCUMENT</p><h3>프로젝트 API 문서</h3></div><button className="ghost icon variable-expand" aria-label={docsExpanded ? '프로젝트 API 문서 접기' : '프로젝트 API 문서 확장'} title={docsExpanded ? '접기' : '확장'} aria-expanded={docsExpanded} onClick={() => setDocsExpanded(current => !current)}>{docsExpanded ? '−' : '+'}</button></div>{docsExpanded && <div className="variable-panel-content">{docsSource ? <><div className="docs-source"><span>문서 원본</span><code>{docsSource.label}</code></div><button className="ghost" onClick={() => loadDocs()}>문서 새로 불러오기</button>{docOperations.length > 0 && <Field label="문서 API 선택" wide><select className="document-operation-select" value={selectedDocOperationId} onChange={event => applyDocOperation(event.target.value)}><option value="">API를 선택하세요. ({docOperations.length}개)</option>{docOperations.map(operation => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</select></Field>}</> : <p className="hint">프로젝트 설정에서 OpenAPI / Swagger 문서 URL 또는 JSON 파일을 등록하면 API 목록을 자동으로 불러옵니다.</p>}<p className="hint">API를 선택하면 Params·Headers·Body와 기대 응답 예시가 자동 입력됩니다.</p></div>}</section>{availableProjectVariables.length > 0 && <section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT VARIABLES</p><h3>프로젝트 공통 변수 <span className="count">{availableProjectVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={projectVariablesExpanded ? '프로젝트 공통 변수 접기' : '프로젝트 공통 변수 확장'} title={projectVariablesExpanded ? '접기' : '확장'} aria-expanded={projectVariablesExpanded} onClick={() => setProjectVariablesExpanded(current => !current)}>{projectVariablesExpanded ? '−' : '+'}</button></div>{projectVariablesExpanded && <div className="variable-panel-content"><p className="hint">URL·Params·Authorization·Headers·Body에서 참조식을 사용할 수 있습니다.</p><div className="project-variable-chips">{availableProjectVariables.map(variable => <button className={variable.secret ? 'secret' : ''} key={variable.name} onClick={() => copyProjectVariable(variable.name)}><span>{variable.secret ? '보안' : '일반'}</span><code>{`{{project.${variable.name}}}`}</code><small>복사</small></button>)}</div></div>}</section>}<section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">CASE SECRET VARIABLES</p><h3>케이스 전용 보안 변수 <span className="count">{availableCaseVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={caseVariablesExpanded ? '케이스 전용 보안 변수 접기' : '케이스 전용 보안 변수 확장'} title={caseVariablesExpanded ? '접기' : '확장'} aria-expanded={caseVariablesExpanded} onClick={() => setCaseVariablesExpanded(current => !current)}>{caseVariablesExpanded ? '−' : '+'}</button></div>{caseVariablesExpanded && <div className="variable-panel-content"><p className="hint">이 케이스에서만 사용할 API Key·토큰을 암호화해 저장합니다.</p><ProjectVariableRows secret items={form.secretVariables} onAdd={addCaseSecretVariable} onUpdate={updateCaseSecretVariable} onRemove={removeCaseSecretVariable} />{availableCaseVariables.length > 0 && <div className="project-variable-chips">{availableCaseVariables.map(variable => <button className="secret" key={variable.name} onClick={() => copyCaseVariable(variable.name)}><span>보안</span><code>{`{{case.${variable.name}}}`}</code><small>복사</small></button>)}</div>}</div>}</section></div>
       </section>
       <section className="card request-card"><div className="request-bar"><select className="method" value={form.method} onChange={event => set('method', event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => <option key={method}>{method}</option>)}</select><input className="url-input" value={form.url} placeholder="/v1/users (프로젝트 Base URL 기준)" onChange={event => set('url', event.target.value)} /></div>
         <div className="tabs">{['Params', 'Authorization', 'Headers', 'Body'].map(tab => <button key={tab} className={requestTab === tab ? 'active' : ''} onClick={() => setRequestTab(tab)}>{tab}</button>)}</div>
@@ -509,7 +639,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       </section>
       <section className="card">
         <div className="section-header"><div><p className="eyebrow">ASSERTION</p><h2>기대 응답</h2></div></div>
-        <div className="validation-method-section"><strong>검증 방법</strong><p className="hint">두 방법 중 하나만 선택하거나 둘 다 선택할 수 있습니다. Expected status는 선택과 관계없이 항상 검증합니다.</p><div className="validation-methods"><label className={`validation-method ${form.validateExact ? 'selected' : ''}`}><input type="checkbox" checked={form.validateExact} onChange={event => set('validateExact', event.target.checked)} /><span><strong>기대 응답 일치</strong><small>Expected body와 실제 응답의 값·구조를 비교합니다.</small></span></label><label className={`validation-method ${form.validateConditions ? 'selected' : ''}`}><input type="checkbox" checked={form.validateConditions} onChange={event => set('validateConditions', event.target.checked)} /><span><strong>변수별 조건</strong><small>선택한 변수의 범위·타입·존재·길이를 검사합니다.</small></span></label></div></div>
+        <div className="validation-method-section"><strong>검증 방법</strong><p className="hint">두 방법 중 하나만 선택하거나 둘 다 선택할 수 있습니다. Expected status는 선택과 관계없이 항상 검증합니다.</p><div className="validation-methods"><label className={`validation-method ${form.validateExact ? 'selected' : ''}`}><input type="checkbox" checked={form.validateExact} onChange={event => set('validateExact', event.target.checked)} /><span><strong>기대 응답 일치</strong><small>Expected body와 실제 응답의 값·구조를 비교합니다.</small></span></label><label className={`validation-method ${form.validateConditions ? 'selected' : ''}`}><input type="checkbox" checked={form.validateConditions} onChange={event => set('validateConditions', event.target.checked)} /><span><strong>변수별 조건</strong><small>선택한 변수의 범위·타입·형식·존재·길이를 검사합니다.</small></span></label></div></div>
         <div className="expected-controls"><Field label="Expected status"><input value={form.expectedStatus} onChange={event => set('expectedStatus', event.target.value)} /></Field>{form.validateExact && <label className="toggle"><input type="checkbox" checked={form.strict} onChange={event => set('strict', event.target.checked)} /><span>strict 비교</span></label>}</div>
         {(form.validateExact || form.validateConditions) && <><div className="expected-body-heading"><strong>{form.validateExact ? form.validateConditions ? 'Expected body / 변수 예시 JSON' : 'Expected body' : '변수 예시 JSON'}</strong><span>{form.validateExact ? form.validateConditions ? '일치 검증과 변수 조건 선택에 사용' : '일치 검증에 사용' : '변수 조건 선택에 사용'}</span></div><JsonArea value={form.expectedBody} onChange={value => set('expectedBody', value)} placeholder={'{\n  "id": 1\n}'} /></>}
         {form.validateConditions && <AssertionEditor assertions={form.assertions} variables={responseVariables} enabled onAdd={addAssertion} onUpdate={updateAssertion} onConfirm={confirmAssertion} onSelectVariable={selectAssertionVariable} onRemove={removeAssertion} />}
@@ -592,7 +722,7 @@ function PipelineEditor({ caseItems, refresh, projectRef, project, onNavigate, o
       await refresh(); setFileName('new_pipeline.json'); setSteps([]); setMappingEditor(null); setSelected(''); setStorageMeta(null); setResult(null); setNotice(`삭제됨: pipelines/${selected}`)
     } catch (error) { setNotice(error.message) }
   }
-  const move = (index, offset) => { setMappingEditor(null); setSteps(current => { const target = index + offset; if (target < 0 || target >= current.length) return current; const next = [...current]; [next[index], next[target]] = [next[target], next[index]]; return next }) }
+  const move = (index, offset) => { setMappingEditor(null); setSteps(current => { const target = index + offset; if (target < 0 || target >= current.length) return current; const next = [...current];[next[index], next[target]] = [next[target], next[index]]; return next }) }
   const openMappings = index => setMappingEditor({ index, mappings: steps[index].input_mappings || [], draft: newMappingDraft() })
   const updateMappingDraft = (key, value) => setMappingEditor(current => current ? { ...current, draft: { ...current.draft, [key]: value } } : current)
   const addMapping = () => {
