@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import copy
+import base64
+import binascii
+import ipaddress
 import json
 import mimetypes
 import re
@@ -10,6 +13,8 @@ import urllib.error
 import urllib.request
 import uuid
 from dataclasses import dataclass, field
+from datetime import date, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -26,8 +31,17 @@ from .project_variables import (
 
 REFERENCE_PATTERN = re.compile(r"\$\{([A-Za-z_][\w-]*)\.response\.(body|status)(?:\.([\w.]+))?\}")
 ASSERTION_PATH_PATTERN = re.compile(r"^(?:\$\.)?(?:body(?:\.(?:[A-Za-z_][\w-]*|\d+))*|status)$")
-ASSERTION_OPERATORS = {"gt", "gte", "lt", "lte", "between", "exists", "not_exists", "type", "length_between"}
+ASSERTION_OPERATORS = {"gt", "gte", "lt", "lte", "between", "exists", "not_exists", "type", "length_between", "format"}
 JSON_TYPE_NAMES = {"number", "integer", "string", "boolean", "object", "array", "null"}
+NO_STRING_FORMAT = "none"
+CUSTOM_STRING_FORMAT = "custom"
+STRING_FORMATS = {
+    "base64url", "binary", "byte", "char", "commonmark", "date-time-local", "date-time", "date", "decimal", "decimal128",
+    "duration", "email", "hostname", "html", "http-date", "idn-email", "idn-hostname", "int64", "ipv4-cidr", "ipv4",
+    "ipv6-cidr", "ipv6", "iri-reference", "iri", "json-pointer", "language", "media-range", "password", "regex",
+    "relative-json-pointer", "sf-binary", "sf-boolean", "sf-string", "sf-token", "time-local", "time", "uint64", "unixtime",
+    "uri-reference", "uri-template", "uri", "uuid",
+}
 MISSING = object()
 
 
@@ -281,6 +295,159 @@ def _json_type_matches(value: Any, expected_type: str) -> bool:
     }[expected_type]
 
 
+def _base64_matches(value: str, *, urlsafe: bool = False) -> bool:
+    alphabet = r"[A-Za-z0-9_-]" if urlsafe else r"[A-Za-z0-9+/]"
+    if not re.fullmatch(rf"{alphabet}*(?:={{1,2}})?", value) or "=" in value.rstrip("="):
+        return False
+    try:
+        padding = "=" * (-len(value) % 4)
+        base64.b64decode(value + padding, altchars=b"-_" if urlsafe else None, validate=True)
+        return True
+    except (ValueError, binascii.Error):
+        return False
+
+
+def _hostname_matches(value: str) -> bool:
+    hostname = value[:-1] if value.endswith(".") else value
+    if not hostname or len(hostname) > 253:
+        return False
+    return all(re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label) for label in hostname.split("."))
+
+
+def _time_matches(value: str, *, timezone_required: bool) -> bool:
+    match = re.fullmatch(r"(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:(Z)|([+-])(\d{2}):(\d{2}))?", value)
+    if not match:
+        return False
+    hour, minute, second = (int(match.group(index)) for index in range(1, 4))
+    has_timezone = bool(match.group(4) or match.group(5))
+    if hour > 23 or minute > 59 or second > 60 or has_timezone != timezone_required:
+        return False
+    return not match.group(5) or (int(match.group(6)) <= 23 and int(match.group(7)) <= 59)
+
+
+def _date_time_matches(value: str, *, timezone_required: bool) -> bool:
+    date_part, separator, time_part = value.partition("T")
+    if not separator:
+        return False
+    try:
+        date.fromisoformat(date_part)
+    except ValueError:
+        return False
+    return _time_matches(time_part, timezone_required=timezone_required)
+
+
+def _uri_reference_matches(value: str) -> bool:
+    return not re.search(r"\s", value) and not re.search(r"%(?![0-9A-Fa-f]{2})", value)
+
+
+def _string_format_matches(value: str, expected_format: str) -> bool:
+    if expected_format in {"binary", "commonmark", "html", "password"}:
+        return True
+    if expected_format == "base64url":
+        return _base64_matches(value, urlsafe=True)
+    if expected_format == "byte":
+        return _base64_matches(value)
+    if expected_format == "char":
+        return len(value) == 1
+    if expected_format == "date":
+        try:
+            date.fromisoformat(value)
+            return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", value))
+        except ValueError:
+            return False
+    if expected_format == "date-time":
+        return _date_time_matches(value, timezone_required=True)
+    if expected_format == "date-time-local":
+        return _date_time_matches(value, timezone_required=False)
+    if expected_format == "time":
+        return _time_matches(value, timezone_required=True)
+    if expected_format == "time-local":
+        return _time_matches(value, timezone_required=False)
+    if expected_format == "duration":
+        return bool(re.fullmatch(r"P(?=\d|T\d)(?:\d+Y)?(?:\d+M)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?", value))
+    if expected_format in {"email", "idn-email"}:
+        return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value))
+    if expected_format in {"hostname", "idn-hostname"}:
+        try:
+            return _hostname_matches(value.encode("idna").decode("ascii"))
+        except UnicodeError:
+            return False
+    if expected_format == "http-date":
+        try:
+            return parsedate_to_datetime(value) is not None
+        except (TypeError, ValueError):
+            return False
+    if expected_format in {"decimal", "decimal128"}:
+        if not re.fullmatch(r"[+-]?\d+(?:\.\d+)?", value):
+            return False
+        return expected_format != "decimal128" or len(value.lstrip("+-").replace(".", "")) <= 34
+    if expected_format == "int64":
+        return bool(re.fullmatch(r"-?\d+", value)) and -(2**63) <= int(value) < 2**63
+    if expected_format == "uint64":
+        return bool(re.fullmatch(r"\d+", value)) and int(value) < 2**64
+    if expected_format == "unixtime":
+        return bool(re.fullmatch(r"-?\d+", value))
+    if expected_format in {"ipv4", "ipv6"}:
+        try:
+            return ipaddress.ip_address(value).version == (4 if expected_format == "ipv4" else 6)
+        except ValueError:
+            return False
+    if expected_format in {"ipv4-cidr", "ipv6-cidr"}:
+        try:
+            return "/" in value and ipaddress.ip_network(value, strict=False).version == (4 if expected_format == "ipv4-cidr" else 6)
+        except ValueError:
+            return False
+    if expected_format in {"iri", "uri"}:
+        return _uri_reference_matches(value) and bool(re.match(r"[A-Za-z][A-Za-z0-9+.-]*:", value))
+    if expected_format in {"iri-reference", "uri-reference"}:
+        return _uri_reference_matches(value)
+    if expected_format == "uri-template":
+        expressions = re.findall(r"\{[^{}]+\}", value)
+        return _uri_reference_matches(value) and value.count("{") == len(expressions) and value.count("}") == len(expressions)
+    if expected_format == "uuid":
+        try:
+            return str(uuid.UUID(value)) == value.lower()
+        except ValueError:
+            return False
+    if expected_format == "json-pointer":
+        return bool(re.fullmatch(r"(?:/(?:[^~/]|~[01])*)*", value))
+    if expected_format == "relative-json-pointer":
+        return bool(re.fullmatch(r"(?:0|[1-9]\d*)(?:#|(?:/(?:[^~/]|~[01])*)*)", value))
+    if expected_format == "language":
+        return bool(re.fullmatch(r"(?:[A-Za-z]{2,8}|x)(?:-[A-Za-z0-9]{1,8})*", value))
+    if expected_format == "media-range":
+        return bool(re.fullmatch(r"[^/\s;]+/(?:[^\s;]+|\*)(?:\s*;\s*[^=\s;]+=[^;]+)*", value))
+    if expected_format == "regex":
+        try:
+            re.compile(value)
+            return True
+        except re.error:
+            return False
+    if expected_format == "sf-binary":
+        return len(value) >= 2 and value.startswith(":") and value.endswith(":") and _base64_matches(value[1:-1])
+    if expected_format == "sf-boolean":
+        return value in {"?0", "?1"}
+    if expected_format == "sf-string":
+        return bool(re.fullmatch(r'"(?:[\x20-\x21\x23-\x5B\x5D-\x7E]|\\["\\])*"', value))
+    if expected_format == "sf-token":
+        return bool(re.fullmatch(r"[A-Za-z*][!#$%&'*+\-.^_`|~:/0-9A-Za-z]*", value))
+    return False
+
+
+def _validate_string_format(expected_format: Any, pattern: Any, prefix: str) -> None:
+    if expected_format not in STRING_FORMATS | {NO_STRING_FORMAT, CUSTOM_STRING_FORMAT}:
+        raise CaseConfigurationError(f"{prefix} must be one of: {', '.join(sorted(STRING_FORMATS | {NO_STRING_FORMAT, CUSTOM_STRING_FORMAT}))}")
+    if expected_format != CUSTOM_STRING_FORMAT:
+        return
+    pattern_prefix = f"{prefix.rpartition('.')[0]}.pattern"
+    if not isinstance(pattern, str) or not pattern:
+        raise CaseConfigurationError(f"{pattern_prefix} must be a non-empty regular expression for custom format")
+    try:
+        re.compile(pattern)
+    except re.error as error:
+        raise CaseConfigurationError(f"{pattern_prefix} is not a valid regular expression: {error}") from error
+
+
 def validate_assertions(assertions: Any) -> None:
     """Validate response conditions before an HTTP request is sent."""
     if assertions is None:
@@ -315,8 +482,16 @@ def validate_assertions(assertions: Any) -> None:
                 raise CaseConfigurationError(f"{prefix}.min and max must be non-negative integers for length_between")
             if minimum > maximum:
                 raise CaseConfigurationError(f"{prefix}.min must be less than or equal to max")
-        elif operator == "type" and assertion.get("value") not in JSON_TYPE_NAMES:
-            raise CaseConfigurationError(f"{prefix}.value must be one of: {', '.join(sorted(JSON_TYPE_NAMES))}")
+        elif operator == "format":
+            _validate_string_format(assertion.get("value", NO_STRING_FORMAT), assertion.get("pattern"), f"{prefix}.value")
+        elif operator == "type":
+            expected_type = assertion.get("value")
+            if expected_type not in JSON_TYPE_NAMES:
+                raise CaseConfigurationError(f"{prefix}.value must be one of: {', '.join(sorted(JSON_TYPE_NAMES))}")
+            if expected_type == "string":
+                _validate_string_format(assertion.get("format", NO_STRING_FORMAT), assertion.get("pattern"), f"{prefix}.format")
+            elif "format" in assertion:
+                raise CaseConfigurationError(f"{prefix}.format is only supported when {prefix}.value is string")
 
 
 def response_validation_modes(expected: dict[str, Any]) -> tuple[bool, bool]:
@@ -372,8 +547,24 @@ def evaluate_assertions(assertions: Any, response: HttpResponse) -> tuple[list[A
             record(False, None, "assertion path missing")
             continue
         if operator == "type":
-            passed = _json_type_matches(actual, assertion["value"])
-            record(passed, actual, f"type matched: {assertion['value']}" if passed else f"type mismatch: expected {assertion['value']}")
+            expected_type = assertion["value"]
+            if not _json_type_matches(actual, expected_type):
+                record(False, actual, f"type mismatch: expected {expected_type}")
+                continue
+            if expected_type != "string":
+                record(True, actual, f"type matched: {expected_type}")
+                continue
+            expected_format = assertion.get("format", NO_STRING_FORMAT)
+            if expected_format == NO_STRING_FORMAT:
+                record(True, actual, "type matched: string; format validation skipped")
+                continue
+            if expected_format == CUSTOM_STRING_FORMAT:
+                pattern = assertion["pattern"]
+                passed = re.fullmatch(pattern, actual) is not None
+                record(passed, actual, "custom format matched" if passed else f"format mismatch: pattern {pattern}")
+                continue
+            passed = _string_format_matches(actual, expected_format)
+            record(passed, actual, f"format matched: {expected_format}" if passed else f"format mismatch: expected {expected_format}")
             continue
         if operator == "length_between":
             if not isinstance(actual, (str, list)):
@@ -383,6 +574,22 @@ def evaluate_assertions(assertions: Any, response: HttpResponse) -> tuple[list[A
             passed = assertion["min"] <= actual_length <= assertion["max"]
             description = f"expected {assertion['min']} <= length <= {assertion['max']}, actual length {actual_length}"
             record(passed, actual_length, description if passed else f"length condition not met: {description}")
+            continue
+        if operator == "format":
+            expected_format = assertion.get("value", NO_STRING_FORMAT)
+            if expected_format == NO_STRING_FORMAT:
+                record(True, actual, "format validation skipped")
+                continue
+            if not isinstance(actual, str):
+                record(False, actual, "format assertion requires a string")
+                continue
+            if expected_format == CUSTOM_STRING_FORMAT:
+                pattern = assertion["pattern"]
+                passed = re.fullmatch(pattern, actual) is not None
+                record(passed, actual, "custom format matched" if passed else f"format mismatch: pattern {pattern}")
+                continue
+            passed = _string_format_matches(actual, expected_format)
+            record(passed, actual, f"format matched: {expected_format}" if passed else f"format mismatch: expected {expected_format}")
             continue
         if not _is_number(actual):
             record(False, actual, "numeric assertion requires a number")

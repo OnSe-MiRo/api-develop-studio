@@ -132,6 +132,8 @@ class ApiRunnerTest(unittest.TestCase):
             {"path": "body.name", "operator": "type", "value": "integer"},
             {"path": "body.name", "operator": "length_between", "min": 1, "max": 3},
             {"path": "body.name", "operator": "length_between", "min": 1, "max": 2},
+            {"path": "body.email", "operator": "format", "value": "email"},
+            {"path": "body.name", "operator": "format", "value": "email"},
         ]
         case = {
             "request": {"url": "https://example.test/metrics"},
@@ -140,12 +142,12 @@ class ApiRunnerTest(unittest.TestCase):
                 "validation_modes": {"exact_body": False, "conditions": True},
             },
         }
-        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"score": 5, "name": "Ada"})):
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"score": 5, "name": "Ada", "email": "ada@example.test"})):
             result = ApiTestRunner().run_case("all_operators", case)
         self.assertEqual(result.status, "failed")
-        self.assertEqual(len(result.assertion_results), 18)
-        self.assertEqual(sum(item.passed for item in result.assertion_results), 9)
-        self.assertEqual(len(result.differences), 9)
+        self.assertEqual(len(result.assertion_results), 20)
+        self.assertEqual(sum(item.passed for item in result.assertion_results), 10)
+        self.assertEqual(len(result.differences), 10)
         for operator in {assertion["operator"] for assertion in assertions}:
             states = {item.passed for item in result.assertion_results if item.operator == operator}
             self.assertEqual(states, {True, False}, operator)
@@ -167,6 +169,96 @@ class ApiRunnerTest(unittest.TestCase):
             result.differences[0].reason,
             "length condition not met: expected 1 <= length <= 2, actual length 3",
         )
+
+    def test_string_format_conditions_support_standard_formats(self) -> None:
+        format_values = {
+            "base64url": "SGVsbG8", "binary": "any sequence", "byte": "SGVsbG8=", "char": "A", "commonmark": "# Heading",
+            "date-time-local": "2026-08-27T12:34:56", "date-time": "2026-08-27T12:34:56Z", "date": "1815-12-10",
+            "decimal": "-12.34", "decimal128": "3.141592653589793238462643383279502", "duration": "P1Y2M3DT4H5M6.7S",
+            "email": "ada@example.test", "hostname": "example.test", "html": "<strong>Ada</strong>", "http-date": "Sun, 06 Nov 1994 08:49:37 GMT",
+            "idn-email": "사용자@예시.테스트", "idn-hostname": "예시.테스트", "int64": "-9223372036854775808", "ipv4-cidr": "192.0.2.0/24",
+            "ipv4": "192.0.2.1", "ipv6-cidr": "2001:db8::/32", "ipv6": "2001:db8::1", "iri-reference": "/사용자/1", "iri": "https://예시.테스트/사용자",
+            "json-pointer": "/users/0/name", "language": "ko-KR", "media-range": "application/json", "password": "secret", "regex": "^[A-Z]+$",
+            "relative-json-pointer": "0/users", "sf-binary": ":SGVsbG8=:", "sf-boolean": "?1", "sf-string": '"hello"', "sf-token": "token-1",
+            "time-local": "12:34:56.123", "time": "12:34:56Z", "uint64": "18446744073709551615", "unixtime": "0",
+            "uri-reference": "/users/1?name=Ada", "uri-template": "https://example.test/users/{id}", "uri": "https://example.test/users/1",
+            "uuid": "550e8400-e29b-41d4-a716-446655440000",
+        }
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {
+                "status": 200,
+                "assertions": [{"path": f"body.{format_name}", "operator": "format", "value": format_name} for format_name in format_values],
+            },
+        }
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, format_values)):
+            result = ApiTestRunner().run_case("formats", case)
+        self.assertEqual(result.status, "passed")
+        self.assertEqual(len(result.assertion_results), len(format_values))
+        self.assertTrue(all(item.passed for item in result.assertion_results))
+
+    def test_string_format_allows_no_validation_and_custom_regular_expression(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {"assertions": [
+                {"path": "body.unchecked", "operator": "format", "value": "none"},
+                {"path": "body.code", "operator": "format", "value": "custom", "pattern": r"API-\d{4}"},
+                {"path": "body.invalid_code", "operator": "format", "value": "custom", "pattern": r"API-\d{4}"},
+            ]},
+        }
+        response = {"unchecked": 1, "code": "API-2026", "invalid_code": "API-ABC"}
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, response)):
+            result = ApiTestRunner().run_case("custom_format", case)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual([item.passed for item in result.assertion_results], [True, True, False])
+        self.assertEqual(result.differences[0].reason, "format mismatch: pattern API-\\d{4}")
+
+    def test_string_type_condition_can_skip_or_validate_format(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {"assertions": [
+                {"path": "body.unchecked", "operator": "type", "value": "string", "format": "none"},
+                {"path": "body.email", "operator": "type", "value": "string", "format": "email"},
+                {"path": "body.code", "operator": "type", "value": "string", "format": "custom", "pattern": r"API-\d{4}"},
+                {"path": "body.invalid_code", "operator": "type", "value": "string", "format": "custom", "pattern": r"API-\d{4}"},
+            ]},
+        }
+        response = {"unchecked": "anything", "email": "ada@example.test", "code": "API-2026", "invalid_code": "API-ABC"}
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, response)):
+            result = ApiTestRunner().run_case("string_type_format", case)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual([item.passed for item in result.assertion_results], [True, True, True, False])
+        self.assertEqual(result.differences[0].reason, "format mismatch: pattern API-\\d{4}")
+
+    def test_invalid_string_format_is_rejected_before_request(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {"assertions": [{"path": "body.email", "operator": "format", "value": "phone"}]},
+        }
+        with patch("api_test.runner.urllib.request.urlopen") as urlopen:
+            with self.assertRaisesRegex(CaseConfigurationError, "value must be one of"):
+                ApiTestRunner().run_case("invalid_format", case)
+        urlopen.assert_not_called()
+
+    def test_invalid_custom_string_format_is_rejected_before_request(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {"assertions": [{"path": "body.code", "operator": "format", "value": "custom", "pattern": "["}]},
+        }
+        with patch("api_test.runner.urllib.request.urlopen") as urlopen:
+            with self.assertRaisesRegex(CaseConfigurationError, "pattern is not a valid regular expression"):
+                ApiTestRunner().run_case("invalid_custom_format", case)
+        urlopen.assert_not_called()
+
+    def test_invalid_type_string_format_is_rejected_before_request(self) -> None:
+        case = {
+            "request": {"url": "https://example.test/users/1"},
+            "expected": {"assertions": [{"path": "body.code", "operator": "type", "value": "string", "format": "custom", "pattern": "["}]},
+        }
+        with patch("api_test.runner.urllib.request.urlopen") as urlopen:
+            with self.assertRaisesRegex(CaseConfigurationError, "pattern is not a valid regular expression"):
+                ApiTestRunner().run_case("invalid_type_string_format", case)
+        urlopen.assert_not_called()
 
     def test_exclusive_range_rejects_boundary_value(self) -> None:
         case = {
