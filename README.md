@@ -288,6 +288,7 @@ projects/
     }
   },
   "advanced": {
+    "use_proxy": true,
     "http_proxy": "http://proxy.example.com:8080",
     "https_proxy": "http://proxy.example.com:8080",
     "verify": true
@@ -297,7 +298,8 @@ projects/
 
 `projects/member-api.json`을 저장한 뒤 케이스에 `"project": "member-api.json"`, `"url": "/users"`를 지정하면 `https://api.example.com/users`를 호출합니다.
 
-- `advanced.http_proxy`, `advanced.https_proxy`: 선택 사항입니다. 값이 있으면 각각 HTTP와 HTTPS 요청에 자동으로 적용되며, 비우면 해당 프로토콜은 직접 연결합니다. 화면의 `HTTP/HTTPS 공통 주소 사용`을 선택하면 한 번의 입력으로 두 값에 같은 주소를 저장합니다. 많은 사내 프록시는 HTTPS 요청에도 `http://proxy.example.com:8080` 형식의 프록시 주소를 사용합니다.
+- `advanced.use_proxy`: 기본값은 `true`입니다. `false`이면 등록된 주소와 환경 프록시를 모두 사용하지 않습니다.
+- `advanced.http_proxy`, `advanced.https_proxy`: 선택 사항입니다. `use_proxy`가 `true`일 때 값이 있으면 각각 HTTP와 HTTPS 요청에 자동으로 적용되며, 비우면 해당 프로토콜은 직접 연결합니다. 화면의 `HTTP/HTTPS 공통 주소 사용`을 선택하면 한 번의 입력으로 두 값에 같은 주소를 저장합니다. 많은 사내 프록시는 HTTPS 요청에도 `http://proxy.example.com:8080` 형식의 프록시 주소를 사용합니다.
 - `advanced.verify`: 기본값은 `true`입니다. `false`로 설정하면 TLS 인증서 검증을 생략합니다. 자체 서명 인증서를 사용하는 개발 환경에서만 사용하세요.
 
 ### 프로젝트 공통 변수

@@ -21,6 +21,7 @@ from react_server import (
     delete_project_pipelines,
     example_openapi_document,
     example_project_enabled,
+    load_openapi_document,
     openapi_operations,
     normalize_project_document,
     normalize_case_document,
@@ -256,11 +257,37 @@ class ReactServerRunTest(unittest.TestCase):
         self.assertEqual(response[0], 200)
         self.assertEqual(response[1]["operations"][0]["id"], "GET /health")
 
+    def test_docs_endpoint_can_bypass_proxies(self) -> None:
+        handler = object.__new__(StudioHandler)
+        handler.api_path = Mock(return_value=["api", "docs"])
+        handler.read_body = Mock(return_value={"url": "https://api.example.test/openapi.json", "no_proxy": True})
+        handler.send_json = Mock()
+
+        with patch("react_server.load_openapi_document", return_value=[]) as load_document:
+            handler.do_POST()
+
+        load_document.assert_called_once_with("https://api.example.test/openapi.json", no_proxy=True)
+
+    def test_openapi_url_errors_include_http_cause(self) -> None:
+        from urllib.error import HTTPError
+
+        error = HTTPError("https://api.example.test/openapi.json", 404, "Not Found", None, None)
+        with patch("react_server.urlopen", side_effect=error):
+            with self.assertRaisesRegex(ValueError, "HTTP 404 Not Found"):
+                load_openapi_document("https://api.example.test/openapi.json")
+
+    def test_openapi_url_timeout_has_a_clear_cause(self) -> None:
+        with patch("react_server.urlopen", side_effect=TimeoutError):
+            with self.assertRaisesRegex(ValueError, "request timed out"):
+                load_openapi_document("https://api.example.test/openapi.json")
+
     def test_project_docs_url_must_be_an_absolute_http_url(self) -> None:
         payload = {"name": "Member", "base_url": "https://api.example.test", "docs_url": "https://api.example.test/openapi.yaml"}
         validate_project_document(payload)
         with self.assertRaisesRegex(ValueError, "docs_url"):
             validate_project_document({**payload, "docs_url": "/openapi.yaml"})
+        with self.assertRaisesRegex(ValueError, "use_proxy"):
+            validate_project_document({**payload, "advanced": {"use_proxy": "false"}})
 
     def test_project_accepts_uploaded_json_docs_instead_of_url(self) -> None:
         docs_file = {

@@ -13,7 +13,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, unquote, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 import yaml
 
@@ -287,17 +287,25 @@ def openapi_document_operations(document: object) -> list[dict[str, object]]:
     return openapi_operations(document)
 
 
-def load_openapi_document(url: str) -> list[dict[str, object]]:
+def load_openapi_document(url: str, *, no_proxy: bool = False) -> list[dict[str, object]]:
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ApiError("API docs URL must be an absolute HTTP URL")
     try:
-        with urlopen(Request(url, headers={"Accept": "application/json, application/yaml, text/yaml"}), timeout=20) as response:
+        request = Request(url, headers={"Accept": "application/json, application/yaml, text/yaml"})
+        opener = build_opener(ProxyHandler({})) if no_proxy else None
+        with (opener.open(request, timeout=20) if opener else urlopen(request, timeout=20)) as response:
             content = response.read(MAX_DOCUMENT_BYTES + 1)
     except HTTPError as exc:
-        raise ApiError(f"API docs request failed: HTTP {exc.code}") from exc
+        reason = str(exc.reason).strip()
+        suffix = f" {reason}" if reason else ""
+        raise ApiError(f"API docs request failed: HTTP {exc.code}{suffix}") from exc
     except URLError as exc:
         raise ApiError(f"API docs request failed: {exc.reason}") from exc
+    except TimeoutError as exc:
+        raise ApiError("API docs request failed: request timed out") from exc
+    except OSError as exc:
+        raise ApiError(f"API docs request failed: {exc}") from exc
     if len(content) > MAX_DOCUMENT_BYTES:
         raise ApiError("API docs file must be 5 MB or smaller")
     try:
@@ -486,6 +494,9 @@ def validate_project_document(payload: dict[str, object]) -> None:
     verify = advanced.get("verify", True)
     if not isinstance(verify, bool):
         raise ApiError("Project verify must be true or false")
+    use_proxy = advanced.get("use_proxy", True)
+    if not isinstance(use_proxy, bool):
+        raise ApiError("Project use_proxy must be true or false")
 
 
 def normalize_project_document(
@@ -735,6 +746,9 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 body = self.read_body()
                 document = body.get("document")
                 url = body.get("url")
+                no_proxy = body.get("no_proxy", False)
+                if not isinstance(no_proxy, bool):
+                    raise ApiError("API docs no_proxy must be true or false")
                 if document is not None:
                     if url not in (None, ""):
                         raise ApiError("Use either API docs URL or document, not both")
@@ -742,7 +756,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 else:
                     if not isinstance(url, str) or not url.strip():
                         raise ApiError("API docs URL or JSON document is required")
-                    operations = load_openapi_document(url.strip())
+                    operations = load_openapi_document(url.strip(), no_proxy=no_proxy)
                 self.send_json(200, {"operations": operations})
                 return
             if parts != ["api", "run"]:
