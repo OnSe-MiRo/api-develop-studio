@@ -54,6 +54,7 @@ class ProjectRequestSettings:
     base_url: str
     proxy_url: str | None = None
     proxy_urls: dict[str, str] = field(default_factory=dict)
+    no_proxy: bool = False
     verify_ssl: bool = True
     variables: dict[str, str] = field(default_factory=dict)
     encrypted_variables: dict[str, str] = field(default_factory=dict)
@@ -177,6 +178,9 @@ def project_request_settings(case: dict[str, Any], project_root: Path) -> Projec
     advanced = project.get("advanced", {})
     if not isinstance(advanced, dict):
         raise CaseConfigurationError(f"project.advanced must be an object: {project_reference}")
+    use_proxy = advanced.get("use_proxy", True)
+    if not isinstance(use_proxy, bool):
+        raise CaseConfigurationError(f"project.advanced.use_proxy must be true or false: {project_reference}")
     legacy_proxy = advanced.get("proxy")
     if legacy_proxy is not None and not isinstance(legacy_proxy, str):
         raise CaseConfigurationError(f"project.advanced.proxy must be a string: {project_reference}")
@@ -204,10 +208,12 @@ def project_request_settings(case: dict[str, Any], project_root: Path) -> Projec
         variables, encrypted_variables = stored_project_variables(project, project_reference)
     except ProjectVariableError as exc:
         raise CaseConfigurationError(str(exc)) from exc
+    no_proxy = not use_proxy
     return ProjectRequestSettings(
         base_url=urlunparse(parsed._replace(path=parsed.path.rstrip("/"))),
-        proxy_url=legacy_proxy.strip() if isinstance(legacy_proxy, str) and legacy_proxy.strip() else None,
-        proxy_urls=normalized_proxies,
+        proxy_url=None if no_proxy else legacy_proxy.strip() if isinstance(legacy_proxy, str) and legacy_proxy.strip() else None,
+        proxy_urls={} if no_proxy else normalized_proxies,
+        no_proxy=no_proxy,
         verify_ssl=verify_ssl,
         variables=variables,
         encrypted_variables=encrypted_variables,
@@ -635,6 +641,7 @@ class ApiTestRunner:
         verify_ssl: bool = True,
         file_root: Path | None = None,
         proxy_urls: dict[str, str] | None = None,
+        no_proxy: bool = False,
         project_variables: dict[str, str] | None = None,
         encrypted_project_variables: dict[str, str] | None = None,
     ) -> CaseResult:
@@ -668,7 +675,7 @@ class ApiTestRunner:
         for attempt in range(1, attempts + 1):
             result = self._run_once(
                 case_id, resolved_request, expected, attempt, proxy_url, verify_ssl,
-                file_root, proxy_urls, sensitive_values,
+                file_root, proxy_urls, no_proxy, sensitive_values,
             )
             if result.status == "passed":
                 return result
@@ -681,7 +688,7 @@ class ApiTestRunner:
     def _run_once(
         self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int,
         proxy_url: str | None = None, verify_ssl: bool = True, file_root: Path | None = None,
-        proxy_urls: dict[str, str] | None = None, sensitive_values: set[str] | None = None,
+        proxy_urls: dict[str, str] | None = None, no_proxy: bool = False, sensitive_values: set[str] | None = None,
     ) -> CaseResult:
         method = str(request_definition.get("method", "GET")).upper()
         headers = {str(key): str(value) for key, value in request_definition.get("headers", {}).items()}
@@ -696,9 +703,11 @@ class ApiTestRunner:
             headers.setdefault("Content-Type", "application/json")
         request = urllib.request.Request(request_definition["url"], data=data, headers=headers, method=method)
         try:
-            if proxy_url or proxy_urls or not verify_ssl:
+            if no_proxy or proxy_url or proxy_urls or not verify_ssl:
                 handlers: list[Any] = []
-                if proxy_urls:
+                if no_proxy:
+                    handlers.append(urllib.request.ProxyHandler({}))
+                elif proxy_urls:
                     handlers.append(urllib.request.ProxyHandler(proxy_urls))
                 elif proxy_url:
                     handlers.append(urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url}))

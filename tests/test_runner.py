@@ -387,7 +387,7 @@ class ApiRunnerTest(unittest.TestCase):
                 "https": "http://https-proxy.example.test:8080",
             })
 
-    def test_project_proxy_addresses_are_used_when_present(self) -> None:
+    def test_project_no_proxy_bypasses_configured_and_environment_proxies(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             project_root = root / "projects"
@@ -399,7 +399,17 @@ class ApiRunnerTest(unittest.TestCase):
             settings = project_request_settings({"project": "direct-api.json"}, project_root)
             self.assertIsNotNone(settings)
             assert settings is not None
-            self.assertEqual(settings.proxy_urls, {"http": "http://proxy.example.test:8080", "https": "http://proxy.example.test:8080"})
+            self.assertTrue(settings.no_proxy)
+            self.assertEqual(settings.proxy_urls, {})
+            opener = Mock()
+            opener.open.return_value = FakeResponse(200, {"ok": True})
+            with patch("api_test.runner.urllib.request.build_opener", return_value=opener) as build_opener:
+                result = ApiTestRunner().run_case(
+                    "health", {"request": {"url": "/health"}, "expected": {"status": 200}},
+                    base_url=settings.base_url, no_proxy=settings.no_proxy,
+                )
+            self.assertEqual(result.status, "passed")
+            self.assertEqual(build_opener.call_args.args[0].proxies, {})
 
     def test_project_plain_and_encrypted_variables_are_resolved_in_requests(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

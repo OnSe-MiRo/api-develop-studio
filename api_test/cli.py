@@ -231,6 +231,7 @@ def _run_case_with_project_settings(
         verify_ssl=project_settings.verify_ssl if project_settings else True,
         file_root=file_root,
         proxy_urls=project_settings.proxy_urls if project_settings else None,
+        no_proxy=project_settings.no_proxy if project_settings else False,
         project_variables=project_settings.variables if project_settings else None,
         encrypted_project_variables=project_settings.encrypted_variables if project_settings else None,
     )
