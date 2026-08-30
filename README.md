@@ -31,6 +31,14 @@ API 케이스와 파이프라인 목록에서도 각 항목 오른쪽의 `×` �
 
 해당 프로젝트의 케이스 설정을 열면 문서가 자동으로 불러와집니다. `문서 API 선택`에서 API를 선택하면 문서의 경로와 method, query/header/path 파라미터 키와 예시값, JSON 요청 body, 기대 HTTP 상태, 응답 body 예시가 케이스 편집기에 자동 반영됩니다. 문서가 갱신된 경우에는 `문서 새로 불러오기`를 사용하세요. 문서에 `example`, `examples`, `default`, `enum`이 없으면 schema 타입을 기반으로 편집 가능한 기본 예시를 만듭니다. 반영 후 실제 서비스 규칙에 맞게 값과 strict 비교 여부를 검토한 뒤 저장하세요.
 
+### OpenAPI API 작성 및 클라이언트 SDK 생성
+
+상단의 `API 작성`을 선택하면 프로젝트별 `API 목록`과 `SDK 생성` 메뉴를 사용할 수 있습니다. `API 목록`의 `API 작성` 버튼에서는 method, path, operation ID, tag, summary, 파라미터, 요청·응답 JSON 예시를 입력해 OpenAPI 3.x operation을 저장할 수 있습니다. 작성된 API는 method별 색상과 path, 요청·응답 내용을 펼쳐보는 Swagger 스타일 목록으로 표시됩니다. 문서가 없는 프로젝트에서 처음 저장하면 OpenAPI 3.0.3 문서를 자동 생성하며, URL 문서는 원격 원본을 변경하지 않고 프로젝트 내부 편집 사본으로 전환합니다. Swagger 2.0 문서는 조회할 수 있지만 새 API 작성 전 OpenAPI 3.x로 변환해야 합니다.
+
+`SDK 생성`에서 Python, JavaScript, TypeScript(Axios), Java, Kotlin, Go, C# 중 하나를 선택하고 `ZIP 생성 및 다운로드`를 누릅니다. 서버는 프로젝트에 저장된 OpenAPI URL 또는 업로드 문서를 다시 검증한 뒤 선택한 언어의 클라이언트 SDK를 생성합니다. 다운로드 ZIP에는 생성된 소스와 해당 시점의 문서를 정규화한 `openapi.yaml`이 함께 들어갑니다. URL 프로젝트에서 `No Proxy`를 선택했다면 SDK 생성 시 문서를 다시 가져올 때도 환경 프록시를 우회합니다.
+
+SDK 생성은 OpenAPI Generator CLI를 사용하므로 Docker 밖에서 실행할 때 Java 11 이상이 필요합니다. `requirements.txt`를 설치하면 프로젝트에 고정된 Generator 버전도 함께 설치됩니다. Docker 이미지에는 Java 런타임이 포함됩니다.
+
 프로젝트 Base URL이 `https://api.example.com`일 때 케이스 URL에 `/users`를 입력하면 `https://api.example.com/users`로 실행됩니다. 외부 API처럼 절대 URL을 입력한 경우에는 Base URL을 붙이지 않습니다.
 
 `strict 비교`를 켜면 값과 타입이 모두 같아야 합니다. 예를 들어 `9.0`과 `9`는 서로 다른 타입으로 실패합니다. 끄면 객체의 추가 키와 배열의 뒤쪽 요소를 허용하며, 숫자 값이 같다면 `9.0`과 `9`는 통과합니다. `true`와 `1`은 strict 여부와 관계없이 서로 다른 값으로 비교합니다.
