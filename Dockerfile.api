@@ -25,6 +25,11 @@ WORKDIR /app
 
 COPY requirements.txt ./
 
+# OpenAPI Generator CLI requires a Java 11+ runtime.
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
 # PIP_PROXY and PIP_TRUSTED_HOST are applied before dependencies are installed.
 RUN if [ -n "$PIP_PROXY" ]; then python -m pip config set global.proxy "$PIP_PROXY"; fi \
     && if [ -n "$PIP_TRUSTED_HOST" ]; then python -m pip config set global.trusted-host "$PIP_TRUSTED_HOST"; fi \

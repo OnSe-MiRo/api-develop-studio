@@ -38,6 +38,10 @@ const stringFormats = [
   ['custom', '기타 (정규식)'],
 ]
 const stringFormatLabel = format => stringFormats.find(([value]) => value === format)?.[1] || format
+const clientLanguages = [
+  ['python', 'Python'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript (Axios)'],
+  ['java', 'Java'], ['kotlin', 'Kotlin'], ['go', 'Go'], ['csharp', 'C#'],
+]
 const assertionFormRow = assertion => {
   const legacyFormat = assertion?.operator === 'format'
   return {
@@ -109,6 +113,17 @@ function jsonFileName(value) {
 function caseName(value) {
   return asText(value).replace(/\.json$/i, '')
 }
+
+const groupDocOperationsByTag = operations => {
+  const groups = new Map()
+  operations.forEach(operation => {
+    const tag = asText(operation.tag).trim() || '태그 없음'
+    groups.set(tag, [...(groups.get(tag) || []), operation])
+  })
+  return [...groups]
+}
+
+const operationIdFrom = (method, path) => `${method.toLowerCase()}${asText(path).split(/[^A-Za-z0-9]+/).filter(Boolean).map(part => part[0].toUpperCase() + part.slice(1)).join('') || 'Resource'}`
 
 function projectFileName(name, existingProjects) {
   const baseName = asText(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'
@@ -319,6 +334,113 @@ function TestSidebar({ active, projectRef, project, onNavigate, onProjectList })
   return <aside className="sidebar"><button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button><div className="sidebar-title">현재 프로젝트</div><div className="current-project"><strong>{projectName}</strong>{project?.base_url && <code>{project.base_url}</code>}</div><div className="sidebar-title">테스트 구성</div><div className="side-nav"><button className={active === 'cases' ? 'active' : ''} onClick={() => onNavigate('cases')}>API 케이스</button><button className={active === 'pipeline' ? 'active' : ''} onClick={() => onNavigate('pipeline')}>파이프라인</button></div></aside>
 }
 
+function AuthorSidebar({ active, projects, projectRef, project, onProjectChange, onNavigate, onProjectList }) {
+  return <aside className="sidebar"><button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button><div className="sidebar-title">작성 프로젝트</div><select aria-label="작성 프로젝트" value={projectRef} onChange={event => onProjectChange(event.target.value)}>{projects.map(reference => <option key={reference} value={reference}>{reference.replace(/\.json$/, '')}</option>)}</select>{project?.base_url && <p className="hint"><code>{project.base_url}</code></p>}<div className="sidebar-title">API 작성</div><div className="side-nav"><button className={active === 'apis' ? 'active' : ''} onClick={() => onNavigate('apis')}>API 목록</button><button className={active === 'generator' ? 'active' : ''} onClick={() => onNavigate('generator')}>SDK 생성</button></div></aside>
+}
+
+function SwaggerOperation({ operation }) {
+  const [expanded, setExpanded] = useState(false)
+  return <article className={`swagger-operation method-${operation.method.toLowerCase()} ${expanded ? 'expanded' : ''}`}><button className="swagger-summary" onClick={() => setExpanded(current => !current)} aria-expanded={expanded}><span className="swagger-method">{operation.method}</span><code>{operation.path}</code><strong>{operation.summary || '설명 없음'}</strong><span className="swagger-tag">{operation.tag || 'default'}</span><span className="swagger-expand">{expanded ? '−' : '+'}</span></button>{expanded && <div className="swagger-details">{operation.parameters?.length > 0 && <section><h4>Parameters</h4><div className="swagger-parameters">{operation.parameters.map(parameter => <div key={`${parameter.in}-${parameter.name}`}><code>{parameter.name}</code><span>{parameter.in}</span><small>{docValue(parameter.value) || '예시 없음'}</small></div>)}</div></section>}{operation.has_request_body && <section><h4>Request body <span>application/json</span></h4><pre>{JSON.stringify(operation.request_body, null, 2)}</pre></section>}<section><h4>Responses</h4><div className="swagger-response-status"><strong>{operation.expected_status}</strong><span>application/json</span></div>{operation.has_response_body && <pre>{JSON.stringify(operation.response_body, null, 2)}</pre>}</section></div>}</article>
+}
+
+function ApiList({ projects, projectRef, project, onProjectChange, onNavigate, onProjectList, onCreate }) {
+  const [operations, setOperations] = useState([])
+  const [notice, setNotice] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      const document = project?.docs_file?.document
+      const url = asText(project?.docs_url).trim()
+      if (!document && !url) { setOperations([]); setNotice('작성된 API가 없습니다. 새 API를 작성하면 OpenAPI 문서가 자동 생성됩니다.'); return }
+      try {
+        const request = document ? { document } : { url, no_proxy: project?.advanced?.use_proxy === false }
+        const data = await api('/api/docs', { method: 'POST', body: JSON.stringify(request) })
+        if (!cancelled) { setOperations(data.operations || []); setNotice('') }
+      } catch (error) { if (!cancelled) { setOperations([]); setNotice(error.message) } }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [projectRef, project?.docs_url, project?._storage?.revision])
+  return <div className="workspace"><AuthorSidebar active="apis" projects={projects} projectRef={projectRef} project={project} onProjectChange={onProjectChange} onNavigate={onNavigate} onProjectList={onProjectList} /><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">OPENAPI AUTHORING</p><h2>API 목록 <span className="count">{operations.length}</span></h2></div><button className="primary" disabled={!projectRef} onClick={onCreate}>＋ API 작성</button></div>{operations.length ? <div className="swagger-list">{groupDocOperationsByTag(operations).map(([tag, items]) => <section className="swagger-tag-group" key={tag}><h3>{tag} <span>{items.length}</span></h3>{items.map(operation => <SwaggerOperation key={operation.id} operation={operation} />)}</section>)}</div> : <div className="empty">표시할 API가 없습니다.</div>}</section>{notice && <p className="notice" role="status">{notice}</p>}</main></div>
+}
+
+const emptyAuthoredParameter = () => ({ name: '', in: 'query', type: 'string', required: false, example: '' })
+
+function ApiAuthorEditor({ projects, projectRef, project, refresh, onProjectChange, onNavigate, onProjectList, onSaved }) {
+  const [method, setMethod] = useState('GET')
+  const [path, setPath] = useState('/v1/resource')
+  const [operationId, setOperationId] = useState('getV1Resource')
+  const [summary, setSummary] = useState('')
+  const [tag, setTag] = useState('default')
+  const [parameters, setParameters] = useState([])
+  const [requestBody, setRequestBody] = useState('')
+  const [requestRequired, setRequestRequired] = useState(false)
+  const [responseStatus, setResponseStatus] = useState('200')
+  const [responseDescription, setResponseDescription] = useState('Success')
+  const [responseBody, setResponseBody] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState('')
+  const updateMethod = value => { setMethod(value); setOperationId(operationIdFrom(value, path)) }
+  const updatePath = value => { setPath(value); setOperationId(operationIdFrom(method, value)) }
+  const updateParameter = (index, key, value) => setParameters(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
+  const parameterPayload = item => {
+    let example = item.example
+    if (example !== '') {
+      if (item.type === 'integer' || item.type === 'number') { example = Number(example); if (!Number.isFinite(example) || (item.type === 'integer' && !Number.isInteger(example))) throw new Error(`${item.name || '파라미터'} 예시값의 타입이 올바르지 않습니다.`) }
+      if (item.type === 'boolean') { if (!['true', 'false'].includes(String(example).toLowerCase())) throw new Error(`${item.name || '파라미터'} 예시값은 true 또는 false여야 합니다.`); example = String(example).toLowerCase() === 'true' }
+    }
+    return { name: item.name, in: item.in, type: item.type, required: item.required, example }
+  }
+  const save = async () => {
+    setSaving(true)
+    try {
+      if (!projectRef || !project?._storage) throw new Error('작성할 프로젝트를 선택하세요.')
+      const payload = {
+        method, path, operation_id: operationId, summary, tag,
+        parameters: parameters.filter(item => item.name.trim()).map(parameterPayload),
+        has_request_body: Boolean(requestBody.trim()), request_body_required: requestRequired,
+        response_status: Number(responseStatus), response_description: responseDescription,
+        has_response_body: Boolean(responseBody.trim()), _storage: project._storage,
+      }
+      if (payload.has_request_body) payload.request_body = parseJson(requestBody, 'Request body', true)
+      if (payload.has_response_body) payload.response_body = parseJson(responseBody, 'Response body', true)
+      await api(`/api/projects/${encodeURIComponent(projectRef)}/openapi/operations`, { method: 'POST', body: JSON.stringify(payload) })
+      await refresh(projectRef); onSaved()
+    } catch (error) { setNotice(error.message) }
+    finally { setSaving(false) }
+  }
+  return <div className="workspace"><AuthorSidebar active="apis" projects={projects} projectRef={projectRef} project={project} onProjectChange={onProjectChange} onNavigate={onNavigate} onProjectList={onProjectList} /><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">NEW OPENAPI OPERATION</p><h2>API 작성</h2></div><div className="actions"><button className="ghost" onClick={onSaved}>목록으로</button><button className="primary" disabled={saving} onClick={save}>{saving ? '저장 중…' : 'API 저장'}</button></div></div>{project?.docs_url && <p className="authoring-copy-notice">저장하면 URL 문서를 현재 프로젝트의 편집 가능한 OpenAPI 사본으로 전환합니다. 원격 문서는 변경하지 않습니다.</p>}<div className="api-author-grid"><Field label="Method"><select value={method} onChange={event => updateMethod(event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(value => <option key={value}>{value}</option>)}</select></Field><Field label="Path" wide><input value={path} onChange={event => updatePath(event.target.value)} placeholder="/v1/users/{userId}" /></Field><Field label="Operation ID"><input value={operationId} onChange={event => setOperationId(event.target.value)} /></Field><Field label="Tag"><input value={tag} onChange={event => setTag(event.target.value)} /></Field><Field label="Summary" wide><input value={summary} onChange={event => setSummary(event.target.value)} placeholder="API 설명" /></Field></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">PARAMETERS</p><h2>파라미터</h2></div><button className="ghost" onClick={() => setParameters(current => [...current, emptyAuthoredParameter()])}>＋ 파라미터 추가</button></div>{parameters.length ? <div className="api-author-parameters">{parameters.map((item, index) => <div className="api-author-parameter" key={index}><input aria-label={`${index + 1}번째 파라미터 이름`} value={item.name} onChange={event => updateParameter(index, 'name', event.target.value)} placeholder="name" /><select aria-label={`${index + 1}번째 파라미터 위치`} value={item.in} onChange={event => updateParameter(index, 'in', event.target.value)}>{['path', 'query', 'header'].map(value => <option key={value}>{value}</option>)}</select><select aria-label={`${index + 1}번째 파라미터 타입`} value={item.type} onChange={event => updateParameter(index, 'type', event.target.value)}>{['string', 'integer', 'number', 'boolean'].map(value => <option key={value}>{value}</option>)}</select><input aria-label={`${index + 1}번째 파라미터 예시`} value={item.example} onChange={event => updateParameter(index, 'example', event.target.value)} placeholder="예시값" /><label className="toggle"><input type="checkbox" checked={item.required || item.in === 'path'} disabled={item.in === 'path'} onChange={event => updateParameter(index, 'required', event.target.checked)} /><span>필수</span></label><button className="icon danger" aria-label={`${index + 1}번째 파라미터 삭제`} onClick={() => setParameters(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div>)}</div> : <div className="empty compact">파라미터가 없습니다. Path의 {'{변수}'}는 저장 시 자동으로 path 파라미터가 됩니다.</div>}</section><section className="card"><div className="form-grid project-settings-grid"><Field label="Request body JSON" wide><JsonArea value={requestBody} onChange={setRequestBody} placeholder={'{\n  "name": "Ada"\n}'} /></Field><label className="toggle"><input type="checkbox" checked={requestRequired} disabled={!requestBody.trim()} onChange={event => setRequestRequired(event.target.checked)} /><span>Request body 필수</span></label><Field label="응답 상태 코드"><input type="number" min="100" max="599" value={responseStatus} onChange={event => setResponseStatus(event.target.value)} /></Field><Field label="응답 설명"><input value={responseDescription} onChange={event => setResponseDescription(event.target.value)} /></Field><Field label="Response body JSON" wide><JsonArea value={responseBody} onChange={setResponseBody} placeholder={'{\n  "id": 1,\n  "name": "Ada"\n}'} /></Field></div></section>{notice && <p className="notice" role="status">{notice}</p>}</main></div>
+}
+
+function ClientGenerator({ projects, projectRef, project, onProjectChange, onNavigate, onProjectList }) {
+  const [language, setLanguage] = useState('typescript')
+  const [generating, setGenerating] = useState(false)
+  const [notice, setNotice] = useState('')
+  const hasDocument = Boolean(project?.docs_url || project?.docs_file?.document)
+  const documentLabel = project?.docs_url || project?.docs_file?.name || '등록된 OpenAPI 문서 없음'
+  const generate = async () => {
+    setGenerating(true); setNotice('OpenAPI 문서를 분석해 SDK를 생성하는 중입니다.')
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: projectRef, language }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'SDK 생성에 실패했습니다.')
+      }
+      const blob = await response.blob()
+      const disposition = response.headers.get('Content-Disposition') || ''
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1] || `${projectRef.replace(/\.json$/, '')}-${language}-client.zip`
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url)
+      setNotice(`${filename} 다운로드를 시작했습니다.`)
+    } catch (error) { setNotice(error.message) }
+    finally { setGenerating(false) }
+  }
+  return <div className="workspace"><AuthorSidebar active="generator" projects={projects} projectRef={projectRef} project={project} onProjectChange={onProjectChange} onNavigate={onNavigate} onProjectList={onProjectList} /><main className="editor"><section className="card generator-card"><div className="section-header"><div><p className="eyebrow">OPENAPI CLIENT GENERATOR</p><h2>OpenAPI 기반 SDK 생성</h2></div></div><p className="hint">프로젝트에 등록한 OpenAPI 문서를 기준으로 선택한 언어의 API 클라이언트를 생성합니다. ZIP에는 생성 코드와 정규화된 <code>openapi.yaml</code>이 함께 포함됩니다.</p><div className="generator-source"><span>문서 원본</span><code>{documentLabel}</code></div><div className="generator-controls"><Field label="생성 언어"><select value={language} onChange={event => setLanguage(event.target.value)}>{clientLanguages.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field><button className="primary" disabled={!hasDocument || generating} onClick={generate}>{generating ? '생성 중…' : 'ZIP 생성 및 다운로드'}</button></div>{!hasDocument && <p className="generator-warning">API 목록에서 API를 작성하거나 프로젝트 설정에서 OpenAPI 문서를 등록하세요.</p>}</section>{notice && <p className="notice" role="status" aria-live="polite">{notice}</p>}</main></div>
+}
+
 function CaseList({ caseItems, projectRef, project, refresh, onNavigate, onProjectList, onCreate, onOpen }) {
   const [notice, setNotice] = useState('')
   const removeCase = async reference => {
@@ -346,8 +468,8 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
   const docsDocument = docsFile?.document
   const noProxy = project?.advanced?.use_proxy === false
   const docsSource = docsDocument
-    ? { label: asText(docsFile?.name), request: { document: docsDocument } }
-    : docsUrl ? { label: docsUrl, request: { url: docsUrl.trim(), no_proxy: noProxy } } : null
+    ? { label: asText(docsFile?.name), request: { document: docsDocument, for_case: true } }
+    : docsUrl ? { label: docsUrl, request: { url: docsUrl.trim(), no_proxy: noProxy, for_case: true } } : null
   const plainProjectVariables = Object.keys(project?.variables?.plain || {})
   const secretProjectVariables = Object.keys(project?.variables?.secret || {})
   const availableProjectVariables = [
@@ -628,7 +750,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     <main className="editor">
       <section className="card"><div className="section-header"><div><p className="eyebrow">CASE SETTINGS</p><h2>{selected ? 'API 케이스 설정' : '새 API 케이스'}</h2></div><div className="actions"><button className="ghost" onClick={onBack}>목록으로</button>{selected && <button className="danger-button" onClick={removeCase}>삭제</button>}<button className="ghost" onClick={save}>저장</button></div></div>
         <div className="form-grid three"><Field label="Tag"><input value={form.tag} onChange={event => set('tag', event.target.value)} /></Field><Field label="API 이름"><input value={form.apiName} onChange={event => set('apiName', event.target.value)} /></Field><Field label="케이스 명"><input value={form.fileName} onChange={event => set('fileName', event.target.value)} /></Field></div>
-        <div className="case-resource-grid"><section className="docs-import"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT API DOCUMENT</p><h3>프로젝트 API 문서</h3></div><button className="ghost icon variable-expand" aria-label={docsExpanded ? '프로젝트 API 문서 접기' : '프로젝트 API 문서 확장'} title={docsExpanded ? '접기' : '확장'} aria-expanded={docsExpanded} onClick={() => setDocsExpanded(current => !current)}>{docsExpanded ? '−' : '+'}</button></div>{docsExpanded && <div className="variable-panel-content">{docsSource ? <><div className="docs-source"><span>문서 원본</span><code>{docsSource.label}</code></div><button className="ghost" onClick={() => loadDocs()}>문서 새로 불러오기</button>{docOperations.length > 0 && <Field label="문서 API 선택" wide><select className="document-operation-select" value={selectedDocOperationId} onChange={event => applyDocOperation(event.target.value)}><option value="">API를 선택하세요. ({docOperations.length}개)</option>{docOperations.map(operation => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</select></Field>}</> : <p className="hint">프로젝트 설정에서 OpenAPI / Swagger 문서 URL 또는 JSON 파일을 등록하면 API 목록을 자동으로 불러옵니다.</p>}<p className="hint">API를 선택하면 Params·Headers·Body와 기대 응답 예시가 자동 입력됩니다.</p></div>}</section>{availableProjectVariables.length > 0 && <section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT VARIABLES</p><h3>프로젝트 공통 변수 <span className="count">{availableProjectVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={projectVariablesExpanded ? '프로젝트 공통 변수 접기' : '프로젝트 공통 변수 확장'} title={projectVariablesExpanded ? '접기' : '확장'} aria-expanded={projectVariablesExpanded} onClick={() => setProjectVariablesExpanded(current => !current)}>{projectVariablesExpanded ? '−' : '+'}</button></div>{projectVariablesExpanded && <div className="variable-panel-content"><p className="hint">URL·Params·Authorization·Headers·Body에서 참조식을 사용할 수 있습니다.</p><div className="project-variable-chips">{availableProjectVariables.map(variable => <button className={variable.secret ? 'secret' : ''} key={variable.name} onClick={() => copyProjectVariable(variable.name)}><span>{variable.secret ? '보안' : '일반'}</span><code>{`{{project.${variable.name}}}`}</code><small>복사</small></button>)}</div></div>}</section>}<section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">CASE SECRET VARIABLES</p><h3>케이스 전용 보안 변수 <span className="count">{availableCaseVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={caseVariablesExpanded ? '케이스 전용 보안 변수 접기' : '케이스 전용 보안 변수 확장'} title={caseVariablesExpanded ? '접기' : '확장'} aria-expanded={caseVariablesExpanded} onClick={() => setCaseVariablesExpanded(current => !current)}>{caseVariablesExpanded ? '−' : '+'}</button></div>{caseVariablesExpanded && <div className="variable-panel-content"><p className="hint">이 케이스에서만 사용할 API Key·토큰을 암호화해 저장합니다.</p><ProjectVariableRows secret items={form.secretVariables} onAdd={addCaseSecretVariable} onUpdate={updateCaseSecretVariable} onRemove={removeCaseSecretVariable} />{availableCaseVariables.length > 0 && <div className="project-variable-chips">{availableCaseVariables.map(variable => <button className="secret" key={variable.name} onClick={() => copyCaseVariable(variable.name)}><span>보안</span><code>{`{{case.${variable.name}}}`}</code><small>복사</small></button>)}</div>}</div>}</section></div>
+        <div className="case-resource-grid"><section className="docs-import"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT API DOCUMENT</p><h3>프로젝트 API 문서</h3></div><button className="ghost icon variable-expand" aria-label={docsExpanded ? '프로젝트 API 문서 접기' : '프로젝트 API 문서 확장'} title={docsExpanded ? '접기' : '확장'} aria-expanded={docsExpanded} onClick={() => setDocsExpanded(current => !current)}>{docsExpanded ? '−' : '+'}</button></div>{docsExpanded && <div className="variable-panel-content">{docsSource ? <><div className="docs-source"><span>문서 원본</span><code>{docsSource.label}</code></div><button className="ghost" onClick={() => loadDocs()}>문서 새로 불러오기</button>{docOperations.length > 0 && <Field label="문서 API 선택" wide><select className="document-operation-select" value={selectedDocOperationId} onChange={event => applyDocOperation(event.target.value)}><option value="">API를 선택하세요. ({docOperations.length}개)</option>{groupDocOperationsByTag(docOperations).map(([tag, operations]) => <optgroup key={tag} label={`${tag} (${operations.length})`}>{operations.map(operation => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</optgroup>)}</select></Field>}</> : <p className="hint">프로젝트 설정에서 OpenAPI / Swagger 문서 URL 또는 JSON 파일을 등록하면 API 목록을 자동으로 불러옵니다.</p>}<p className="hint">API를 선택하면 Params·Headers·Body와 기대 응답 예시가 자동 입력됩니다.</p></div>}</section>{availableProjectVariables.length > 0 && <section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT VARIABLES</p><h3>프로젝트 공통 변수 <span className="count">{availableProjectVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={projectVariablesExpanded ? '프로젝트 공통 변수 접기' : '프로젝트 공통 변수 확장'} title={projectVariablesExpanded ? '접기' : '확장'} aria-expanded={projectVariablesExpanded} onClick={() => setProjectVariablesExpanded(current => !current)}>{projectVariablesExpanded ? '−' : '+'}</button></div>{projectVariablesExpanded && <div className="variable-panel-content"><p className="hint">URL·Params·Authorization·Headers·Body에서 참조식을 사용할 수 있습니다.</p><div className="project-variable-chips">{availableProjectVariables.map(variable => <button className={variable.secret ? 'secret' : ''} key={variable.name} onClick={() => copyProjectVariable(variable.name)}><span>{variable.secret ? '보안' : '일반'}</span><code>{`{{project.${variable.name}}}`}</code><small>복사</small></button>)}</div></div>}</section>}<section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">CASE SECRET VARIABLES</p><h3>케이스 전용 보안 변수 <span className="count">{availableCaseVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={caseVariablesExpanded ? '케이스 전용 보안 변수 접기' : '케이스 전용 보안 변수 확장'} title={caseVariablesExpanded ? '접기' : '확장'} aria-expanded={caseVariablesExpanded} onClick={() => setCaseVariablesExpanded(current => !current)}>{caseVariablesExpanded ? '−' : '+'}</button></div>{caseVariablesExpanded && <div className="variable-panel-content"><p className="hint">이 케이스에서만 사용할 API Key·토큰을 암호화해 저장합니다.</p><ProjectVariableRows secret items={form.secretVariables} onAdd={addCaseSecretVariable} onUpdate={updateCaseSecretVariable} onRemove={removeCaseSecretVariable} />{availableCaseVariables.length > 0 && <div className="project-variable-chips">{availableCaseVariables.map(variable => <button className="secret" key={variable.name} onClick={() => copyCaseVariable(variable.name)}><span>보안</span><code>{`{{case.${variable.name}}}`}</code><small>복사</small></button>)}</div>}</div>}</section></div>
       </section>
       <section className="card request-card"><div className="request-bar"><select className="method" value={form.method} onChange={event => set('method', event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => <option key={method}>{method}</option>)}</select><input className="url-input" value={form.url} placeholder="/v1/users (프로젝트 Base URL 기준)" onChange={event => set('url', event.target.value)} /></div>
         <div className="tabs">{['Params', 'Authorization', 'Headers', 'Body'].map(tab => <button key={tab} className={requestTab === tab ? 'active' : ''} onClick={() => setRequestTab(tab)}>{tab}</button>)}</div>
@@ -929,13 +1051,16 @@ function StudioApp() {
     if (target === 'cases') { setCaseReference(''); setTab('case-list') }
     else { setPipelineReference(''); setTab('pipeline-list') }
   }
+  const navigateAuthor = target => setTab(target === 'generator' ? 'generator' : 'api-list')
   const openCase = reference => { setCaseReference(reference); setTab('case-settings') }
   const createCase = () => { setCaseReference(''); setTab('case-settings') }
   const openPipeline = reference => { setPipelineReference(reference); setTab('pipeline-settings') }
   const createPipeline = () => { setPipelineReference(''); setTab('pipeline-settings') }
   useEffect(() => { refresh() }, [])
   const editorProps = { caseItems, pipelineItems, projectRef: activeProject, project, refresh, onNavigate: navigateTest, onProjectList: () => setTab('project') }
-  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong></div></div><nav><button className={tab === 'project' || tab === 'project-settings' ? 'selected' : ''} onClick={() => setTab('project')}>API 검증</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => setTab('project')} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} />}</>
+  const authorProps = { projects, projectRef: activeProject, project, refresh, onProjectChange: selectProject, onNavigate: navigateAuthor, onProjectList: () => setTab('project') }
+  const validationTab = ['project', 'project-settings', 'case-list', 'case-settings', 'pipeline-list', 'pipeline-settings'].includes(tab)
+  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong></div></div><nav><button className={validationTab ? 'selected' : ''} onClick={() => setTab('project')}>API 검증</button><button className={!validationTab ? 'selected' : ''} onClick={() => setTab('api-list')}>API 작성</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => setTab('project')} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => setTab('api-create')} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => setTab('api-list')} /> : <ClientGenerator {...authorProps} />}</>
 }
 
 class ErrorBoundary extends Component {

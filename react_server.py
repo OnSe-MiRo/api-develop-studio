@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import io
 import json
 import mimetypes
 import os
+import re
+import shutil
 import subprocess
 import sys
+import zipfile
+from datetime import date, datetime
 from tempfile import TemporaryDirectory
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -41,6 +46,15 @@ WEB_DIST = ROOT / "web" / "dist"
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
 HTTP_METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
+OPENAPI_CLIENT_GENERATORS = {
+    "python": "python",
+    "javascript": "javascript",
+    "typescript": "typescript-axios",
+    "java": "java",
+    "kotlin": "kotlin",
+    "go": "go",
+    "csharp": "csharp",
+}
 EXAMPLE_PROJECT_REFERENCE = "example-api.json"
 EXAMPLE_PROJECT_TRUE_VALUES = {"1", "true", "yes", "on"}
 EXAMPLE_API_KEY = "example-api-key"
@@ -208,13 +222,27 @@ def content_example(content: object, document: dict[str, object]) -> object:
     return schema_example(media.get("schema"), document)
 
 
-def parameter_example(parameter: dict[str, object], document: dict[str, object]) -> object:
-    if "example" in parameter:
-        return parameter["example"]
-    return schema_example(parameter.get("schema"), document)
+def normalize_openapi_value(value: object) -> object:
+    """Convert YAML date values to JSON-safe strings without changing user values."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {key: normalize_openapi_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [normalize_openapi_value(item) for item in value]
+    return value
 
 
-def openapi_operations(document: dict[str, object]) -> list[dict[str, object]]:
+def parameter_example(
+    parameter: dict[str, object], document: dict[str, object], *, for_case: bool = False,
+) -> object:
+    value = parameter["example"] if "example" in parameter else schema_example(parameter.get("schema"), document)
+    return normalize_openapi_value(value) if for_case else value
+
+
+def openapi_operations(document: dict[str, object], *, for_case: bool = False) -> list[dict[str, object]]:
     """Normalize OpenAPI 3.x and Swagger 2.0 operations for the React editor."""
     paths = document.get("paths")
     if not isinstance(paths, dict):
@@ -243,7 +271,7 @@ def openapi_operations(document: dict[str, object]) -> list[dict[str, object]]:
                 name, location = parameter.get("name"), parameter.get("in")
                 if not isinstance(name, str) or not isinstance(location, str):
                     continue
-                value = parameter_example(parameter, document)
+                value = parameter_example(parameter, document, for_case=for_case)
                 parameters[(name, location)] = {"name": name, "in": location, "value": "" if value is MISSING else value}
 
             request_body = MISSING
@@ -268,26 +296,28 @@ def openapi_operations(document: dict[str, object]) -> list[dict[str, object]]:
                 response_body = schema_example(response.get("schema"), document)
             status = int(response_key) if str(response_key).isdigit() else 200
             summary = operation.get("summary") or operation.get("operationId") or ""
+            tags = operation.get("tags")
+            tag = next((item.strip() for item in tags if isinstance(item, str) and item.strip()), "") if isinstance(tags, list) else ""
             operations.append({
                 "id": f"{method.upper()} {path}", "method": method.upper(), "path": path,
-                "summary": summary if isinstance(summary, str) else "", "parameters": list(parameters.values()),
-                "has_request_body": request_body is not MISSING, "request_body": None if request_body is MISSING else request_body,
+                "summary": summary if isinstance(summary, str) else "", "tag": tag, "parameters": list(parameters.values()),
+                "has_request_body": request_body is not MISSING, "request_body": None if request_body is MISSING else normalize_openapi_value(request_body),
                 "expected_status": status, "has_response_body": response_body is not MISSING,
-                "response_body": None if response_body is MISSING else response_body,
+                "response_body": None if response_body is MISSING else normalize_openapi_value(response_body),
             })
     return operations
 
 
-def openapi_document_operations(document: object) -> list[dict[str, object]]:
+def openapi_document_operations(document: object, *, for_case: bool = False) -> list[dict[str, object]]:
     """Validate an uploaded OpenAPI JSON document and normalize its operations."""
     if not isinstance(document, dict):
         raise ApiError("API docs root must be an object")
-    if len(json.dumps(document, ensure_ascii=False).encode("utf-8")) > MAX_DOCUMENT_BYTES:
+    if len(json.dumps(document, ensure_ascii=False, default=str).encode("utf-8")) > MAX_DOCUMENT_BYTES:
         raise ApiError("API docs file must be 5 MB or smaller")
-    return openapi_operations(document)
+    return openapi_operations(document, for_case=for_case)
 
 
-def load_openapi_document(url: str, *, no_proxy: bool = False) -> list[dict[str, object]]:
+def fetch_openapi_document(url: str, *, no_proxy: bool = False) -> dict[str, object]:
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ApiError("API docs URL must be an absolute HTTP URL")
@@ -315,7 +345,220 @@ def load_openapi_document(url: str, *, no_proxy: bool = False) -> list[dict[str,
             document = yaml.safe_load(content.decode("utf-8"))
         except (UnicodeDecodeError, yaml.YAMLError) as exc:
             raise ApiError("API docs must be valid OpenAPI/Swagger JSON or YAML") from exc
-    return openapi_document_operations(document)
+    openapi_document_operations(document)
+    return document
+
+
+def load_openapi_document(url: str, *, no_proxy: bool = False, for_case: bool = False) -> list[dict[str, object]]:
+    return openapi_document_operations(fetch_openapi_document(url, no_proxy=no_proxy), for_case=for_case)
+
+
+def project_openapi_document(project: dict[str, object]) -> dict[str, object]:
+    """Return the validated OpenAPI source configured for a saved project."""
+    docs_file = project.get("docs_file")
+    if isinstance(docs_file, dict) and docs_file.get("document") is not None:
+        document = docs_file["document"]
+        openapi_document_operations(document)
+        if not isinstance(document, dict):
+            raise ApiError("API docs root must be an object")
+        return document
+
+    docs_url = project.get("docs_url")
+    if not isinstance(docs_url, str) or not docs_url.strip():
+        raise ApiError("프로젝트 설정에서 OpenAPI 문서 URL 또는 JSON 파일을 먼저 등록하세요.")
+    advanced = project.get("advanced", {})
+    use_proxy = advanced.get("use_proxy", True) if isinstance(advanced, dict) else True
+    return fetch_openapi_document(docs_url.strip(), no_proxy=use_proxy is False)
+
+
+def schema_from_authored_example(value: object) -> dict[str, object]:
+    if value is None:
+        return {"nullable": True, "example": None}
+    if isinstance(value, bool):
+        return {"type": "boolean", "example": value}
+    if isinstance(value, int):
+        return {"type": "integer", "example": value}
+    if isinstance(value, float):
+        return {"type": "number", "example": value}
+    if isinstance(value, str):
+        return {"type": "string", "example": value}
+    if isinstance(value, list):
+        schema: dict[str, object] = {"type": "array", "example": value}
+        if value:
+            schema["items"] = schema_from_authored_example(value[0])
+        return schema
+    if isinstance(value, dict):
+        return {
+            "type": "object",
+            "properties": {str(name): schema_from_authored_example(item) for name, item in value.items()},
+            "example": value,
+        }
+    raise ApiError("요청/응답 예시는 JSON 값이어야 합니다.")
+
+
+def authored_parameter(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise ApiError("API 파라미터는 객체여야 합니다.")
+    name = value.get("name")
+    location = value.get("in")
+    schema_type = value.get("type", "string")
+    if not isinstance(name, str) or not name.strip():
+        raise ApiError("API 파라미터 이름을 입력하세요.")
+    if location not in {"path", "query", "header"}:
+        raise ApiError("API 파라미터 위치는 path, query, header 중 하나여야 합니다.")
+    if schema_type not in {"string", "integer", "number", "boolean"}:
+        raise ApiError("API 파라미터 타입이 올바르지 않습니다.")
+    parameter: dict[str, object] = {
+        "name": name.strip(), "in": location, "required": location == "path" or value.get("required") is True,
+        "schema": {"type": schema_type},
+    }
+    if "example" in value and value["example"] not in (None, ""):
+        parameter["example"] = value["example"]
+    return parameter
+
+
+def author_openapi_operation(
+    project: dict[str, object], payload: dict[str, object], document: dict[str, object] | None = None,
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Add one structured operation to an editable OpenAPI 3.x project document."""
+    if document is None:
+        name = project.get("name", "API")
+        document = {
+            "openapi": "3.0.3",
+            "info": {"title": name if isinstance(name, str) and name.strip() else "API", "version": "1.0.0"},
+            "paths": {},
+        }
+    else:
+        document = json.loads(json.dumps(document, ensure_ascii=False))
+    version = document.get("openapi")
+    if not isinstance(version, str) or not version.startswith("3."):
+        raise ApiError("API 작성은 OpenAPI 3.x 문서에서 지원합니다. Swagger 2.0 문서는 OpenAPI 3.x로 전환하세요.")
+
+    method = payload.get("method")
+    path = payload.get("path")
+    operation_id = payload.get("operation_id")
+    summary = payload.get("summary", "")
+    tag = payload.get("tag", "")
+    response_status = payload.get("response_status", 200)
+    response_description = payload.get("response_description", "Success")
+    if not isinstance(method, str) or method.lower() not in HTTP_METHODS:
+        raise ApiError("API method가 올바르지 않습니다.")
+    method = method.lower()
+    if not isinstance(path, str) or not path.startswith("/") or "?" in path or "#" in path:
+        raise ApiError("API path는 /로 시작하고 query string을 포함하지 않아야 합니다.")
+    if not isinstance(operation_id, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", operation_id):
+        raise ApiError("Operation ID는 영문 또는 _로 시작하고 영문, 숫자, _만 사용할 수 있습니다.")
+    if not isinstance(summary, str) or not isinstance(tag, str):
+        raise ApiError("API summary와 tag는 문자열이어야 합니다.")
+    if not isinstance(response_status, int) or isinstance(response_status, bool) or not 100 <= response_status <= 599:
+        raise ApiError("응답 상태 코드는 100~599 사이의 숫자여야 합니다.")
+    if not isinstance(response_description, str) or not response_description.strip():
+        raise ApiError("응답 설명을 입력하세요.")
+
+    paths = document.setdefault("paths", {})
+    if not isinstance(paths, dict):
+        raise ApiError("The API document must contain an OpenAPI/Swagger paths object")
+    path_item = paths.setdefault(path, {})
+    if not isinstance(path_item, dict):
+        raise ApiError("작성할 API path가 올바른 객체가 아닙니다.")
+    if method in path_item:
+        raise ApiError(f"이미 작성된 API입니다: {method.upper()} {path}")
+    for existing_path_item in paths.values():
+        if not isinstance(existing_path_item, dict):
+            continue
+        if any(
+            isinstance(existing_path_item.get(existing_method), dict)
+            and existing_path_item[existing_method].get("operationId") == operation_id
+            for existing_method in HTTP_METHODS
+        ):
+            raise ApiError(f"이미 사용 중인 Operation ID입니다: {operation_id}")
+
+    raw_parameters = payload.get("parameters", [])
+    if not isinstance(raw_parameters, list):
+        raise ApiError("API parameters는 배열이어야 합니다.")
+    parameters = [authored_parameter(item) for item in raw_parameters]
+    parameter_keys = {(item["name"], item["in"]) for item in parameters}
+    for placeholder in re.findall(r"\{([^{}]+)\}", path):
+        if (placeholder, "path") not in parameter_keys:
+            parameters.append({"name": placeholder, "in": "path", "required": True, "schema": {"type": "string"}})
+
+    response: dict[str, object] = {"description": response_description.strip()}
+    if payload.get("has_response_body") is True:
+        response_body = payload.get("response_body")
+        response["content"] = {"application/json": {"schema": schema_from_authored_example(response_body)}}
+    operation: dict[str, object] = {
+        "operationId": operation_id, "summary": summary.strip(),
+        "responses": {str(response_status): response},
+    }
+    if tag.strip():
+        operation["tags"] = [tag.strip()]
+    if parameters:
+        operation["parameters"] = parameters
+    if payload.get("has_request_body") is True:
+        request_body = payload.get("request_body")
+        operation["requestBody"] = {
+            "required": payload.get("request_body_required") is True,
+            "content": {"application/json": {"schema": schema_from_authored_example(request_body)}},
+        }
+    path_item[method] = operation
+    openapi_document_operations(document)
+    return document, operation
+
+
+def archive_slug(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
+    return slug or "openapi"
+
+
+def openapi_generator_command(source_path: Path, generator: str, output_path: Path) -> list[str]:
+    try:
+        import openapi_generator_cli
+    except ImportError as exc:
+        raise ApiError("OpenAPI Generator가 설치되지 않았습니다. requirements.txt 의존성을 설치하세요.") from exc
+    java = shutil.which("java")
+    if java is None:
+        raise ApiError("OpenAPI Generator 실행에 필요한 Java 11 이상을 설치하세요.")
+    jar_path = Path(openapi_generator_cli.__file__).with_name("openapi-generator.jar")
+    if not jar_path.is_file():
+        raise ApiError("OpenAPI Generator 실행 파일을 찾을 수 없습니다. requirements.txt 의존성을 다시 설치하세요.")
+    return [
+        java, "-jar", str(jar_path), "generate",
+        "-i", str(source_path), "-g", generator, "-o", str(output_path),
+    ]
+
+
+def generate_openapi_archive(
+    document: dict[str, object], language: str, project_name: str,
+) -> tuple[bytes, str]:
+    """Generate one language client and return it with the normalized YAML as ZIP."""
+    generator = OPENAPI_CLIENT_GENERATORS.get(language)
+    if generator is None:
+        raise ApiError("지원하지 않는 생성 언어입니다.")
+    openapi_document_operations(document)
+
+    with TemporaryDirectory(prefix="api-client-generator-") as directory:
+        temporary_root = Path(directory)
+        source_path = temporary_root / "openapi.yaml"
+        output_path = temporary_root / "client"
+        source_path.write_text(
+            yaml.safe_dump(document, allow_unicode=True, sort_keys=False), encoding="utf-8",
+        )
+        command = openapi_generator_command(source_path, generator, output_path)
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            details = (result.stderr or result.stdout).strip()
+            raise ApiError(f"OpenAPI 클라이언트 생성 실패: {details[-2000:] or '알 수 없는 오류'}")
+        if not output_path.is_dir() or not any(output_path.rglob("*")):
+            raise ApiError("OpenAPI Generator가 생성 파일을 반환하지 않았습니다.")
+
+        (output_path / "openapi.yaml").write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
+        root_name = f"{archive_slug(project_name)}-{language}-client"
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            for path in sorted(output_path.rglob("*")):
+                if path.is_file() and not path.is_symlink():
+                    zip_file.write(path, (Path(root_name) / path.relative_to(output_path)).as_posix())
+        return archive.getvalue(), f"{root_name}.zip"
 
 
 def safe_file(root: Path, reference: str) -> Path:
@@ -373,7 +616,7 @@ def example_openapi_document() -> dict[str, object]:
             "/example-api/health": {
                 "get": {
                     "summary": "Example API health check",
-                    "responses": {"200": {"content": {"application/json": {"example": {"status": "ok", "service": "example-api"}}}}},
+                    "responses": {"200": {"description": "Service is healthy", "content": {"application/json": {"example": {"status": "ok", "service": "example-api"}}}}},
                 },
             },
             "/example-api/users": {
@@ -383,14 +626,14 @@ def example_openapi_document() -> dict[str, object]:
                         "required": True,
                         "content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string", "example": "Ada"}}}}},
                     },
-                    "responses": {"201": {"content": {"application/json": {"example": {"id": 1, "name": "Ada"}}}}},
+                    "responses": {"201": {"description": "User created", "content": {"application/json": {"example": {"id": 1, "name": "Ada"}}}}},
                 },
             },
             "/example-api/users/{userId}": {
                 "get": {
                     "summary": "Get an example user",
                     "parameters": [{"name": "userId", "in": "path", "required": True, "schema": {"type": "integer", "example": 1}}],
-                    "responses": {"200": {"content": {"application/json": {"example": {"id": 1, "name": "Ada"}}}}},
+                    "responses": {"200": {"description": "User found", "content": {"application/json": {"example": {"id": 1, "name": "Ada"}}}}},
                 },
             },
             "/example-api/secure-data": {
@@ -585,6 +828,14 @@ class StudioHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(encoded)
 
+    def send_attachment(self, content: bytes, filename: str) -> None:
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/zip")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)
+
     def read_body(self) -> dict[str, object]:
         length = int(self.headers.get("Content-Length", "0"))
         try:
@@ -747,17 +998,61 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 document = body.get("document")
                 url = body.get("url")
                 no_proxy = body.get("no_proxy", False)
+                for_case = body.get("for_case", False)
                 if not isinstance(no_proxy, bool):
                     raise ApiError("API docs no_proxy must be true or false")
+                if not isinstance(for_case, bool):
+                    raise ApiError("API docs for_case must be true or false")
                 if document is not None:
                     if url not in (None, ""):
                         raise ApiError("Use either API docs URL or document, not both")
-                    operations = openapi_document_operations(document)
+                    operations = openapi_document_operations(document, for_case=for_case)
                 else:
                     if not isinstance(url, str) or not url.strip():
                         raise ApiError("API docs URL or JSON document is required")
-                    operations = load_openapi_document(url.strip(), no_proxy=no_proxy)
-                self.send_json(200, {"operations": operations})
+                    operations = load_openapi_document(url.strip(), no_proxy=no_proxy, for_case=for_case)
+                self.send_json(200, {"operations": normalize_openapi_value(operations)})
+                return
+            if len(parts) == 5 and parts[:2] == ["api", "projects"] and parts[3:] == ["openapi", "operations"]:
+                ensure_example_project_enabled(parts[2])
+                payload, expected_revision = storage_request(self.read_body())
+                store = collaboration_store()
+                current = store.get("projects", parts[2])
+                if current is None:
+                    raise ApiError("선택한 프로젝트를 찾을 수 없습니다.")
+                has_source = bool(current.document.get("docs_url")) or isinstance(current.document.get("docs_file"), dict)
+                source_document = project_openapi_document(current.document) if has_source else None
+                document, operation = author_openapi_operation(current.document, payload, source_document)
+                updated_project = {
+                    **current.document,
+                    "docs_url": "",
+                    "docs_file": {"name": "openapi.json", "document": document},
+                }
+                validate_project_document(updated_project)
+                stored = store.save(
+                    "projects", parts[2], updated_project, expected_revision=expected_revision,
+                    actor_id=self.actor_id(), action="author_openapi_operation",
+                )
+                self.send_json(200, {"operation": operation, "_storage": stored.metadata()})
+                return
+            if parts == ["api", "generate"]:
+                body = self.read_body()
+                project_reference = body.get("project")
+                language = body.get("language")
+                if not isinstance(project_reference, str) or not project_reference:
+                    raise ApiError("생성할 프로젝트를 선택하세요.")
+                if not isinstance(language, str):
+                    raise ApiError("생성 언어를 선택하세요.")
+                ensure_example_project_enabled(project_reference)
+                stored = collaboration_store().get("projects", project_reference)
+                if stored is None:
+                    raise ApiError("선택한 프로젝트를 찾을 수 없습니다.")
+                document = project_openapi_document(stored.document)
+                project_name = stored.document.get("name", project_reference.removesuffix(".json"))
+                archive, filename = generate_openapi_archive(
+                    document, language, project_name if isinstance(project_name, str) else project_reference,
+                )
+                self.send_attachment(archive, filename)
                 return
             if parts != ["api", "run"]:
                 raise ApiError("Unknown run endpoint")
@@ -804,8 +1099,13 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
             self.send_json(200, {"exitCode": result.returncode, "output": result.stdout + result.stderr})
         except subprocess.TimeoutExpired:
-            self.send_json(504, {"error": "Test run timed out after 300 seconds"})
-        except (ApiError, OSError, json.JSONDecodeError) as exc:
+            message = "OpenAPI 클라이언트 생성 시간이 300초를 초과했습니다." if self.api_path() == ["api", "generate"] else "Test run timed out after 300 seconds"
+            self.send_json(504, {"error": message})
+        except RevisionConflictError as exc:
+            self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
+        except RevisionRequiredError as exc:
+            self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
+        except (ApiError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
             self.send_json(400, {"error": str(exc)})
 
     def do_DELETE(self) -> None:  # noqa: N802

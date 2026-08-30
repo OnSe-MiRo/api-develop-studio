@@ -5,10 +5,13 @@ import os
 import subprocess
 import tempfile
 import unittest
+import zipfile
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 from cryptography.fernet import Fernet
+import yaml
 
 from api_test.collaboration_store import CollaborationStore
 from api_test.project_variables import case_variables_for_client, decrypt_secret, project_variables_for_client
@@ -18,6 +21,8 @@ from react_server import (
     StudioHandler,
     case_summaries,
     ensure_example_project_security_key,
+    author_openapi_operation,
+    generate_openapi_archive,
     delete_project_pipelines,
     example_openapi_document,
     example_project_enabled,
@@ -26,6 +31,7 @@ from react_server import (
     normalize_project_document,
     normalize_case_document,
     project_has_cases,
+    project_openapi_document,
     project_json_files,
     project_summaries,
     validate_project_document,
@@ -213,6 +219,7 @@ class ReactServerRunTest(unittest.TestCase):
                     "parameters": [{"name": "userId", "in": "path", "schema": {"type": "integer", "example": 7}}],
                     "post": {
                         "summary": "Create a user setting",
+                        "tags": ["Users"],
                         "parameters": [
                             {"name": "dryRun", "in": "query", "schema": {"type": "boolean", "default": True}},
                             {"name": "X-Client", "in": "header", "example": "studio"},
@@ -231,6 +238,7 @@ class ReactServerRunTest(unittest.TestCase):
         operation = operations[0]
         self.assertEqual(operation["method"], "POST")
         self.assertEqual(operation["path"], "/users/{userId}")
+        self.assertEqual(operation["tag"], "Users")
         self.assertEqual(operation["parameters"], [
             {"name": "userId", "in": "path", "value": 7},
             {"name": "dryRun", "in": "query", "value": True},
@@ -239,6 +247,55 @@ class ReactServerRunTest(unittest.TestCase):
         self.assertEqual(operation["request_body"], {"name": "Ada", "enabled": False})
         self.assertEqual(operation["expected_status"], 201)
         self.assertEqual(operation["response_body"], {"id": 7, "name": "Ada"})
+
+    def test_date_and_date_time_parameter_examples_keep_entered_strings(self) -> None:
+        document = {
+            "openapi": "3.0.3",
+            "paths": {
+                "/events": {
+                    "get": {
+                        "parameters": [{
+                            "name": "from", "in": "query",
+                            "schema": {"type": "string", "format": "date"},
+                            "example": "2026-08-31",
+                        }, {
+                            "name": "at", "in": "query",
+                            "schema": {"type": "string", "format": "date-time"},
+                            "example": "2026-08-31T12:34:56.000+09:00",
+                        }],
+                        "responses": {"200": {"description": "OK"}},
+                    },
+                },
+            },
+        }
+
+        operation = openapi_operations(document, for_case=True)[0]
+
+        self.assertEqual(operation["parameters"][0]["value"], "2026-08-31")
+        self.assertEqual(operation["parameters"][1]["value"], "2026-08-31T12:34:56.000+09:00")
+
+    def test_yaml_date_parameter_example_is_json_safe(self) -> None:
+        document = yaml.safe_load("""
+openapi: 3.0.3
+paths:
+  /events:
+    get:
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          example: 2026-08-31
+      responses:
+        '200':
+          description: OK
+""")
+
+        operation = openapi_operations(document, for_case=True)[0]
+
+        self.assertEqual(operation["parameters"][0]["value"], "2026-08-31")
+        json.dumps(operation)
 
     def test_docs_endpoint_accepts_uploaded_json_document(self) -> None:
         handler = object.__new__(StudioHandler)
@@ -260,13 +317,70 @@ class ReactServerRunTest(unittest.TestCase):
     def test_docs_endpoint_can_bypass_proxies(self) -> None:
         handler = object.__new__(StudioHandler)
         handler.api_path = Mock(return_value=["api", "docs"])
-        handler.read_body = Mock(return_value={"url": "https://api.example.test/openapi.json", "no_proxy": True})
+        handler.read_body = Mock(return_value={"url": "https://api.example.test/openapi.json", "no_proxy": True, "for_case": True})
         handler.send_json = Mock()
 
         with patch("react_server.load_openapi_document", return_value=[]) as load_document:
             handler.do_POST()
 
-        load_document.assert_called_once_with("https://api.example.test/openapi.json", no_proxy=True)
+        load_document.assert_called_once_with("https://api.example.test/openapi.json", no_proxy=True, for_case=True)
+
+    def test_date_parameter_normalization_is_case_specific(self) -> None:
+        from datetime import datetime
+
+        document = {
+            "openapi": "3.0.3",
+            "paths": {"/events": {"get": {
+                "parameters": [{
+                    "name": "at", "in": "query",
+                    "schema": {"type": "string", "format": "date-time"},
+                    "example": datetime(2026, 8, 31, 12, 34, 56),
+                }],
+                "responses": {"200": {"description": "OK"}},
+            }}},
+        }
+
+        authoring_value = openapi_operations(document)[0]["parameters"][0]["value"]
+        case_value = openapi_operations(document, for_case=True)[0]["parameters"][0]["value"]
+
+        self.assertIsInstance(authoring_value, datetime)
+        self.assertEqual(case_value, "2026-08-31T12:34:56")
+
+    def test_openapi_authoring_endpoint_saves_a_project_revision(self) -> None:
+        handler = object.__new__(StudioHandler)
+        handler.api_path = Mock(return_value=["api", "projects", "member.json", "openapi", "operations"])
+        handler.read_body = Mock(return_value={
+            "method": "GET", "path": "/members", "operation_id": "listMembers",
+            "summary": "회원 목록", "response_status": 200, "response_description": "OK",
+            "_storage": {"revision": 3},
+        })
+        handler.actor_id = Mock(return_value="author")
+        handler.send_json = Mock()
+        current = Mock(document={
+            "name": "Member API", "base_url": "https://api.example.test", "docs_url": "",
+            "docs_file": {"name": "openapi.json", "document": {
+                "openapi": "3.0.3", "info": {"title": "Member API", "version": "1.0.0"}, "paths": {},
+            }},
+            "variables": {"plain": {}, "secret": {"api_key": "encrypted-value"}},
+        })
+        saved = Mock()
+        saved.metadata.return_value = {"revision": 4}
+        store = Mock()
+        store.get.return_value = current
+        store.save.return_value = saved
+
+        with patch("react_server.collaboration_store", return_value=store):
+            handler.do_POST()
+
+        saved_project = store.save.call_args.args[2]
+        self.assertEqual(store.save.call_args.kwargs["expected_revision"], 3)
+        self.assertEqual(store.save.call_args.kwargs["action"], "author_openapi_operation")
+        self.assertEqual(saved_project["variables"]["secret"]["api_key"], "encrypted-value")
+        self.assertEqual(saved_project["docs_file"]["document"]["paths"]["/members"]["get"]["operationId"], "listMembers")
+        handler.send_json.assert_called_once_with(200, {
+            "operation": saved_project["docs_file"]["document"]["paths"]["/members"]["get"],
+            "_storage": {"revision": 4},
+        })
 
     def test_openapi_url_errors_include_http_cause(self) -> None:
         from urllib.error import HTTPError
@@ -280,6 +394,78 @@ class ReactServerRunTest(unittest.TestCase):
         with patch("react_server.urlopen", side_effect=TimeoutError):
             with self.assertRaisesRegex(ValueError, "request timed out"):
                 load_openapi_document("https://api.example.test/openapi.json")
+
+    def test_project_openapi_document_requires_a_configured_source(self) -> None:
+        with self.assertRaisesRegex(ValueError, "OpenAPI"):
+            project_openapi_document({"name": "Member"})
+
+    def test_authors_openapi_operation_with_parameters_and_examples(self) -> None:
+        document, operation = author_openapi_operation({"name": "Member API"}, {
+            "method": "POST", "path": "/members/{memberId}", "operation_id": "updateMember",
+            "summary": "회원 수정", "tag": "Members",
+            "parameters": [{"name": "dryRun", "in": "query", "type": "boolean", "example": True}],
+            "has_request_body": True, "request_body_required": True, "request_body": {"name": "Ada"},
+            "response_status": 200, "response_description": "Updated",
+            "has_response_body": True, "response_body": {"id": 7, "name": "Ada"},
+        })
+
+        self.assertEqual(document["info"]["title"], "Member API")
+        self.assertEqual(operation["operationId"], "updateMember")
+        self.assertEqual(operation["parameters"][1]["name"], "memberId")
+        normalized = openapi_operations(document)[0]
+        self.assertEqual(normalized["tag"], "Members")
+        self.assertEqual(normalized["request_body"], {"name": "Ada"})
+        self.assertEqual(normalized["response_body"], {"id": 7, "name": "Ada"})
+
+    def test_authored_api_rejects_duplicate_or_swagger_document(self) -> None:
+        payload = {
+            "method": "GET", "path": "/members", "operation_id": "listMembers",
+            "response_status": 200, "response_description": "OK",
+        }
+        document, _operation = author_openapi_operation({"name": "Member"}, payload)
+        with self.assertRaisesRegex(ValueError, "이미 작성된"):
+            author_openapi_operation({"name": "Member"}, payload, document)
+        with self.assertRaisesRegex(ValueError, "Operation ID"):
+            author_openapi_operation({"name": "Member"}, {**payload, "path": "/accounts"}, document)
+        with self.assertRaisesRegex(ValueError, "OpenAPI 3"):
+            author_openapi_operation({"name": "Member"}, payload, {"swagger": "2.0", "paths": {}})
+
+    def test_generates_language_client_zip_with_normalized_yaml(self) -> None:
+        document = {
+            "openapi": "3.0.3",
+            "info": {"title": "Member API", "version": "1.0.0"},
+            "paths": {"/members": {"get": {"responses": {"200": {"description": "OK"}}}}},
+        }
+
+        def execute(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            self.assertEqual(command[command.index("-g") + 1], "typescript-axios")
+            source_path = Path(command[command.index("-i") + 1])
+            self.assertIn("openapi: 3.0.3", source_path.read_text(encoding="utf-8"))
+            output_path = Path(command[command.index("-o") + 1])
+            output_path.mkdir()
+            (output_path / "README.md").write_text("generated client", encoding="utf-8")
+            return subprocess.CompletedProcess(command, 0, "generated", "")
+
+        def command_for(source_path: Path, generator: str, output_path: Path) -> list[str]:
+            return ["java", "-jar", "generator.jar", "generate", "-i", str(source_path), "-g", generator, "-o", str(output_path)]
+
+        with patch("react_server.openapi_generator_command", side_effect=command_for), patch("react_server.subprocess.run", side_effect=execute):
+            archive, filename = generate_openapi_archive(document, "typescript", "Member API")
+
+        self.assertEqual(filename, "member-api-typescript-client.zip")
+        with zipfile.ZipFile(BytesIO(archive)) as generated:
+            self.assertEqual(
+                sorted(generated.namelist()),
+                [
+                    "member-api-typescript-client/README.md",
+                    "member-api-typescript-client/openapi.yaml",
+                ],
+            )
+            self.assertIn("title: Member API", generated.read("member-api-typescript-client/openapi.yaml").decode())
+
+    def test_rejects_unsupported_generation_language(self) -> None:
+        with self.assertRaisesRegex(ValueError, "지원하지 않는"):
+            generate_openapi_archive({"openapi": "3.0.3", "paths": {}}, "ruby", "Member")
 
     def test_project_docs_url_must_be_an_absolute_http_url(self) -> None:
         payload = {"name": "Member", "base_url": "https://api.example.test", "docs_url": "https://api.example.test/openapi.yaml"}
