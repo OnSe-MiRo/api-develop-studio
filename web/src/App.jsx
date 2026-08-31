@@ -42,6 +42,7 @@ const clientLanguages = [
   ['python', 'Python'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript (Axios)'],
   ['java', 'Java'], ['kotlin', 'Kotlin'], ['go', 'Go'], ['csharp', 'C#'],
 ]
+const commonErrorOptions = [[400, 'Bad Request'], [401, 'Unauthorized'], [403, 'Forbidden'], [404, 'Not Found'], [409, 'Conflict'], [500, 'Internal Server Error']]
 const assertionFormRow = assertion => {
   const legacyFormat = assertion?.operator === 'format'
   return {
@@ -340,7 +341,8 @@ function AuthorSidebar({ active, projects, projectRef, project, onProjectChange,
 
 function SwaggerOperation({ operation }) {
   const [expanded, setExpanded] = useState(false)
-  return <article className={`swagger-operation method-${operation.method.toLowerCase()} ${expanded ? 'expanded' : ''}`}><button className="swagger-summary" onClick={() => setExpanded(current => !current)} aria-expanded={expanded}><span className="swagger-method">{operation.method}</span><code>{operation.path}</code><strong>{operation.summary || '설명 없음'}</strong><span className="swagger-tag">{operation.tag || 'default'}</span><span className="swagger-expand">{expanded ? '−' : '+'}</span></button>{expanded && <div className="swagger-details">{operation.parameters?.length > 0 && <section><h4>Parameters</h4><div className="swagger-parameters">{operation.parameters.map(parameter => <div key={`${parameter.in}-${parameter.name}`}><code>{parameter.name}</code><span>{parameter.in}</span><small>{docValue(parameter.value) || '예시 없음'}</small></div>)}</div></section>}{operation.has_request_body && <section><h4>Request body <span>application/json</span></h4><pre>{JSON.stringify(operation.request_body, null, 2)}</pre></section>}<section><h4>Responses</h4><div className="swagger-response-status"><strong>{operation.expected_status}</strong><span>application/json</span></div>{operation.has_response_body && <pre>{JSON.stringify(operation.response_body, null, 2)}</pre>}</section></div>}</article>
+  const responses = operation.responses?.length ? operation.responses : [{ status: operation.expected_status, description: '', has_body: operation.has_response_body, body: operation.response_body }]
+  return <article className={`swagger-operation method-${operation.method.toLowerCase()} ${expanded ? 'expanded' : ''}`}><button className="swagger-summary" onClick={() => setExpanded(current => !current)} aria-expanded={expanded}><span className="swagger-method">{operation.method}</span><code>{operation.path}</code><strong>{operation.summary || '설명 없음'}</strong><span className="swagger-tag">{operation.tag || 'default'}</span><span className="swagger-expand">{expanded ? '−' : '+'}</span></button>{expanded && <div className="swagger-details">{operation.parameters?.length > 0 && <section><h4>Parameters</h4><div className="swagger-parameters">{operation.parameters.map(parameter => <div key={`${parameter.in}-${parameter.name}`}><code>{parameter.name}</code><span>{parameter.in}</span><small>{docValue(parameter.value) || '예시 없음'}</small></div>)}</div></section>}{operation.has_request_body && <section><h4>Request body <span>application/json</span></h4><pre>{JSON.stringify(operation.request_body, null, 2)}</pre></section>}<section><h4>Responses</h4><div className="swagger-responses">{responses.map(response => <div className="swagger-response" key={response.status}><div className="swagger-response-status"><strong>{response.status}</strong><span>{response.description || 'application/json'}</span></div>{response.has_body && <pre>{JSON.stringify(response.body, null, 2)}</pre>}</div>)}</div></section></div>}</article>
 }
 
 function ApiList({ projects, projectRef, project, onProjectChange, onNavigate, onProjectList, onCreate }) {
@@ -349,11 +351,12 @@ function ApiList({ projects, projectRef, project, onProjectChange, onNavigate, o
   useEffect(() => {
     let cancelled = false
     const load = async () => {
+      const bundle = project?.docs_bundle
       const document = project?.docs_file?.document
       const url = asText(project?.docs_url).trim()
-      if (!document && !url) { setOperations([]); setNotice('작성된 API가 없습니다. 새 API를 작성하면 OpenAPI 문서가 자동 생성됩니다.'); return }
+      if (!bundle && !document && !url) { setOperations([]); setNotice('작성된 API가 없습니다. 새 API를 작성하면 OpenAPI 문서가 자동 생성됩니다.'); return }
       try {
-        const request = document ? { document } : { url, no_proxy: project?.advanced?.use_proxy === false }
+        const request = bundle ? { bundle } : document ? { document } : { url, no_proxy: project?.advanced?.use_proxy === false }
         const data = await api('/api/docs', { method: 'POST', body: JSON.stringify(request) })
         if (!cancelled) { setOperations(data.operations || []); setNotice('') }
       } catch (error) { if (!cancelled) { setOperations([]); setNotice(error.message) } }
@@ -365,6 +368,7 @@ function ApiList({ projects, projectRef, project, onProjectChange, onNavigate, o
 }
 
 const emptyAuthoredParameter = () => ({ name: '', in: 'query', type: 'string', required: false, example: '' })
+const emptyAuthoredHeader = () => ({ name: '', type: 'string', required: false, example: '' })
 
 function ApiAuthorEditor({ projects, projectRef, project, refresh, onProjectChange, onNavigate, onProjectList, onSaved }) {
   const [method, setMethod] = useState('GET')
@@ -373,6 +377,8 @@ function ApiAuthorEditor({ projects, projectRef, project, refresh, onProjectChan
   const [summary, setSummary] = useState('')
   const [tag, setTag] = useState('default')
   const [parameters, setParameters] = useState([])
+  const [headers, setHeaders] = useState([])
+  const [errorStatuses, setErrorStatuses] = useState([])
   const [requestBody, setRequestBody] = useState('')
   const [requestRequired, setRequestRequired] = useState(false)
   const [responseStatus, setResponseStatus] = useState('200')
@@ -383,6 +389,7 @@ function ApiAuthorEditor({ projects, projectRef, project, refresh, onProjectChan
   const updateMethod = value => { setMethod(value); setOperationId(operationIdFrom(value, path)) }
   const updatePath = value => { setPath(value); setOperationId(operationIdFrom(method, value)) }
   const updateParameter = (index, key, value) => setParameters(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
+  const updateHeader = (index, key, value) => setHeaders(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
   const parameterPayload = item => {
     let example = item.example
     if (example !== '') {
@@ -397,10 +404,14 @@ function ApiAuthorEditor({ projects, projectRef, project, refresh, onProjectChan
       if (!projectRef || !project?._storage) throw new Error('작성할 프로젝트를 선택하세요.')
       const payload = {
         method, path, operation_id: operationId, summary, tag,
-        parameters: parameters.filter(item => item.name.trim()).map(parameterPayload),
+        parameters: [
+          ...parameters.filter(item => item.name.trim()).map(parameterPayload),
+          ...headers.filter(item => item.name.trim()).map(item => parameterPayload({ ...item, in: 'header' })),
+        ],
         has_request_body: Boolean(requestBody.trim()), request_body_required: requestRequired,
         response_status: Number(responseStatus), response_description: responseDescription,
         has_response_body: Boolean(responseBody.trim()), _storage: project._storage,
+        error_statuses: errorStatuses,
       }
       if (payload.has_request_body) payload.request_body = parseJson(requestBody, 'Request body', true)
       if (payload.has_response_body) payload.response_body = parseJson(responseBody, 'Response body', true)
@@ -409,15 +420,25 @@ function ApiAuthorEditor({ projects, projectRef, project, refresh, onProjectChan
     } catch (error) { setNotice(error.message) }
     finally { setSaving(false) }
   }
-  return <div className="workspace"><AuthorSidebar active="apis" projects={projects} projectRef={projectRef} project={project} onProjectChange={onProjectChange} onNavigate={onNavigate} onProjectList={onProjectList} /><main className="editor"><section className="card"><div className="section-header"><div><p className="eyebrow">NEW OPENAPI OPERATION</p><h2>API 작성</h2></div><div className="actions"><button className="ghost" onClick={onSaved}>목록으로</button><button className="primary" disabled={saving} onClick={save}>{saving ? '저장 중…' : 'API 저장'}</button></div></div>{project?.docs_url && <p className="authoring-copy-notice">저장하면 URL 문서를 현재 프로젝트의 편집 가능한 OpenAPI 사본으로 전환합니다. 원격 문서는 변경하지 않습니다.</p>}<div className="api-author-grid"><Field label="Method"><select value={method} onChange={event => updateMethod(event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(value => <option key={value}>{value}</option>)}</select></Field><Field label="Path" wide><input value={path} onChange={event => updatePath(event.target.value)} placeholder="/v1/users/{userId}" /></Field><Field label="Operation ID"><input value={operationId} onChange={event => setOperationId(event.target.value)} /></Field><Field label="Tag"><input value={tag} onChange={event => setTag(event.target.value)} /></Field><Field label="Summary" wide><input value={summary} onChange={event => setSummary(event.target.value)} placeholder="API 설명" /></Field></div></section><section className="card"><div className="section-header"><div><p className="eyebrow">PARAMETERS</p><h2>파라미터</h2></div><button className="ghost" onClick={() => setParameters(current => [...current, emptyAuthoredParameter()])}>＋ 파라미터 추가</button></div>{parameters.length ? <div className="api-author-parameters">{parameters.map((item, index) => <div className="api-author-parameter" key={index}><input aria-label={`${index + 1}번째 파라미터 이름`} value={item.name} onChange={event => updateParameter(index, 'name', event.target.value)} placeholder="name" /><select aria-label={`${index + 1}번째 파라미터 위치`} value={item.in} onChange={event => updateParameter(index, 'in', event.target.value)}>{['path', 'query', 'header'].map(value => <option key={value}>{value}</option>)}</select><select aria-label={`${index + 1}번째 파라미터 타입`} value={item.type} onChange={event => updateParameter(index, 'type', event.target.value)}>{['string', 'integer', 'number', 'boolean'].map(value => <option key={value}>{value}</option>)}</select><input aria-label={`${index + 1}번째 파라미터 예시`} value={item.example} onChange={event => updateParameter(index, 'example', event.target.value)} placeholder="예시값" /><label className="toggle"><input type="checkbox" checked={item.required || item.in === 'path'} disabled={item.in === 'path'} onChange={event => updateParameter(index, 'required', event.target.checked)} /><span>필수</span></label><button className="icon danger" aria-label={`${index + 1}번째 파라미터 삭제`} onClick={() => setParameters(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div>)}</div> : <div className="empty compact">파라미터가 없습니다. Path의 {'{변수}'}는 저장 시 자동으로 path 파라미터가 됩니다.</div>}</section><section className="card"><div className="form-grid project-settings-grid"><Field label="Request body JSON" wide><JsonArea value={requestBody} onChange={setRequestBody} placeholder={'{\n  "name": "Ada"\n}'} /></Field><label className="toggle"><input type="checkbox" checked={requestRequired} disabled={!requestBody.trim()} onChange={event => setRequestRequired(event.target.checked)} /><span>Request body 필수</span></label><Field label="응답 상태 코드"><input type="number" min="100" max="599" value={responseStatus} onChange={event => setResponseStatus(event.target.value)} /></Field><Field label="응답 설명"><input value={responseDescription} onChange={event => setResponseDescription(event.target.value)} /></Field><Field label="Response body JSON" wide><JsonArea value={responseBody} onChange={setResponseBody} placeholder={'{\n  "id": 1,\n  "name": "Ada"\n}'} /></Field></div></section>{notice && <p className="notice" role="status">{notice}</p>}</main></div>
+  return <div className="workspace">
+    <AuthorSidebar active="apis" projects={projects} projectRef={projectRef} project={project} onProjectChange={onProjectChange} onNavigate={onNavigate} onProjectList={onProjectList} />
+    <main className="editor">
+      <section className="card"><div className="section-header"><div><p className="eyebrow">NEW OPENAPI OPERATION</p><h2>API 작성</h2></div><div className="actions"><button className="ghost" onClick={onSaved}>목록으로</button><button className="primary" disabled={saving} onClick={save}>{saving ? '저장 중…' : 'API 저장'}</button></div></div>{project?.docs_url && <p className="authoring-copy-notice">저장하면 URL 문서를 현재 프로젝트의 편집 가능한 OpenAPI 사본으로 전환합니다. 원격 문서는 변경하지 않습니다.</p>}<div className="api-author-grid"><Field label="Method"><select value={method} onChange={event => updateMethod(event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(value => <option key={value}>{value}</option>)}</select></Field><Field label="Path" wide><input value={path} onChange={event => updatePath(event.target.value)} placeholder="/v1/users/{userId}" /></Field><Field label="Operation ID"><input value={operationId} onChange={event => setOperationId(event.target.value)} /></Field><Field label="Tag"><input value={tag} onChange={event => setTag(event.target.value)} /></Field><Field label="Summary" wide><input value={summary} onChange={event => setSummary(event.target.value)} placeholder="API 설명" /></Field></div></section>
+      <section className="card"><div className="section-header"><div><p className="eyebrow">PARAMETERS</p><h2>Path / Query 파라미터</h2></div><button className="ghost" onClick={() => setParameters(current => [...current, emptyAuthoredParameter()])}>＋ 파라미터 추가</button></div>{parameters.length ? <div className="api-author-parameters">{parameters.map((item, index) => <div className="api-author-parameter" key={index}><input aria-label={`${index + 1}번째 파라미터 이름`} value={item.name} onChange={event => updateParameter(index, 'name', event.target.value)} placeholder="name" /><select aria-label={`${index + 1}번째 파라미터 위치`} value={item.in} onChange={event => updateParameter(index, 'in', event.target.value)}>{['path', 'query'].map(value => <option key={value}>{value}</option>)}</select><select aria-label={`${index + 1}번째 파라미터 타입`} value={item.type} onChange={event => updateParameter(index, 'type', event.target.value)}>{['string', 'integer', 'number', 'boolean'].map(value => <option key={value}>{value}</option>)}</select><input aria-label={`${index + 1}번째 파라미터 예시`} value={item.example} onChange={event => updateParameter(index, 'example', event.target.value)} placeholder="예시값" /><label className="toggle"><input type="checkbox" checked={item.required || item.in === 'path'} disabled={item.in === 'path'} onChange={event => updateParameter(index, 'required', event.target.checked)} /><span>필수</span></label><button className="icon danger" aria-label={`${index + 1}번째 파라미터 삭제`} onClick={() => setParameters(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div>)}</div> : <div className="empty compact">파라미터가 없습니다. Path의 {'{변수}'}는 저장 시 자동으로 path 파라미터가 됩니다.</div>}</section>
+      <section className="card"><div className="section-header"><div><p className="eyebrow">REQUEST HEADERS</p><h2>Headers</h2></div><button className="ghost" onClick={() => setHeaders(current => [...current, emptyAuthoredHeader()])}>＋ Header 추가</button></div>{headers.length ? <div className="api-author-headers">{headers.map((item, index) => <div className="api-author-header" key={index}><input aria-label={`${index + 1}번째 Header 이름`} value={item.name} onChange={event => updateHeader(index, 'name', event.target.value)} placeholder="X-Request-Id" /><select aria-label={`${index + 1}번째 Header 타입`} value={item.type} onChange={event => updateHeader(index, 'type', event.target.value)}>{['string', 'integer', 'number', 'boolean'].map(value => <option key={value}>{value}</option>)}</select><input aria-label={`${index + 1}번째 Header 예시`} value={item.example} onChange={event => updateHeader(index, 'example', event.target.value)} placeholder="예시값" /><label className="toggle"><input type="checkbox" checked={item.required} onChange={event => updateHeader(index, 'required', event.target.checked)} /><span>필수</span></label><button className="icon danger" aria-label={`${index + 1}번째 Header 삭제`} onClick={() => setHeaders(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></div>)}</div> : <div className="empty compact">등록된 요청 Header가 없습니다.</div>}</section>
+      <section className="card"><div className="section-header"><div><p className="eyebrow">COMMON ERROR RESPONSES</p><h2>공통 오류 응답</h2></div></div><p className="hint">선택한 오류는 <code>components/error.yaml</code>의 공통 Response를 참조합니다.</p><div className="common-error-options">{commonErrorOptions.map(([status, label]) => <label key={status}><input type="checkbox" checked={errorStatuses.includes(status)} onChange={event => setErrorStatuses(current => event.target.checked ? [...current, status] : current.filter(value => value !== status))} /><strong>{status}</strong><span>{label}</span></label>)}</div></section>
+      <section className="card"><div className="form-grid project-settings-grid"><Field label="Request body JSON" wide><JsonArea value={requestBody} onChange={setRequestBody} placeholder={'{\n  "name": "Ada"\n}'} /></Field><label className="toggle"><input type="checkbox" checked={requestRequired} disabled={!requestBody.trim()} onChange={event => setRequestRequired(event.target.checked)} /><span>Request body 필수</span></label><Field label="응답 상태 코드"><input type="number" min="100" max="599" value={responseStatus} onChange={event => setResponseStatus(event.target.value)} /></Field><Field label="응답 설명"><input value={responseDescription} onChange={event => setResponseDescription(event.target.value)} /></Field><Field label="Response body JSON" wide><JsonArea value={responseBody} onChange={setResponseBody} placeholder={'{\n  "id": 1,\n  "name": "Ada"\n}'} /></Field></div></section>
+      {notice && <p className="notice" role="status">{notice}</p>}
+    </main>
+  </div>
 }
 
 function ClientGenerator({ projects, projectRef, project, onProjectChange, onNavigate, onProjectList }) {
   const [language, setLanguage] = useState('typescript')
   const [generating, setGenerating] = useState(false)
   const [notice, setNotice] = useState('')
-  const hasDocument = Boolean(project?.docs_url || project?.docs_file?.document)
-  const documentLabel = project?.docs_url || project?.docs_file?.name || '등록된 OpenAPI 문서 없음'
+  const hasDocument = Boolean(project?.docs_bundle || project?.docs_url || project?.docs_file?.document)
+  const documentLabel = project?.docs_bundle?.entrypoint ? `${project.docs_bundle.entrypoint} · ${Object.keys(project.docs_bundle.files || {}).length}개 파일` : project?.docs_url || project?.docs_file?.name || '등록된 OpenAPI 문서 없음'
   const generate = async () => {
     setGenerating(true); setNotice('OpenAPI 문서를 분석해 SDK를 생성하는 중입니다.')
     try {
@@ -466,8 +487,11 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
   const docsUrl = asText(project?.docs_url)
   const docsFile = project?.docs_file
   const docsDocument = docsFile?.document
+  const docsBundle = project?.docs_bundle
   const noProxy = project?.advanced?.use_proxy === false
-  const docsSource = docsDocument
+  const docsSource = docsBundle
+    ? { label: `${docsBundle.entrypoint} · ${Object.keys(docsBundle.files || {}).length}개 파일`, request: { bundle: docsBundle, for_case: true } }
+    : docsDocument
     ? { label: asText(docsFile?.name), request: { document: docsDocument, for_case: true } }
     : docsUrl ? { label: docsUrl, request: { url: docsUrl.trim(), no_proxy: noProxy, for_case: true } } : null
   const plainProjectVariables = Object.keys(project?.variables?.plain || {})
@@ -890,7 +914,7 @@ function ProjectList({ projects, projectDetails, activeProject, onOpenProject, o
 }
 
 const emptyProjectForm = () => ({
-  name: '', baseUrl: '', docsUrl: '', docsFile: null, useProxy: true, sameProxy: false, httpProxy: '', httpsProxy: '', verify: true,
+  name: '', baseUrl: '', docsUrl: '', docsFile: null, docsBundle: null, useProxy: true, sameProxy: false, httpProxy: '', httpsProxy: '', verify: true,
   plainVariables: [], secretVariables: [],
 })
 
@@ -916,7 +940,7 @@ function ProjectSettings({ projects, projectReference, onSaved, onCancel }) {
   const addVariable = kind => setForm(current => ({ ...current, [kind]: [...current[kind], { name: '', value: '', configured: false }] }))
   const updateVariable = (kind, index, key, value) => setForm(current => ({ ...current, [kind]: current[kind].map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item) }))
   const removeVariable = (kind, index) => setForm(current => ({ ...current, [kind]: current[kind].filter((_, itemIndex) => itemIndex !== index) }))
-  const setDocsUrl = value => setForm(current => ({ ...current, docsUrl: value, docsFile: value ? null : current.docsFile }))
+  const setDocsUrl = value => setForm(current => ({ ...current, docsUrl: value, docsFile: value ? null : current.docsFile, docsBundle: value ? null : current.docsBundle }))
   const checkDocsUrl = async value => {
     const url = asText(value).trim()
     if (!url) {
@@ -944,7 +968,7 @@ function ProjectSettings({ projects, projectReference, onSaved, onCancel }) {
       if (file.size > 5 * 1024 * 1024) throw new Error('OpenAPI / Swagger JSON 파일은 5MB 이하여야 합니다.')
       const document = JSON.parse(await file.text())
       const data = await api('/api/docs', { method: 'POST', body: JSON.stringify({ document }) })
-      setForm(current => ({ ...current, docsUrl: '', docsFile: { name: file.name, document } }))
+      setForm(current => ({ ...current, docsUrl: '', docsFile: { name: file.name, document }, docsBundle: null }))
       setNotice(`${file.name}에서 ${data.operations?.length || 0}개 API를 확인했습니다.`)
     } catch (error) { setNotice(error instanceof SyntaxError ? '올바른 JSON 파일이 아닙니다.' : error.message) }
     finally { input.value = '' }
@@ -963,9 +987,10 @@ function ProjectSettings({ projects, projectReference, onSaved, onCancel }) {
         const plainVariables = Object.entries(variables.plain || {}).map(([name, value]) => ({ name, value: asText(value), configured: false }))
         const secretVariables = Object.entries(variables.secret || {}).map(([name, definition]) => ({ name, value: '', configured: Boolean(definition?.configured) }))
         const docsFile = data.docs_file?.document ? data.docs_file : null
-        setForm({ name: asText(data.name), baseUrl: asText(data.base_url), docsUrl: asText(data.docs_url), docsFile, useProxy: advanced.use_proxy !== false, sameProxy: Boolean(httpProxy && httpProxy === httpsProxy), httpProxy, httpsProxy, verify: advanced.verify ?? true, plainVariables, secretVariables })
+        const docsBundle = data.docs_bundle?.entrypoint ? data.docs_bundle : null
+        setForm({ name: asText(data.name), baseUrl: asText(data.base_url), docsUrl: asText(data.docs_url), docsFile, docsBundle, useProxy: advanced.use_proxy !== false, sameProxy: Boolean(httpProxy && httpProxy === httpsProxy), httpProxy, httpsProxy, verify: advanced.verify ?? true, plainVariables, secretVariables })
         setStorageMeta(data._storage || null)
-        setAdvancedOpen(Boolean(httpProxy || httpsProxy || docsFile || plainVariables.length || secretVariables.length) || advanced.verify === false || advanced.use_proxy === false); setNotice('')
+        setAdvancedOpen(Boolean(httpProxy || httpsProxy || docsFile || docsBundle || plainVariables.length || secretVariables.length) || advanced.verify === false || advanced.use_proxy === false); setNotice('')
       } catch (error) { setNotice(error.message) }
     }
     load()
@@ -1015,6 +1040,7 @@ function ProjectSettings({ projects, projectReference, onSaved, onCancel }) {
       const reference = projectReference || projectFileName(form.name, projects)
       const payload = { name: form.name, base_url: form.baseUrl, docs_url: form.docsUrl, advanced: { use_proxy: form.useProxy, http_proxy: form.httpProxy, https_proxy: form.httpsProxy, verify: form.verify }, variables: { plain, secret } }
       if (form.docsFile) payload.docs_file = form.docsFile
+      if (form.docsBundle) payload.docs_bundle = form.docsBundle
       await api(`/api/projects/${encodeURIComponent(reference)}`, { method: 'PUT', body: JSON.stringify(projectReference && storageMeta ? { ...payload, _storage: storageMeta } : payload) })
       await onSaved(reference)
     } catch (error) { setNotice(error.message) }

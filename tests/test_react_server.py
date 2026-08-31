@@ -32,6 +32,8 @@ from react_server import (
     normalize_case_document,
     project_has_cases,
     project_openapi_document,
+    resolve_openapi_bundle,
+    split_openapi_bundle,
     project_json_files,
     project_summaries,
     validate_project_document,
@@ -325,6 +327,22 @@ paths:
 
         load_document.assert_called_once_with("https://api.example.test/openapi.json", no_proxy=True, for_case=True)
 
+    def test_docs_endpoint_accepts_split_openapi_bundle(self) -> None:
+        document, _operation = author_openapi_operation({"name": "Member"}, {
+            "method": "GET", "path": "/members", "operation_id": "listMembers",
+            "response_status": 200, "response_description": "OK", "error_statuses": [400],
+        })
+        handler = object.__new__(StudioHandler)
+        handler.api_path = Mock(return_value=["api", "docs"])
+        handler.read_body = Mock(return_value={"bundle": split_openapi_bundle(document)})
+        handler.send_json = Mock()
+
+        handler.do_POST()
+
+        response = handler.send_json.call_args.args
+        self.assertEqual(response[0], 200)
+        self.assertEqual(response[1]["operations"][0]["responses"][1]["status"], 400)
+
     def test_date_parameter_normalization_is_case_specific(self) -> None:
         from datetime import datetime
 
@@ -376,9 +394,11 @@ paths:
         self.assertEqual(store.save.call_args.kwargs["expected_revision"], 3)
         self.assertEqual(store.save.call_args.kwargs["action"], "author_openapi_operation")
         self.assertEqual(saved_project["variables"]["secret"]["api_key"], "encrypted-value")
-        self.assertEqual(saved_project["docs_file"]["document"]["paths"]["/members"]["get"]["operationId"], "listMembers")
+        self.assertNotIn("docs_file", saved_project)
+        resolved = resolve_openapi_bundle(saved_project["docs_bundle"])
+        self.assertEqual(resolved["paths"]["/members"]["get"]["operationId"], "listMembers")
         handler.send_json.assert_called_once_with(200, {
-            "operation": saved_project["docs_file"]["document"]["paths"]["/members"]["get"],
+            "operation": resolved["paths"]["/members"]["get"],
             "_storage": {"revision": 4},
         })
 
@@ -403,19 +423,57 @@ paths:
         document, operation = author_openapi_operation({"name": "Member API"}, {
             "method": "POST", "path": "/members/{memberId}", "operation_id": "updateMember",
             "summary": "회원 수정", "tag": "Members",
-            "parameters": [{"name": "dryRun", "in": "query", "type": "boolean", "example": True}],
+            "parameters": [
+                {"name": "dryRun", "in": "query", "type": "boolean", "example": True},
+                {"name": "X-Request-Id", "in": "header", "type": "string", "required": True, "example": "req-1"},
+            ],
             "has_request_body": True, "request_body_required": True, "request_body": {"name": "Ada"},
             "response_status": 200, "response_description": "Updated",
             "has_response_body": True, "response_body": {"id": 7, "name": "Ada"},
+            "error_statuses": [400, 404, 500],
         })
 
         self.assertEqual(document["info"]["title"], "Member API")
         self.assertEqual(operation["operationId"], "updateMember")
-        self.assertEqual(operation["parameters"][1]["name"], "memberId")
+        self.assertEqual(operation["parameters"][1]["in"], "header")
+        self.assertEqual(operation["parameters"][2]["name"], "memberId")
         normalized = openapi_operations(document)[0]
         self.assertEqual(normalized["tag"], "Members")
+        self.assertEqual(normalized["parameters"][1], {"name": "X-Request-Id", "in": "header", "value": "req-1"})
         self.assertEqual(normalized["request_body"], {"name": "Ada"})
         self.assertEqual(normalized["response_body"], {"id": 7, "name": "Ada"})
+
+    def test_splits_and_resolves_openapi_bundle_with_common_errors(self) -> None:
+        document, _operation = author_openapi_operation({"name": "Member API"}, {
+            "method": "GET", "path": "/members/{memberId}", "operation_id": "getMember",
+            "response_status": 200, "response_description": "OK", "error_statuses": [400, 404],
+            "has_response_body": True, "response_body": {"id": 7, "name": "Ada"},
+        })
+
+        bundle = split_openapi_bundle(document)
+        files = bundle["files"]
+        self.assertIn("openapi.yaml", files)
+        self.assertIn("components/error.yaml", files)
+        self.assertTrue(any(path.startswith("paths/") for path in files))
+        self.assertTrue(any(path.startswith("components/schemas/") for path in files))
+        resolved = resolve_openapi_bundle(bundle)
+        operation = resolved["paths"]["/members/{memberId}"]["get"]
+        self.assertEqual(operation["responses"]["400"]["description"], "잘못된 요청")
+        self.assertEqual(operation["responses"]["404"]["content"]["application/json"]["example"]["code"], "RESOURCE_NOT_FOUND")
+        resplit = split_openapi_bundle(resolved)
+        path_content = next(content for path, content in resplit["files"].items() if path.startswith("paths/"))
+        self.assertIn("../openapi.yaml#/components/responses/BadRequest", path_content)
+
+    def test_openapi_bundle_rejects_external_or_escaping_references(self) -> None:
+        for reference in ("https://example.test/schema.yaml", "../outside.yaml"):
+            with self.subTest(reference=reference), self.assertRaisesRegex(ValueError, "외부 URL|내부 YAML"):
+                resolve_openapi_bundle({
+                    "entrypoint": "openapi.yaml",
+                    "files": {"openapi.yaml": yaml.safe_dump({
+                        "openapi": "3.0.3", "info": {"title": "API", "version": "1"},
+                        "paths": {"/items": {"$ref": reference}},
+                    })},
+                })
 
     def test_authored_api_rejects_duplicate_or_swagger_document(self) -> None:
         payload = {
@@ -463,6 +521,31 @@ paths:
             )
             self.assertIn("title: Member API", generated.read("member-api-typescript-client/openapi.yaml").decode())
 
+    def test_generates_client_zip_with_split_openapi_sources(self) -> None:
+        document, _operation = author_openapi_operation({"name": "Member API"}, {
+            "method": "GET", "path": "/members", "operation_id": "listMembers",
+            "response_status": 200, "response_description": "OK", "error_statuses": [400],
+        })
+        bundle = split_openapi_bundle(document)
+
+        def command_for(source_path: Path, generator: str, output_path: Path) -> list[str]:
+            self.assertEqual(source_path.name, "openapi.yaml")
+            self.assertTrue((source_path.parent / "components" / "error.yaml").is_file())
+            self.assertTrue(any((source_path.parent / "paths").glob("*.yaml")))
+            output_path.mkdir()
+            (output_path / "README.md").write_text("generated", encoding="utf-8")
+            return ["generator"]
+
+        with patch("react_server.openapi_generator_command", side_effect=command_for), patch(
+            "react_server.subprocess.run", return_value=subprocess.CompletedProcess(["generator"], 0, "", ""),
+        ):
+            archive, _filename = generate_openapi_archive(document, "typescript", "Member API", bundle)
+
+        with zipfile.ZipFile(BytesIO(archive)) as generated:
+            self.assertIn("member-api-typescript-client/openapi/openapi.yaml", generated.namelist())
+            self.assertIn("member-api-typescript-client/openapi/components/error.yaml", generated.namelist())
+            self.assertTrue(any(name.startswith("member-api-typescript-client/openapi/paths/") for name in generated.namelist()))
+
     def test_rejects_unsupported_generation_language(self) -> None:
         with self.assertRaisesRegex(ValueError, "지원하지 않는"):
             generate_openapi_archive({"openapi": "3.0.3", "paths": {}}, "ruby", "Member")
@@ -483,11 +566,15 @@ paths:
         payload = {"name": "Member", "base_url": "https://api.example.test", "docs_url": "", "docs_file": docs_file}
 
         validate_project_document(payload)
+        bundle = split_openapi_bundle(docs_file["document"])
+        validate_project_document({"name": "Member", "base_url": "https://api.example.test", "docs_url": "", "docs_bundle": bundle})
 
         with self.assertRaisesRegex(ValueError, "either"):
             validate_project_document({**payload, "docs_url": "https://api.example.test/openapi.json"})
         with self.assertRaisesRegex(ValueError, "JSON filename"):
             validate_project_document({**payload, "docs_file": {**docs_file, "name": "openapi.yaml"}})
+        with self.assertRaisesRegex(ValueError, "either"):
+            validate_project_document({**payload, "docs_bundle": bundle})
 
     def test_project_secrets_are_encrypted_masked_and_preserved(self) -> None:
         key = Fernet.generate_key().decode()

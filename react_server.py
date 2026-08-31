@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import math
 import mimetypes
 import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -46,6 +48,7 @@ PROJECT_ROOT = ROOT / "projects"
 WEB_DIST = ROOT / "web" / "dist"
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
+MAX_BUNDLE_FILES = 200
 HTTP_METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
 OPENAPI_CLIENT_GENERATORS = {
     "python": "python",
@@ -55,6 +58,14 @@ OPENAPI_CLIENT_GENERATORS = {
     "kotlin": "kotlin",
     "go": "go",
     "csharp": "csharp",
+}
+COMMON_ERROR_RESPONSES = {
+    400: "BadRequest",
+    401: "Unauthorized",
+    403: "Forbidden",
+    404: "NotFound",
+    409: "Conflict",
+    500: "InternalServerError",
 }
 EXAMPLE_PROJECT_REFERENCE = "example-api.json"
 EXAMPLE_PROJECT_TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -296,6 +307,19 @@ def openapi_operations(document: dict[str, object], *, for_case: bool = False) -
             if response_body is MISSING:  # Swagger 2.0 response schema
                 response_body = schema_example(response.get("schema"), document)
             status = int(response_key) if str(response_key).isdigit() else 200
+            response_summaries: list[dict[str, object]] = []
+            for raw_status, raw_response in responses.items():
+                response_item = resolve_openapi_reference(document, raw_response)
+                response_item = response_item if isinstance(response_item, dict) else {}
+                item_body = content_example(response_item.get("content"), document)
+                if item_body is MISSING:
+                    item_body = schema_example(response_item.get("schema"), document)
+                response_summaries.append({
+                    "status": int(raw_status) if str(raw_status).isdigit() else str(raw_status),
+                    "description": response_item.get("description", "") if isinstance(response_item.get("description", ""), str) else "",
+                    "has_body": item_body is not MISSING,
+                    "body": None if item_body is MISSING else normalize_openapi_value(item_body),
+                })
             summary = operation.get("summary") or operation.get("operationId") or ""
             tags = operation.get("tags")
             tag = next((item.strip() for item in tags if isinstance(item, str) and item.strip()), "") if isinstance(tags, list) else ""
@@ -305,6 +329,7 @@ def openapi_operations(document: dict[str, object], *, for_case: bool = False) -
                 "has_request_body": request_body is not MISSING, "request_body": None if request_body is MISSING else normalize_openapi_value(request_body),
                 "expected_status": status, "has_response_body": response_body is not MISSING,
                 "response_body": None if response_body is MISSING else normalize_openapi_value(response_body),
+                "responses": response_summaries,
             })
     return operations
 
@@ -356,6 +381,11 @@ def load_openapi_document(url: str, *, no_proxy: bool = False, for_case: bool = 
 
 def project_openapi_document(project: dict[str, object]) -> dict[str, object]:
     """Return the validated OpenAPI source configured for a saved project."""
+    docs_bundle = project.get("docs_bundle")
+    if docs_bundle is not None:
+        document = resolve_openapi_bundle(docs_bundle)
+        openapi_document_operations(document)
+        return document
     docs_file = project.get("docs_file")
     if isinstance(docs_file, dict) and docs_file.get("document") is not None:
         document = docs_file["document"]
@@ -370,6 +400,226 @@ def project_openapi_document(project: dict[str, object]) -> dict[str, object]:
     advanced = project.get("advanced", {})
     use_proxy = advanced.get("use_proxy", True) if isinstance(advanced, dict) else True
     return fetch_openapi_document(docs_url.strip(), no_proxy=use_proxy is False)
+
+
+def normalize_bundle_path(value: object) -> str:
+    if not isinstance(value, str) or not value or "\\" in value or "\x00" in value or value.startswith("/"):
+        raise ApiError("OpenAPI bundle 파일 경로가 올바르지 않습니다.")
+    normalized = posixpath.normpath(value)
+    if normalized in {".", ".."} or normalized.startswith("../") or Path(normalized).suffix.lower() not in {".yaml", ".yml", ".json"}:
+        raise ApiError("OpenAPI bundle은 내부 YAML/JSON 파일만 사용할 수 있습니다.")
+    return normalized
+
+
+def parse_bundle_file(path: str, content: str) -> object:
+    try:
+        return json.loads(content) if path.lower().endswith(".json") else yaml.safe_load(content)
+    except (json.JSONDecodeError, yaml.YAMLError) as exc:
+        raise ApiError(f"OpenAPI bundle 파일 형식이 올바르지 않습니다: {path}") from exc
+
+
+def bundle_files(bundle: object) -> tuple[str, dict[str, str]]:
+    if not isinstance(bundle, dict):
+        raise ApiError("Project docs_bundle must be an object")
+    entrypoint = normalize_bundle_path(bundle.get("entrypoint"))
+    raw_files = bundle.get("files")
+    if not isinstance(raw_files, dict) or not raw_files or len(raw_files) > MAX_BUNDLE_FILES:
+        raise ApiError(f"OpenAPI bundle 파일은 1~{MAX_BUNDLE_FILES}개여야 합니다.")
+    files: dict[str, str] = {}
+    total_bytes = 0
+    for raw_path, content in raw_files.items():
+        path = normalize_bundle_path(raw_path)
+        if path in files or not isinstance(content, str):
+            raise ApiError("OpenAPI bundle 파일 경로 또는 내용이 올바르지 않습니다.")
+        total_bytes += len(content.encode("utf-8"))
+        files[path] = content
+    if total_bytes > MAX_DOCUMENT_BYTES:
+        raise ApiError("OpenAPI bundle은 5 MB 이하여야 합니다.")
+    if entrypoint not in files:
+        raise ApiError("OpenAPI bundle entrypoint 파일을 찾을 수 없습니다.")
+    return entrypoint, files
+
+
+def json_pointer(value: object, fragment: str, reference: str) -> object:
+    if not fragment:
+        return value
+    if not fragment.startswith("/"):
+        raise ApiError(f"지원하지 않는 OpenAPI $ref fragment입니다: {reference}")
+    current = value
+    for raw_segment in fragment[1:].split("/"):
+        segment = unquote(raw_segment).replace("~1", "/").replace("~0", "~")
+        if isinstance(current, dict) and segment in current:
+            current = current[segment]
+        elif isinstance(current, list) and segment.isdigit() and int(segment) < len(current):
+            current = current[int(segment)]
+        else:
+            raise ApiError(f"OpenAPI $ref 대상을 찾을 수 없습니다: {reference}")
+    return current
+
+
+def resolve_openapi_bundle(bundle: object) -> dict[str, object]:
+    entrypoint, files = bundle_files(bundle)
+    parsed = {path: parse_bundle_file(path, content) for path, content in files.items()}
+
+    def visit(value: object, current_file: str, stack: set[tuple[str, str]]) -> object:
+        if isinstance(value, dict) and isinstance(value.get("$ref"), str):
+            reference = value["$ref"]
+            parsed_ref = urlparse(reference)
+            if parsed_ref.scheme or parsed_ref.netloc:
+                raise ApiError("OpenAPI bundle에서 외부 URL $ref는 사용할 수 없습니다.")
+            reference_path, separator, fragment = reference.partition("#")
+            if reference_path:
+                target_file = normalize_bundle_path(posixpath.join(posixpath.dirname(current_file), unquote(reference_path)))
+            else:
+                target_file = current_file
+            if target_file not in parsed:
+                raise ApiError(f"OpenAPI $ref 파일을 찾을 수 없습니다: {reference}")
+            key = (target_file, fragment)
+            if key in stack:
+                return {}
+            target = json_pointer(parsed[target_file], fragment if separator else "", reference)
+            return visit(target, target_file, {*stack, key})
+        if isinstance(value, dict):
+            return {key: visit(item, current_file, stack) for key, item in value.items()}
+        if isinstance(value, list):
+            return [visit(item, current_file, stack) for item in value]
+        return value
+
+    document = visit(parsed[entrypoint], entrypoint, {(entrypoint, "")})
+    if not isinstance(document, dict):
+        raise ApiError("OpenAPI bundle entrypoint root must be an object")
+    return document
+
+
+def yaml_content(value: object) -> str:
+    return yaml.safe_dump(normalize_openapi_value(value), allow_unicode=True, sort_keys=False)
+
+
+def rewrite_split_refs(value: object, schema_files: dict[str, str], *, from_schema: bool) -> object:
+    if isinstance(value, dict):
+        result: dict[str, object] = {}
+        for key, item in value.items():
+            if key == "$ref" and isinstance(item, str) and item.startswith("#/components/schemas/"):
+                schema_name = item.removeprefix("#/components/schemas/").replace("~1", "/").replace("~0", "~")
+                if schema_name in schema_files:
+                    result[key] = f"./{schema_files[schema_name]}" if from_schema else f"../components/schemas/{schema_files[schema_name]}"
+                    continue
+            if key == "$ref" and isinstance(item, str) and item.startswith("#/components/"):
+                prefix = "../../openapi.yaml" if from_schema else "../openapi.yaml"
+                result[key] = f"{prefix}{item}"
+                continue
+            result[key] = rewrite_split_refs(item, schema_files, from_schema=from_schema)
+        return result
+    if isinstance(value, list):
+        return [rewrite_split_refs(item, schema_files, from_schema=from_schema) for item in value]
+    return value
+
+
+def default_error_file() -> dict[str, object]:
+    descriptions = {
+        "BadRequest": ("잘못된 요청", "INVALID_REQUEST", "요청값이 올바르지 않습니다."),
+        "Unauthorized": ("인증 실패", "UNAUTHORIZED", "인증 정보가 필요합니다."),
+        "Forbidden": ("접근 거부", "FORBIDDEN", "접근 권한이 없습니다."),
+        "NotFound": ("리소스 없음", "RESOURCE_NOT_FOUND", "요청한 리소스를 찾을 수 없습니다."),
+        "Conflict": ("리소스 충돌", "CONFLICT", "현재 리소스 상태와 요청이 충돌합니다."),
+        "InternalServerError": ("서버 내부 오류", "INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다."),
+    }
+    responses: dict[str, object] = {}
+    for name, (description, code, message) in descriptions.items():
+        responses[name] = {
+            "description": description,
+            "content": {"application/json": {"schema": {"$ref": "#/schemas/Error"}, "example": {"code": code, "message": message}}},
+        }
+    return {
+        "schemas": {"Error": {"type": "object", "required": ["code", "message"], "properties": {
+            "code": {"type": "string"}, "message": {"type": "string"},
+            "details": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "traceId": {"type": "string"},
+        }}},
+        "responses": responses,
+    }
+
+
+def is_common_error_response(response: object, canonical: object) -> bool:
+    if not isinstance(response, dict) or not isinstance(canonical, dict):
+        return False
+    response_media = response.get("content", {}).get("application/json", {}) if isinstance(response.get("content"), dict) else {}
+    canonical_media = canonical.get("content", {}).get("application/json", {}) if isinstance(canonical.get("content"), dict) else {}
+    response_example = response_media.get("example", {}) if isinstance(response_media, dict) else {}
+    canonical_example = canonical_media.get("example", {}) if isinstance(canonical_media, dict) else {}
+    return (
+        response.get("description") == canonical.get("description")
+        and isinstance(response_example, dict)
+        and isinstance(canonical_example, dict)
+        and response_example.get("code") == canonical_example.get("code")
+    )
+
+
+def split_openapi_bundle(document: dict[str, object]) -> dict[str, object]:
+    source = json.loads(json.dumps(normalize_openapi_value(document), ensure_ascii=False))
+    root = dict(source)
+    files: dict[str, str] = {}
+    error_file = default_error_file()
+    components = dict(root.get("components", {})) if isinstance(root.get("components"), dict) else {}
+    schemas = dict(components.get("schemas", {})) if isinstance(components.get("schemas"), dict) else {}
+    schema_files: dict[str, str] = {}
+    used_schema_files: set[str] = set()
+    for name, schema in schemas.items():
+        if name == "Error" and schema == error_file["schemas"]["Error"]:
+            continue
+        base = archive_slug(name) or "schema"
+        filename = f"{base}.yaml"
+        suffix = 2
+        while filename in used_schema_files:
+            filename = f"{base}-{suffix}.yaml"
+            suffix += 1
+        used_schema_files.add(filename)
+        schema_files[name] = filename
+    split_schemas: dict[str, object] = {}
+    for name, schema in schemas.items():
+        if name not in schema_files:
+            continue
+        filename = schema_files[name]
+        files[f"components/schemas/{filename}"] = yaml_content(rewrite_split_refs(schema, schema_files, from_schema=True))
+        split_schemas[name] = {"$ref": f"./components/schemas/{filename}"}
+    split_schemas.setdefault("Error", {"$ref": "./components/error.yaml#/schemas/Error"})
+    components["schemas"] = split_schemas
+    responses = dict(components.get("responses", {})) if isinstance(components.get("responses"), dict) else {}
+    for name in COMMON_ERROR_RESPONSES.values():
+        if name not in responses or is_common_error_response(responses[name], error_file["responses"][name]):
+            responses[name] = {"$ref": f"./components/error.yaml#/responses/{name}"}
+    components["responses"] = responses
+    root["components"] = components
+    files["components/error.yaml"] = yaml_content(error_file)
+
+    split_paths: dict[str, object] = {}
+    paths = root.get("paths", {})
+    if not isinstance(paths, dict):
+        raise ApiError("The API document must contain an OpenAPI/Swagger paths object")
+    for path, path_item in paths.items():
+        if not isinstance(path, str):
+            continue
+        if isinstance(path_item, dict):
+            path_item = json.loads(json.dumps(path_item, ensure_ascii=False))
+            for method in HTTP_METHODS:
+                operation = path_item.get(method)
+                if not isinstance(operation, dict) or not isinstance(operation.get("responses"), dict):
+                    continue
+                for raw_status, error_name in COMMON_ERROR_RESPONSES.items():
+                    status = str(raw_status)
+                    if is_common_error_response(operation["responses"].get(status), error_file["responses"][error_name]):
+                        operation["responses"][status] = {"$ref": f"#/components/responses/{error_name}"}
+        slug = archive_slug(path) or "root"
+        digest = hashlib.sha256(path.encode("utf-8")).hexdigest()[:8]
+        filename = f"paths/{slug}-{digest}.yaml"
+        files[filename] = yaml_content(rewrite_split_refs(path_item, schema_files, from_schema=False))
+        split_paths[path] = {"$ref": f"./{filename}"}
+    root["paths"] = split_paths
+    files["openapi.yaml"] = yaml_content(root)
+    bundle = {"entrypoint": "openapi.yaml", "files": files}
+    resolved = resolve_openapi_bundle(bundle)
+    openapi_document_operations(resolved)
+    return bundle
 
 
 def schema_from_authored_example(value: object) -> dict[str, object]:
@@ -483,13 +733,32 @@ def author_openapi_operation(
         if (placeholder, "path") not in parameter_keys:
             parameters.append({"name": placeholder, "in": "path", "required": True, "schema": {"type": "string"}})
 
+    components = document.setdefault("components", {})
+    if not isinstance(components, dict):
+        raise ApiError("OpenAPI components가 올바른 객체가 아닙니다.")
+    schemas = components.setdefault("schemas", {})
+    if not isinstance(schemas, dict):
+        raise ApiError("OpenAPI components.schemas가 올바른 객체가 아닙니다.")
+
     response: dict[str, object] = {"description": response_description.strip()}
     if payload.get("has_response_body") is True:
         response_body = payload.get("response_body")
-        response["content"] = {"application/json": {"schema": schema_from_authored_example(response_body)}}
+        response_schema_name = f"{operation_id}Response"
+        schemas[response_schema_name] = schema_from_authored_example(response_body)
+        response["content"] = {"application/json": {"schema": {"$ref": f"#/components/schemas/{response_schema_name}"}}}
+    operation_responses: dict[str, object] = {str(response_status): response}
+    raw_error_statuses = payload.get("error_statuses", [])
+    if not isinstance(raw_error_statuses, list):
+        raise ApiError("오류 응답 상태 목록이 올바르지 않습니다.")
+    for raw_status in raw_error_statuses:
+        if not isinstance(raw_status, int) or isinstance(raw_status, bool) or raw_status not in COMMON_ERROR_RESPONSES:
+            raise ApiError("지원하지 않는 공통 오류 응답 상태입니다.")
+        if raw_status == response_status:
+            raise ApiError("성공 응답과 오류 응답 상태가 중복됩니다.")
+        operation_responses[str(raw_status)] = {"$ref": f"#/components/responses/{COMMON_ERROR_RESPONSES[raw_status]}"}
     operation: dict[str, object] = {
         "operationId": operation_id, "summary": summary.strip(),
-        "responses": {str(response_status): response},
+        "responses": operation_responses,
     }
     if tag.strip():
         operation["tags"] = [tag.strip()]
@@ -497,9 +766,11 @@ def author_openapi_operation(
         operation["parameters"] = parameters
     if payload.get("has_request_body") is True:
         request_body = payload.get("request_body")
+        request_schema_name = f"{operation_id}Request"
+        schemas[request_schema_name] = schema_from_authored_example(request_body)
         operation["requestBody"] = {
             "required": payload.get("request_body_required") is True,
-            "content": {"application/json": {"schema": schema_from_authored_example(request_body)}},
+            "content": {"application/json": {"schema": {"$ref": f"#/components/schemas/{request_schema_name}"}}},
         }
     path_item[method] = operation
     openapi_document_operations(document)
@@ -529,7 +800,7 @@ def openapi_generator_command(source_path: Path, generator: str, output_path: Pa
 
 
 def generate_openapi_archive(
-    document: dict[str, object], language: str, project_name: str,
+    document: dict[str, object], language: str, project_name: str, bundle: dict[str, object] | None = None,
 ) -> tuple[bytes, str]:
     """Generate one language client and return it with the normalized YAML as ZIP."""
     generator = OPENAPI_CLIENT_GENERATORS.get(language)
@@ -539,11 +810,19 @@ def generate_openapi_archive(
 
     with TemporaryDirectory(prefix="api-client-generator-") as directory:
         temporary_root = Path(directory)
-        source_path = temporary_root / "openapi.yaml"
+        source_root = temporary_root / "source"
         output_path = temporary_root / "client"
-        source_path.write_text(
-            yaml.safe_dump(document, allow_unicode=True, sort_keys=False), encoding="utf-8",
-        )
+        source_root.mkdir()
+        if bundle is not None:
+            entrypoint, files = bundle_files(bundle)
+            for reference, content in files.items():
+                path = source_root / reference
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            source_path = source_root / entrypoint
+        else:
+            source_path = source_root / "openapi.yaml"
+            source_path.write_text(yaml.safe_dump(document, allow_unicode=True, sort_keys=False), encoding="utf-8")
         command = openapi_generator_command(source_path, generator, output_path)
         result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
         if result.returncode != 0:
@@ -552,7 +831,13 @@ def generate_openapi_archive(
         if not output_path.is_dir() or not any(output_path.rglob("*")):
             raise ApiError("OpenAPI Generator가 생성 파일을 반환하지 않았습니다.")
 
-        (output_path / "openapi.yaml").write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
+        if bundle is not None:
+            for reference, content in bundle_files(bundle)[1].items():
+                path = output_path / "openapi" / reference
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+        else:
+            (output_path / "openapi.yaml").write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
         root_name = f"{archive_slug(project_name)}-{language}-client"
         archive = io.BytesIO()
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
@@ -722,8 +1007,11 @@ def validate_project_document(payload: dict[str, object]) -> None:
         if not isinstance(file_name, str) or not file_name.strip().lower().endswith(".json") or Path(file_name).name != file_name:
             raise ApiError("Project docs_file name must be a JSON filename")
         openapi_document_operations(docs_file.get("document"))
-    if docs_url.strip() and docs_file is not None:
-        raise ApiError("Use either Project docs_url or docs_file, not both")
+    docs_bundle = payload.get("docs_bundle")
+    if docs_bundle is not None:
+        openapi_document_operations(resolve_openapi_bundle(docs_bundle))
+    if sum((bool(docs_url.strip()), docs_file is not None, docs_bundle is not None)) > 1:
+        raise ApiError("Use either Project docs_url, docs_file, or docs_bundle")
     advanced = payload.get("advanced", {})
     if not isinstance(advanced, dict):
         raise ApiError("Project advanced settings must be an object")
@@ -1003,6 +1291,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
             if parts == ["api", "docs"]:
                 body = self.read_body()
                 document = body.get("document")
+                bundle = body.get("bundle")
                 url = body.get("url")
                 no_proxy = body.get("no_proxy", False)
                 for_case = body.get("for_case", False)
@@ -1010,13 +1299,15 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     raise ApiError("API docs no_proxy must be true or false")
                 if not isinstance(for_case, bool):
                     raise ApiError("API docs for_case must be true or false")
-                if document is not None:
-                    if url not in (None, ""):
-                        raise ApiError("Use either API docs URL or document, not both")
+                source_count = int(document is not None) + int(bundle is not None) + int(isinstance(url, str) and bool(url.strip()))
+                if source_count != 1:
+                    raise ApiError("Use exactly one API docs URL, document, or bundle")
+                if bundle is not None:
+                    operations = openapi_document_operations(resolve_openapi_bundle(bundle), for_case=for_case)
+                elif document is not None:
                     operations = openapi_document_operations(document, for_case=for_case)
                 else:
-                    if not isinstance(url, str) or not url.strip():
-                        raise ApiError("API docs URL or JSON document is required")
+                    assert isinstance(url, str)
                     operations = load_openapi_document(url.strip(), no_proxy=no_proxy, for_case=for_case)
                 self.send_json(200, {"operations": normalize_openapi_value(operations)})
                 return
@@ -1027,14 +1318,19 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 current = store.get("projects", parts[2])
                 if current is None:
                     raise ApiError("선택한 프로젝트를 찾을 수 없습니다.")
-                has_source = bool(current.document.get("docs_url")) or isinstance(current.document.get("docs_file"), dict)
+                has_source = (
+                    bool(current.document.get("docs_url"))
+                    or isinstance(current.document.get("docs_file"), dict)
+                    or isinstance(current.document.get("docs_bundle"), dict)
+                )
                 source_document = project_openapi_document(current.document) if has_source else None
                 document, operation = author_openapi_operation(current.document, payload, source_document)
                 updated_project = {
                     **current.document,
                     "docs_url": "",
-                    "docs_file": {"name": "openapi.json", "document": document},
+                    "docs_bundle": split_openapi_bundle(document),
                 }
+                updated_project.pop("docs_file", None)
                 validate_project_document(updated_project)
                 stored = store.save(
                     "projects", parts[2], updated_project, expected_revision=expected_revision,
@@ -1056,8 +1352,10 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     raise ApiError("선택한 프로젝트를 찾을 수 없습니다.")
                 document = project_openapi_document(stored.document)
                 project_name = stored.document.get("name", project_reference.removesuffix(".json"))
+                bundle = stored.document.get("docs_bundle")
                 archive, filename = generate_openapi_archive(
                     document, language, project_name if isinstance(project_name, str) else project_reference,
+                    bundle if isinstance(bundle, dict) else None,
                 )
                 self.send_attachment(archive, filename)
                 return
