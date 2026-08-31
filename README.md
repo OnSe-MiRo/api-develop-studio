@@ -382,6 +382,7 @@ API 케이스의 URL·Params·Authorization·Headers·JSON Body·form-data 텍�
 - `request.url`: 필수입니다. 프로젝트가 있으면 `/users` 같은 상대 URL 또는 절대 URL을 사용할 수 있습니다.
 - `request.headers`, `request.body`: 선택 사항입니다. `body`는 JSON으로 직렬화됩니다. 프로젝트 공통값은 `{{project.변수명}}`으로 참조할 수 있습니다.
 - `request.form_data`: 선택 사항입니다. 지정하면 `body` 대신 `multipart/form-data` 요청을 만듭니다. 각 행은 텍스트 `{ "key": "title", "value": "profile" }` 또는 파일 `{ "key": "file", "file": "member/users/files/profile.png", "filename": "profile.png" }` 형식입니다. `content_type`을 선택적으로 지정할 수 있습니다. 파일 참조는 `case` 루트 기준이며, 화면에서 고른 파일은 `case/{tag}/{api_name}/files/`에 저장됩니다.
+- `timeout`: 선택 사항이며 초 단위의 양수입니다. 지정하면 해당 케이스의 API 요청에만 적용되고, 생략하면 CLI의 기본 timeout을 사용합니다.
 - `expected.status`: 기대 HTTP 상태 코드입니다.
 - `expected.body`: 기대 JSON 응답입니다.
 - `expected.strict`: 기본값은 `true`입니다. `true`면 객체의 키, 배열 길이와 순서, 값과 타입이 모두 일치해야 합니다. `false`면 기대 객체에 없는 추가 키와 배열의 뒤쪽 요소를 허용하고, 값이 같은 int·float(예: `9`, `9.0`)는 동일하게 비교합니다. boolean과 숫자(예: `true`, `1`)는 서로 다른 타입입니다.

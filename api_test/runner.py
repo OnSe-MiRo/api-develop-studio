@@ -6,6 +6,7 @@ import binascii
 import ipaddress
 import json
 import mimetypes
+import math
 import re
 import ssl
 import time
@@ -654,6 +655,12 @@ class ApiTestRunner:
         _, validate_conditions = response_validation_modes(expected)
         if validate_conditions:
             validate_assertions(expected.get("assertions"))
+        timeout_seconds = self.timeout_seconds
+        case_timeout = case.get("timeout")
+        if case_timeout is not None:
+            if isinstance(case_timeout, bool) or not isinstance(case_timeout, (int, float)) or not math.isfinite(case_timeout) or case_timeout <= 0:
+                raise CaseConfigurationError("case.timeout must be a positive number of seconds")
+            timeout_seconds = float(case_timeout)
 
         resolved_request = resolve_references(copy.deepcopy(request_definition), context or {})
         try:
@@ -675,7 +682,7 @@ class ApiTestRunner:
         for attempt in range(1, attempts + 1):
             result = self._run_once(
                 case_id, resolved_request, expected, attempt, proxy_url, verify_ssl,
-                file_root, proxy_urls, no_proxy, sensitive_values,
+                file_root, proxy_urls, no_proxy, sensitive_values, timeout_seconds,
             )
             if result.status == "passed":
                 return result
@@ -689,6 +696,7 @@ class ApiTestRunner:
         self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int,
         proxy_url: str | None = None, verify_ssl: bool = True, file_root: Path | None = None,
         proxy_urls: dict[str, str] | None = None, no_proxy: bool = False, sensitive_values: set[str] | None = None,
+        timeout_seconds: float | None = None,
     ) -> CaseResult:
         method = str(request_definition.get("method", "GET")).upper()
         headers = {str(key): str(value) for key, value in request_definition.get("headers", {}).items()}
@@ -702,6 +710,7 @@ class ApiTestRunner:
             data = json.dumps(payload).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
         request = urllib.request.Request(request_definition["url"], data=data, headers=headers, method=method)
+        request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
         try:
             if no_proxy or proxy_url or proxy_urls or not verify_ssl:
                 handlers: list[Any] = []
@@ -714,9 +723,9 @@ class ApiTestRunner:
                 if not verify_ssl:
                     handlers.append(urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
                 opener = urllib.request.build_opener(*handlers)
-                opened_response = opener.open(request, timeout=self.timeout_seconds)
+                opened_response = opener.open(request, timeout=request_timeout)
             else:
-                opened_response = urllib.request.urlopen(request, timeout=self.timeout_seconds)
+                opened_response = urllib.request.urlopen(request, timeout=request_timeout)
             with opened_response as opened:
                 status = opened.status
                 response_headers = dict(opened.headers.items())

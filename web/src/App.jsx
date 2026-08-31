@@ -2,7 +2,7 @@ import { Component, useEffect, useState } from 'react'
 import './format-menu.css'
 
 const emptyCase = {
-  tag: 'sample', apiName: 'api_name', fileName: 'new_case', method: 'GET', url: '',
+  tag: 'sample', apiName: 'api_name', fileName: 'new_case', timeout: '', method: 'GET', url: '',
   params: [{ key: '', value: '' }], authType: 'No Auth', authValue: '', headers: '', body: '', bodyMode: 'json', formData: [],
   expectedStatus: '200', strict: true, expectedBody: '', validateExact: true, validateConditions: false, assertions: [], secretVariables: [],
 }
@@ -176,7 +176,7 @@ function caseSignature(reference, payload) {
   const expectedBodyRaw = typeof payload?._expectedBodyRaw === 'string'
     ? payload._expectedBodyRaw
     : expected.body === undefined ? '' : JSON.stringify(expected.body, null, 2)
-  return JSON.stringify({ reference, project: payload?.project, request: payload?.request, expected, expectedBodyRaw })
+  return JSON.stringify({ reference, project: payload?.project, timeout: payload?.timeout, request: payload?.request, expected, expectedBodyRaw })
 }
 
 function splitRequestUrl(rawUrl) {
@@ -602,7 +602,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       }))
       setForm({
         tag: asText(tag), apiName: asText(apiName), fileName: caseName(fileName), method: asText(request.method) || 'GET', url: requestUrl.baseUrl,
-        params: requestUrl.params.concat({ key: '', value: '' }),
+        timeout: data.timeout === undefined ? '' : String(data.timeout), params: requestUrl.params.concat({ key: '', value: '' }),
         authType: authorization.startsWith('Bearer ') ? 'Bearer Token' : 'No Auth', authValue: authorization.replace(/^Bearer /, ''),
         headers: Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n'),
         body: request.body === undefined ? '' : JSON.stringify(request.body, null, 2), bodyMode: Array.isArray(request.form_data) ? 'form-data' : 'json', formData, expectedStatus: String(expected.status ?? 200),
@@ -653,6 +653,9 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       status: Number(form.expectedStatus), strict: form.strict,
       validation_modes: { exact_body: form.validateExact, conditions: form.validateConditions },
     }
+    const timeoutText = asText(form.timeout).trim()
+    const timeout = timeoutText ? Number(timeoutText) : undefined
+    if (timeout !== undefined && (!Number.isFinite(timeout) || timeout <= 0)) throw new Error('API timeout은 0보다 큰 초 단위 숫자여야 합니다.')
     if (!Number.isInteger(expected.status)) throw new Error('Expected status는 정수여야 합니다.')
     const expectedBody = parseJson(form.expectedBody, 'Expected body')
     if (form.validateExact && expectedBody === undefined) throw new Error('기대 응답 일치 검증을 사용하려면 Expected body를 입력하세요.')
@@ -713,7 +716,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       else if (item.configured) secret[name] = { preserve: true }
       else throw new Error(`케이스 보안 변수 ${name}의 값을 입력하세요.`)
     })
-    return { project: projectRef, request, expected, variables: { secret } }
+    return { project: projectRef, ...(timeout === undefined ? {} : { timeout }), request, expected, variables: { secret } }
   }
 
   const casePayload = async () => ({ ...(await document()), _expectedBodyRaw: form.expectedBody })
@@ -749,7 +752,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     <TestSidebar active="cases" projectRef={projectRef} project={project} onNavigate={onNavigate} onProjectList={onProjectList} />
     <main className="editor">
       <section className="card"><div className="section-header"><div><p className="eyebrow">CASE SETTINGS</p><h2>{selected ? 'API 케이스 설정' : '새 API 케이스'}</h2></div><div className="actions"><button className="ghost" onClick={onBack}>목록으로</button>{selected && <button className="danger-button" onClick={removeCase}>삭제</button>}<button className="ghost" onClick={save}>저장</button></div></div>
-        <div className="form-grid three"><Field label="Tag"><input value={form.tag} onChange={event => set('tag', event.target.value)} /></Field><Field label="API 이름"><input value={form.apiName} onChange={event => set('apiName', event.target.value)} /></Field><Field label="케이스 명"><input value={form.fileName} onChange={event => set('fileName', event.target.value)} /></Field></div>
+        <div className="form-grid three"><Field label="Tag"><input value={form.tag} onChange={event => set('tag', event.target.value)} /></Field><Field label="API 이름"><input value={form.apiName} onChange={event => set('apiName', event.target.value)} /></Field><Field label="케이스 명"><input value={form.fileName} onChange={event => set('fileName', event.target.value)} /></Field></div><div className="case-timeout"><Field label="API timeout (초)"><input type="number" min="0.1" step="0.1" value={form.timeout} onChange={event => set('timeout', event.target.value)} placeholder="기본값 (10)" /></Field></div>
         <div className="case-resource-grid"><section className="docs-import"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT API DOCUMENT</p><h3>프로젝트 API 문서</h3></div><button className="ghost icon variable-expand" aria-label={docsExpanded ? '프로젝트 API 문서 접기' : '프로젝트 API 문서 확장'} title={docsExpanded ? '접기' : '확장'} aria-expanded={docsExpanded} onClick={() => setDocsExpanded(current => !current)}>{docsExpanded ? '−' : '+'}</button></div>{docsExpanded && <div className="variable-panel-content">{docsSource ? <><div className="docs-source"><span>문서 원본</span><code>{docsSource.label}</code></div><button className="ghost" onClick={() => loadDocs()}>문서 새로 불러오기</button>{docOperations.length > 0 && <Field label="문서 API 선택" wide><select className="document-operation-select" value={selectedDocOperationId} onChange={event => applyDocOperation(event.target.value)}><option value="">API를 선택하세요. ({docOperations.length}개)</option>{groupDocOperationsByTag(docOperations).map(([tag, operations]) => <optgroup key={tag} label={`${tag} (${operations.length})`}>{operations.map(operation => <option key={operation.id} value={operation.id}>{operation.method} {operation.path}</option>)}</optgroup>)}</select></Field>}</> : <p className="hint">프로젝트 설정에서 OpenAPI / Swagger 문서 URL 또는 JSON 파일을 등록하면 API 목록을 자동으로 불러옵니다.</p>}<p className="hint">API를 선택하면 Params·Headers·Body와 기대 응답 예시가 자동 입력됩니다.</p></div>}</section>{availableProjectVariables.length > 0 && <section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">PROJECT VARIABLES</p><h3>프로젝트 공통 변수 <span className="count">{availableProjectVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={projectVariablesExpanded ? '프로젝트 공통 변수 접기' : '프로젝트 공통 변수 확장'} title={projectVariablesExpanded ? '접기' : '확장'} aria-expanded={projectVariablesExpanded} onClick={() => setProjectVariablesExpanded(current => !current)}>{projectVariablesExpanded ? '−' : '+'}</button></div>{projectVariablesExpanded && <div className="variable-panel-content"><p className="hint">URL·Params·Authorization·Headers·Body에서 참조식을 사용할 수 있습니다.</p><div className="project-variable-chips">{availableProjectVariables.map(variable => <button className={variable.secret ? 'secret' : ''} key={variable.name} onClick={() => copyProjectVariable(variable.name)}><span>{variable.secret ? '보안' : '일반'}</span><code>{`{{project.${variable.name}}}`}</code><small>복사</small></button>)}</div></div>}</section>}<section className="case-resource project-variable-reference"><div className="case-resource-heading"><div><p className="eyebrow">CASE SECRET VARIABLES</p><h3>케이스 전용 보안 변수 <span className="count">{availableCaseVariables.length}</span></h3></div><button className="ghost icon variable-expand" aria-label={caseVariablesExpanded ? '케이스 전용 보안 변수 접기' : '케이스 전용 보안 변수 확장'} title={caseVariablesExpanded ? '접기' : '확장'} aria-expanded={caseVariablesExpanded} onClick={() => setCaseVariablesExpanded(current => !current)}>{caseVariablesExpanded ? '−' : '+'}</button></div>{caseVariablesExpanded && <div className="variable-panel-content"><p className="hint">이 케이스에서만 사용할 API Key·토큰을 암호화해 저장합니다.</p><ProjectVariableRows secret items={form.secretVariables} onAdd={addCaseSecretVariable} onUpdate={updateCaseSecretVariable} onRemove={removeCaseSecretVariable} />{availableCaseVariables.length > 0 && <div className="project-variable-chips">{availableCaseVariables.map(variable => <button className="secret" key={variable.name} onClick={() => copyCaseVariable(variable.name)}><span>보안</span><code>{`{{case.${variable.name}}}`}</code><small>복사</small></button>)}</div>}</div>}</section></div>
       </section>
       <section className="card request-card"><div className="request-bar"><select className="method" value={form.method} onChange={event => set('method', event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => <option key={method}>{method}</option>)}</select><input className="url-input" value={form.url} placeholder="/v1/users (프로젝트 Base URL 기준)" onChange={event => set('url', event.target.value)} /></div>

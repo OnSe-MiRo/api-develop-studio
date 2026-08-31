@@ -56,6 +56,18 @@ class ApiRunnerTest(unittest.TestCase):
             result = ApiTestRunner().run_case("health", case)
         self.assertIn('  actual_response={"status": 200, "body": {"ok": true}}', cli._result_lines(result))
 
+    def test_case_timeout_overrides_runner_default(self) -> None:
+        case = {"timeout": 2.5, "request": {"url": "https://example.test/health"}, "expected": {"status": 200}}
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})) as urlopen:
+            result = ApiTestRunner(timeout_seconds=10).run_case("health", case)
+        self.assertEqual(result.status, "passed")
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], 2.5)
+
+    def test_case_timeout_must_be_positive(self) -> None:
+        case = {"timeout": 0, "request": {"url": "https://example.test/health"}, "expected": {"status": 200}}
+        with self.assertRaisesRegex(CaseConfigurationError, "case.timeout"):
+            ApiTestRunner().run_case("health", case)
+
     def test_response_assertions_pass_for_ranges_types_and_presence(self) -> None:
         case = {
             "request": {"url": "https://example.test/metrics"},
