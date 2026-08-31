@@ -33,9 +33,11 @@ API 케이스와 파이프라인 목록에서도 각 항목 오른쪽의 `×` �
 
 ### OpenAPI API 작성 및 클라이언트 SDK 생성
 
-상단의 `API 작성`을 선택하면 프로젝트별 `API 목록`과 `SDK 생성` 메뉴를 사용할 수 있습니다. `API 목록`의 `API 작성` 버튼에서는 method, path, operation ID, tag, summary, 파라미터, 요청·응답 JSON 예시를 입력해 OpenAPI 3.x operation을 저장할 수 있습니다. 작성된 API는 method별 색상과 path, 요청·응답 내용을 펼쳐보는 Swagger 스타일 목록으로 표시됩니다. 문서가 없는 프로젝트에서 처음 저장하면 OpenAPI 3.0.3 문서를 자동 생성하며, URL 문서는 원격 원본을 변경하지 않고 프로젝트 내부 편집 사본으로 전환합니다. Swagger 2.0 문서는 조회할 수 있지만 새 API 작성 전 OpenAPI 3.x로 변환해야 합니다.
+상단의 `API 작성`을 선택하면 프로젝트별 `API 목록`과 `SDK 생성` 메뉴를 사용할 수 있습니다. `API 목록`의 `API 작성` 버튼에서는 method, path, operation ID, tag, summary, path/query 파라미터, 요청 Header, 요청·응답 JSON 예시를 입력해 OpenAPI 3.x operation을 저장할 수 있습니다. Header는 이름·타입·필수 여부·예시값을 입력하며 OpenAPI `parameters`의 `in: header`로 저장됩니다. 작성된 API는 method별 색상과 path, 요청·응답 내용을 펼쳐보는 Swagger 스타일 목록으로 표시됩니다. 문서가 없는 프로젝트에서 처음 저장하면 OpenAPI 3.0.3 문서를 자동 생성하며, URL 문서는 원격 원본을 변경하지 않고 프로젝트 내부 편집 사본으로 전환합니다. Swagger 2.0 문서는 조회할 수 있지만 새 API 작성 전 OpenAPI 3.x로 변환해야 합니다.
 
-`SDK 생성`에서 Python, JavaScript, TypeScript(Axios), Java, Kotlin, Go, C# 중 하나를 선택하고 `ZIP 생성 및 다운로드`를 누릅니다. 서버는 프로젝트에 저장된 OpenAPI URL 또는 업로드 문서를 다시 검증한 뒤 선택한 언어의 클라이언트 SDK를 생성합니다. 다운로드 ZIP에는 생성된 소스와 해당 시점의 문서를 정규화한 `openapi.yaml`이 함께 들어갑니다. URL 프로젝트에서 `No Proxy`를 선택했다면 SDK 생성 시 문서를 다시 가져올 때도 환경 프록시를 우회합니다.
+작성된 OpenAPI는 `openapi.yaml` entrypoint, `paths/*.yaml`, `components/schemas/*.yaml`, `components/error.yaml`로 분리된 bundle로 프로젝트 revision에 저장됩니다. root 문서는 각 파일을 상대 `$ref`로 참조하며 외부 URL이나 bundle 상위 경로를 가리키는 `$ref`는 허용하지 않습니다. API 작성 화면의 공통 오류 응답에서 400·401·403·404·409·500을 선택하면 해당 operation은 `components/error.yaml`의 표준 Response를 참조합니다. 기존 단일 URL/JSON 문서는 계속 읽을 수 있고, 다음 API 저장 시 분리 bundle로 전환됩니다.
+
+`SDK 생성`에서 Python, JavaScript, TypeScript(Axios), Java, Kotlin, Go, C# 중 하나를 선택하고 `ZIP 생성 및 다운로드`를 누릅니다. 서버는 프로젝트에 저장된 OpenAPI URL, 업로드 문서 또는 분리 bundle을 다시 검증한 뒤 선택한 언어의 클라이언트 SDK를 생성합니다. bundle 기반 ZIP에는 생성 코드와 함께 `openapi/` 아래 원본 `openapi.yaml`, `paths/`, `components/` 구조가 포함됩니다. URL 프로젝트에서 `No Proxy`를 선택했다면 SDK 생성 시 문서를 다시 가져올 때도 환경 프록시를 우회합니다.
 
 SDK 생성은 OpenAPI Generator CLI를 사용하므로 Docker 밖에서 실행할 때 Java 11 이상이 필요합니다. `requirements.txt`를 설치하면 프로젝트에 고정된 Generator 버전도 함께 설치됩니다. Docker 이미지에는 Java 런타임이 포함됩니다.
 
