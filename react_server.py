@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import mimetypes
 import os
 import re
@@ -793,6 +794,12 @@ def normalize_case_document(
 ) -> dict[str, object]:
     """Apply editor-only fields while keeping the persisted/temporary case schema clean."""
     document = dict(payload)
+    timeout = document.get("timeout")
+    if timeout is not None and (
+        isinstance(timeout, bool) or not isinstance(timeout, (int, float))
+        or not math.isfinite(timeout) or timeout <= 0
+    ):
+        raise ApiError("Case timeout must be a positive number of seconds")
     expected_body_raw = document.pop("_expectedBodyRaw", None)
     if expected_body_raw is not None:
         if not isinstance(expected_body_raw, str):
