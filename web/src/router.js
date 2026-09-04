@@ -1,16 +1,26 @@
 import { useEffect, useState } from 'react'
 
+export function stripJson(value) {
+  return typeof value === 'string' ? value.replace(/\.json$/i, '') : ''
+}
+
+export function restoreJson(value) {
+  if (!value || typeof value !== 'string') return ''
+  return value.toLowerCase().endsWith('.json') ? value : `${value}.json`
+}
+
 export function parseLocation() {
   const { pathname, search } = window.location
   const query = new URLSearchParams(search)
-  const project = query.get('project') || ''
+  const rawProject = query.get('project') || ''
+  const project = restoreJson(rawProject)
   const ref = query.get('ref') || ''
 
   if (pathname === '/projects/new') {
     return { tab: 'project-settings', projectSettingsReference: '', activeProject: '', caseReference: '', pipelineReference: '' }
   }
   if (pathname === '/projects/settings') {
-    return { tab: 'project-settings', projectSettingsReference: ref || project, activeProject: project, caseReference: '', pipelineReference: '' }
+    return { tab: 'project-settings', projectSettingsReference: restoreJson(ref || rawProject), activeProject: project, caseReference: '', pipelineReference: '' }
   }
   if (pathname === '/cases/new') {
     return { tab: 'case-settings', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
@@ -44,56 +54,57 @@ export function parseLocation() {
 
 export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference }) {
   const query = new URLSearchParams()
+  const projectSlug = stripJson(activeProject)
   let pathname = '/'
 
   switch (tab) {
     case 'project-settings':
       if (projectSettingsReference) {
         pathname = '/projects/settings'
-        query.set('project', projectSettingsReference)
+        query.set('project', stripJson(projectSettingsReference))
       } else {
         pathname = '/projects/new'
       }
       break
     case 'case-list':
       pathname = '/cases'
-      if (activeProject) query.set('project', activeProject)
+      if (projectSlug) query.set('project', projectSlug)
       break
     case 'case-settings':
       if (caseReference) {
         pathname = '/cases/editor'
-        if (activeProject) query.set('project', activeProject)
+        if (projectSlug) query.set('project', projectSlug)
         query.set('ref', caseReference)
       } else {
         pathname = '/cases/new'
-        if (activeProject) query.set('project', activeProject)
+        if (projectSlug) query.set('project', projectSlug)
       }
       break
     case 'pipeline-list':
       pathname = '/pipelines'
-      if (activeProject) query.set('project', activeProject)
+      if (projectSlug) query.set('project', projectSlug)
       break
     case 'pipeline-settings':
       if (pipelineReference) {
         pathname = '/pipelines/editor'
-        if (activeProject) query.set('project', activeProject)
+        if (projectSlug) query.set('project', projectSlug)
         query.set('ref', pipelineReference)
       } else {
         pathname = '/pipelines/new'
-        if (activeProject) query.set('project', activeProject)
+        if (projectSlug) query.set('project', projectSlug)
       }
       break
     case 'api-list':
       pathname = '/apis'
-      if (activeProject) query.set('project', activeProject)
+      if (projectSlug) query.set('project', projectSlug)
       break
     case 'api-create':
       pathname = '/apis/new'
-      if (activeProject) query.set('project', activeProject)
+      if (projectSlug) query.set('project', projectSlug)
       break
     case 'generator':
       pathname = '/generator'
-      if (activeProject) query.set('project', activeProject)
+      if (projectSlug) query.set('project', projectSlug)
       break
     case 'project':
     default:
