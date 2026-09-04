@@ -25,6 +25,8 @@ API 케이스와 파이프라인 목록에서도 각 항목 오른쪽의 `×` �
 5. 저장하지 않은 현재 값만 확인하려면 `실행만`을 누릅니다. 케이스 파일까지 저장하려면 `저장` 또는 `저장 후 실행`을 사용합니다.
 6. 왼쪽 사이드바의 `파이프라인` 목록에서 새 파이프라인을 만들거나 기존 항목을 선택합니다. 설정 화면에서 같은 프로젝트의 저장된 케이스를 단계로 추가하고 순서·재시도 정책을 지정합니다. 파이프라인도 `실행만`으로 저장 없이 현재 구성만 실행할 수 있습니다.
 
+`Authorization`은 No Auth, API Key, Bearer Token, JWT Bearer, Basic Auth, Digest Auth, OAuth 1.0, OAuth 2.0, Hawk Authentication, AWS Signature, NTLM Authentication, Akamai EdgeGrid, ASAP (Atlassian)을 제공합니다. API Key는 Header 또는 Query Params로 추가할 수 있고, OAuth 2.0·JWT·ASAP은 발급받은 토큰을 입력해 사용합니다. NTLM 실행에는 `requirements.txt`의 `requests-ntlm` 패키지가 필요합니다.
+
 ### API 문서에서 케이스 초안 채우기
 
 프로젝트 생성 또는 수정 화면의 `설정 > OpenAPI 설정`에서 OpenAPI 3.x 또는 Swagger 2.0의 원본 JSON/YAML 문서 URL(예: `https://api.example.com/openapi.json`)을 입력하거나 로컬 JSON 파일을 선택하고 저장합니다. URL과 파일 중 하나만 사용할 수 있으며, URL은 Swagger UI HTML 페이지 주소가 아니라 해당 UI가 참조하는 원본 문서 주소여야 합니다. 업로드하는 JSON 파일은 5MB 이하여야 합니다.

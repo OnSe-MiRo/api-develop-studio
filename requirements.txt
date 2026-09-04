@@ -6,3 +6,6 @@ openapi-generator-cli==7.24.0
 
 # Fernet authenticated encryption for project secret variables.
 cryptography>=43,<50
+
+# NTLM authentication support for API requests.
+requests-ntlm>=1.2,<2
