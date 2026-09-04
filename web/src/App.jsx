@@ -332,13 +332,337 @@ function RunResult({ result }) {
   </section>
 }
 
-function TestSidebar({ active, projectRef, project, onNavigate, onProjectList }) {
-  const projectName = project?.name || projectRef.replace(/\.json$/, '')
-  return <aside className="sidebar"><button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button><div className="sidebar-title">현재 프로젝트</div><div className="current-project"><strong>{projectName}</strong>{project?.base_url && <code>{project.base_url}</code>}</div><div className="sidebar-title">테스트 구성</div><div className="side-nav"><button className={active === 'cases' ? 'active' : ''} onClick={() => onNavigate('cases')}>API 케이스</button><button className={active === 'pipeline' ? 'active' : ''} onClick={() => onNavigate('pipeline')}>파이프라인</button></div></aside>
+function ApiCallPage() {
+  const [method, setMethod] = useState('GET')
+  const [url, setUrl] = useState('')
+  const [params, setParams] = useState([{ key: '', value: '' }])
+  const [authType, setAuthType] = useState('No Auth')
+  const [authToken, setAuthToken] = useState('')
+  const [headers, setHeaders] = useState('')
+  const [body, setBody] = useState('')
+  const [requestTab, setRequestTab] = useState('Params')
+
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState(null)
+  const [errorNotice, setErrorNotice] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [headersExpanded, setHeadersExpanded] = useState(false)
+
+  const updateParam = (index, field, value) => {
+    setParams(current => current.map((item, idx) => idx === index ? { ...item, [field]: value } : item))
+  }
+  const removeParam = index => {
+    setParams(current => current.filter((_, idx) => idx !== index))
+  }
+  const addParam = () => {
+    setParams(current => [...current, { key: '', value: '' }])
+  }
+
+  const handleRun = async () => {
+    const trimmedUrl = url.trim()
+    if (!trimmedUrl) {
+      setErrorNotice('URL을 입력하세요.')
+      return
+    }
+    if (!/^https?:\/\//i.test(trimmedUrl)) {
+      setErrorNotice('올바른 HTTP 또는 HTTPS 절대 URL을 입력하세요 (예: https://api.example.com).')
+      return
+    }
+    if (trimmedUrl.includes('{{') && trimmedUrl.includes('}}')) {
+      setErrorNotice('프로젝트 변수 참조식({{...}})은 일회성 API 호출에서 지원되지 않습니다.')
+      return
+    }
+
+    setLoading(true)
+    setErrorNotice('')
+    setResult(null)
+
+    try {
+      const payload = {
+        method,
+        url: trimmedUrl,
+        params: params.filter(p => p.key.trim()),
+        headers,
+        auth: { type: authType, token: authToken },
+        body: ['GET', 'HEAD'].includes(method) ? undefined : body,
+      }
+      const response = await fetch('/api/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || '요청 처리에 실패했습니다.')
+      }
+      setResult(data)
+    } catch (err) {
+      setErrorNotice(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const copyResponseBody = () => {
+    if (!result) return
+    const text = typeof result.body === 'object' && result.body !== null
+      ? JSON.stringify(result.body, null, 2)
+      : (result.rawBody || '')
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  const statusColorClass = status => {
+    if (status >= 200 && status < 300) return 'status-2xx'
+    if (status >= 300 && status < 400) return 'status-3xx'
+    if (status >= 400 && status < 500) return 'status-4xx'
+    return 'status-5xx'
+  }
+
+  return (
+    <main className="project-page api-call-page">
+      <section className="card">
+        <div className="section-header">
+          <div>
+            <p className="eyebrow">QUICK HTTP REQUEST</p>
+            <h2>API 호출</h2>
+          </div>
+        </div>
+        <div className="request-bar api-call-request-bar">
+          <select
+            className="method"
+            value={method}
+            onChange={e => setMethod(e.target.value)}
+            aria-label="HTTP Method"
+          >
+            {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <input
+            className="url-input"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            placeholder="https://api.example.com/v1/users (절대 HTTP/HTTPS URL)"
+            aria-label="Request URL"
+            onKeyDown={e => { if (e.key === 'Enter' && !loading) handleRun() }}
+          />
+          <button
+            className="primary run-button"
+            onClick={handleRun}
+            disabled={loading}
+            aria-busy={loading}
+          >
+            {loading ? '호출 중...' : '실행'}
+          </button>
+        </div>
+
+        <div className="tabs">
+          {['Params', 'Authorization', 'Headers', 'Body'].map(tab => (
+            <button
+              key={tab}
+              className={requestTab === tab ? 'active' : ''}
+              onClick={() => setRequestTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <div className="tab-content" style={requestTab === 'Params' ? { minHeight: 0, paddingBottom: 14 } : undefined}>
+          {requestTab === 'Params' && (
+            <>
+              <div className="param-header">
+                <span>Key</span>
+                <span>Value</span>
+                <span />
+              </div>
+              {params.map((param, index) => (
+                <div className="param-row" key={index}>
+                  <input
+                    value={param.key}
+                    placeholder="key"
+                    aria-label={`Param Key ${index + 1}`}
+                    onChange={e => updateParam(index, 'key', e.target.value)}
+                  />
+                  <input
+                    value={param.value}
+                    placeholder="value"
+                    aria-label={`Param Value ${index + 1}`}
+                    onChange={e => updateParam(index, 'value', e.target.value)}
+                  />
+                  <button
+                    className="icon"
+                    aria-label={`Parameter ${index + 1} 삭제`}
+                    onClick={() => removeParam(index)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button className="text-button" onClick={addParam}>
+                ＋ Parameter 추가
+              </button>
+            </>
+          )}
+
+          {requestTab === 'Authorization' && (
+            <div className="auth-form">
+              <Field label="Type">
+                <select
+                  value={authType}
+                  onChange={e => setAuthType(e.target.value)}
+                  aria-label="인증 타입"
+                >
+                  <option>No Auth</option>
+                  <option>Bearer Token</option>
+                </select>
+              </Field>
+              {authType === 'Bearer Token' && (
+                <Field label="Token" wide>
+                  <input
+                    type="password"
+                    value={authToken}
+                    onChange={e => setAuthToken(e.target.value)}
+                    placeholder="Bearer 토큰 값"
+                    aria-label="Bearer 토큰"
+                  />
+                </Field>
+              )}
+            </div>
+          )}
+
+          {requestTab === 'Headers' && (
+            <JsonArea
+              value={headers}
+              onChange={setHeaders}
+              placeholder={'Content-Type: application/json\nX-Custom-Header: value'}
+            />
+          )}
+
+          {requestTab === 'Body' && (
+            <div>
+              <JsonArea
+                value={body}
+                onChange={setBody}
+                placeholder={'{\n  "name": "example"\n}'}
+              />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {errorNotice && (
+        <div className="api-call-error-banner" role="alert">
+          <strong>요청 오류:</strong> {errorNotice}
+        </div>
+      )}
+
+      {result && (
+        <section className="card api-call-result-panel" role="region" aria-live="polite">
+          <div className="api-call-result-header">
+            <div className="result-status-group">
+              <span className={`status-badge ${statusColorClass(result.status)}`}>
+                {result.status}
+              </span>
+              <span className="elapsed-time">
+                ⏱ {result.elapsedMs} ms
+              </span>
+            </div>
+            <div className="result-actions">
+              <button className="ghost small" onClick={copyResponseBody}>
+                {copied ? '복사됨!' : '본문 복사'}
+              </button>
+            </div>
+          </div>
+
+          {result.headers && Object.keys(result.headers).length > 0 && (
+            <div className="result-headers-section">
+              <button
+                className="result-headers-toggle"
+                onClick={() => setHeadersExpanded(c => !c)}
+                aria-expanded={headersExpanded}
+              >
+                <span>응답 헤더 ({Object.keys(result.headers).length}개)</span>
+                <span>{headersExpanded ? '−' : '+'}</span>
+              </button>
+              {headersExpanded && (
+                <div className="result-headers-list">
+                  {Object.entries(result.headers).map(([k, v]) => (
+                    <div key={k} className="header-entry">
+                      <code>{k}:</code> <span>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="result-body-section">
+            <div className="result-body-label">응답 본문</div>
+            <pre className="result-body-content">
+              {typeof result.body === 'object' && result.body !== null
+                ? JSON.stringify(result.body, null, 2)
+                : (result.rawBody || '(본문 없음)')}
+            </pre>
+          </div>
+        </section>
+      )}
+    </main>
+  )
 }
 
-function AuthorSidebar({ active, projects, projectRef, project, onProjectChange, onNavigate, onProjectList }) {
-  return <aside className="sidebar"><button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button><div className="sidebar-title">작성 프로젝트</div><select aria-label="작성 프로젝트" value={projectRef} onChange={event => onProjectChange(event.target.value)}>{projects.map(reference => <option key={reference} value={reference}>{reference.replace(/\.json$/, '')}</option>)}</select>{project?.base_url && <p className="hint"><code>{project.base_url}</code></p>}<div className="sidebar-title">API 작성</div><div className="side-nav"><button className={active === 'apis' ? 'active' : ''} onClick={() => onNavigate('apis')}>API 목록</button><button className={active === 'generator' ? 'active' : ''} onClick={() => onNavigate('generator')}>SDK 생성</button></div></aside>
+function ProjectSidebar({ active, projects, projectRef, project, onProjectChange, onNavigate, onProjectList }) {
+  const projectName = project?.name || (projectRef ? projectRef.replace(/\.json$/, '') : '프로젝트 미선택')
+  return (
+    <aside className="sidebar">
+      <button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button>
+      <div className="sidebar-title">현재 프로젝트</div>
+      {projects && projects.length > 1 && onProjectChange ? (
+        <select aria-label="프로젝트 선택" value={projectRef} onChange={event => onProjectChange(event.target.value)}>
+          {projects.map(reference => (
+            <option key={reference} value={reference}>{reference.replace(/\.json$/, '')}</option>
+          ))}
+        </select>
+      ) : (
+        <div className="current-project">
+          <strong>{projectName}</strong>
+          {project?.base_url && <code>{project.base_url}</code>}
+        </div>
+      )}
+      {project?.base_url && projects && projects.length > 1 && onProjectChange && (
+        <p className="hint"><code>{project.base_url}</code></p>
+      )}
+      <div className="sidebar-title">테스트 구성</div>
+      <div className="side-nav">
+        <button className={active === 'cases' ? 'active' : ''} onClick={() => onNavigate('cases')}>
+          API 케이스
+        </button>
+        <button className={active === 'pipeline' ? 'active' : ''} onClick={() => onNavigate('pipeline')}>
+          파이프라인
+        </button>
+      </div>
+      <div className="sidebar-title">API 작성</div>
+      <div className="side-nav">
+        <button className={active === 'apis' ? 'active' : ''} onClick={() => onNavigate('apis')}>
+          API 목록 및 API 작성
+        </button>
+        <button className={active === 'generator' ? 'active' : ''} onClick={() => onNavigate('generator')}>
+          SDK 생성
+        </button>
+      </div>
+    </aside>
+  )
+}
+
+function TestSidebar(props) {
+  return <ProjectSidebar {...props} />
+}
+
+function AuthorSidebar(props) {
+  return <ProjectSidebar {...props} />
 }
 
 function SwaggerOperation({ operation }) {
@@ -1071,7 +1395,7 @@ function StudioApp() {
         api(`/api/cases${filter}`), api(`/api/pipelines${filter}`), selectedProject ? api(`/api/projects/${encodeURIComponent(selectedProject)}`) : Promise.resolve(null),
       ])
       setProjects(projectData.items); setProjectDetails(projectData.details || {}); setActiveProject(selectedProject); setProject(selectedDocument); setCaseItems(cases.items); setPipelineItems(pipelines.items); setError('')
-      if (selectedProject && !route.activeProject && tab !== 'project' && tab !== 'project-settings') {
+      if (selectedProject && !route.activeProject && tab !== 'project' && tab !== 'project-settings' && tab !== 'api-call') {
         navigateTo({ ...route, activeProject: selectedProject }, { replace: true })
       }
     } catch (requestError) { setError(`서버 연결 오류: ${requestError.message}`) }
@@ -1096,20 +1420,34 @@ function StudioApp() {
   const saveProjectAndOpen = async reference => { await openProject(reference) }
   const createProject = () => { navigateTo({ tab: 'project-settings', projectSettingsReference: '', activeProject: '' }) }
   const editProject = reference => { navigateTo({ tab: 'project-settings', projectSettingsReference: reference, activeProject: reference }) }
-  const navigateTest = target => {
-    if (target === 'cases') { navigateTo({ tab: 'case-list', activeProject }) }
-    else { navigateTo({ tab: 'pipeline-list', activeProject }) }
+  const navigateProjectSection = target => {
+    if (target === 'cases') navigateTo({ tab: 'case-list', activeProject })
+    else if (target === 'pipeline') navigateTo({ tab: 'pipeline-list', activeProject })
+    else if (target === 'apis') navigateTo({ tab: 'api-list', activeProject })
+    else if (target === 'generator') navigateTo({ tab: 'generator', activeProject })
+    else if (target === 'api-create') navigateTo({ tab: 'api-create', activeProject })
   }
-  const navigateAuthor = target => navigateTo({ tab: target === 'generator' ? 'generator' : 'api-list', activeProject })
   const openCase = reference => { navigateTo({ tab: 'case-settings', activeProject, caseReference: reference }) }
   const createCase = () => { navigateTo({ tab: 'case-settings', activeProject, caseReference: '' }) }
   const openPipeline = reference => { navigateTo({ tab: 'pipeline-settings', activeProject, pipelineReference: reference }) }
   const createPipeline = () => { navigateTo({ tab: 'pipeline-settings', activeProject, pipelineReference: '' }) }
 
-  const editorProps = { caseItems, pipelineItems, projectRef: activeProject, project, refresh, onNavigate: navigateTest, onProjectList: () => navigateTo({ tab: 'project' }) }
-  const authorProps = { projects, projectRef: activeProject, project, refresh, onProjectChange: selectProject, onNavigate: navigateAuthor, onProjectList: () => navigateTo({ tab: 'project' }) }
-  const validationTab = ['project', 'project-settings', 'case-list', 'case-settings', 'pipeline-list', 'pipeline-settings'].includes(tab)
-  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div><nav><button className={validationTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'project' })}>API 검증</button><button className={!validationTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'api-list', activeProject })}>API 작성</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : <ClientGenerator {...authorProps} />}</>
+  const editorProps = {
+    projects, projectRef: activeProject, project, refresh,
+    caseItems, pipelineItems,
+    onProjectChange: selectProject,
+    onNavigate: navigateProjectSection,
+    onProjectList: () => navigateTo({ tab: 'project' }),
+  }
+  const authorProps = {
+    projects, projectRef: activeProject, project, refresh,
+    caseItems, pipelineItems,
+    onProjectChange: selectProject,
+    onNavigate: navigateProjectSection,
+    onProjectList: () => navigateTo({ tab: 'project' }),
+  }
+  const isApiCallTab = tab === 'api-call'
+  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div><nav><button className={isApiCallTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'api-call', activeProject })}>API 호출</button><button className={!isApiCallTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'project', activeProject })}>프로젝트</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'api-call' ? <ApiCallPage /> : tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateProjectSection('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateProjectSection('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : <ClientGenerator {...authorProps} />}</>
 }
 
 class ErrorBoundary extends Component {

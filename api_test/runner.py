@@ -626,6 +626,67 @@ def evaluate_assertions(assertions: Any, response: HttpResponse) -> tuple[list[A
     return results, differences
 
 
+def format_network_error(exc: Exception) -> str:
+    if isinstance(exc, TimeoutError):
+        return "요청 시간이 초과되었습니다 (타임아웃). 서버 응답이 없거나 지연되고 있습니다."
+    if isinstance(exc, urllib.error.URLError):
+        reason = getattr(exc, "reason", exc)
+        reason_str = str(reason)
+        if isinstance(reason, TimeoutError) or "timed out" in reason_str.lower():
+            return "요청 시간이 초과되었습니다 (타임아웃). 서버 응답이 없거나 지연되고 있습니다."
+        if "connection refused" in reason_str.lower() or "111" in reason_str:
+            return "서버에 연결할 수 없습니다 (Connection Refused). 대상 서버 및 포트를 확인하세요."
+        if any(keyword in reason_str.lower() for keyword in ["name or service not known", "nodename nor servname", "getaddrinfo failed"]):
+            return "호스트 이름을 찾을 수 없습니다 (DNS 조회 실패). URL 주소를 확인하세요."
+        if "certificate" in reason_str.lower() or "ssl" in reason_str.lower():
+            return f"SSL/TLS 인증서 검증에 실패했습니다: {reason_str}"
+        return f"네트워크 연결 오류가 발생했습니다: {reason_str}"
+    error_str = str(exc)
+    if "timed out" in error_str.lower():
+        return "요청 시간이 초과되었습니다 (타임아웃). 서버 응답이 없거나 지연되고 있습니다."
+    return f"요청 전송 중 오류가 발생했습니다: {error_str}"
+
+
+def execute_http_call(
+    url: str,
+    method: str = "GET",
+    headers: dict[str, str] | None = None,
+    data: bytes | None = None,
+    timeout_seconds: float = 10.0,
+    verify_ssl: bool = True,
+    proxy_url: str | None = None,
+    proxy_urls: dict[str, str] | None = None,
+    no_proxy: bool = False,
+) -> tuple[int, dict[str, str], str, float]:
+    request = urllib.request.Request(url, data=data, headers=headers or {}, method=method.upper())
+    start_time = time.perf_counter()
+    try:
+        if no_proxy or proxy_url or proxy_urls or not verify_ssl:
+            handlers: list[Any] = []
+            if no_proxy:
+                handlers.append(urllib.request.ProxyHandler({}))
+            elif proxy_urls:
+                handlers.append(urllib.request.ProxyHandler(proxy_urls))
+            elif proxy_url:
+                handlers.append(urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url}))
+            if not verify_ssl:
+                handlers.append(urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+            opener = urllib.request.build_opener(*handlers)
+            opened_response = opener.open(request, timeout=timeout_seconds)
+        else:
+            opened_response = urllib.request.urlopen(request, timeout=timeout_seconds)
+        with opened_response as opened:
+            status = opened.status
+            response_headers = dict(opened.headers.items())
+            raw_body = opened.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        response_headers = dict(exc.headers.items()) if exc.headers else {}
+        raw_body = exc.read().decode("utf-8", errors="replace")
+    elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    return status, response_headers, raw_body, elapsed_ms
+
+
 class ApiTestRunner:
     def __init__(self, timeout_seconds: float = 10.0) -> None:
         self.timeout_seconds = timeout_seconds
@@ -712,28 +773,11 @@ class ApiTestRunner:
         request = urllib.request.Request(request_definition["url"], data=data, headers=headers, method=method)
         request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
         try:
-            if no_proxy or proxy_url or proxy_urls or not verify_ssl:
-                handlers: list[Any] = []
-                if no_proxy:
-                    handlers.append(urllib.request.ProxyHandler({}))
-                elif proxy_urls:
-                    handlers.append(urllib.request.ProxyHandler(proxy_urls))
-                elif proxy_url:
-                    handlers.append(urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url}))
-                if not verify_ssl:
-                    handlers.append(urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
-                opener = urllib.request.build_opener(*handlers)
-                opened_response = opener.open(request, timeout=request_timeout)
-            else:
-                opened_response = urllib.request.urlopen(request, timeout=request_timeout)
-            with opened_response as opened:
-                status = opened.status
-                response_headers = dict(opened.headers.items())
-                raw_body = opened.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:
-            status = exc.code
-            response_headers = dict(exc.headers.items()) if exc.headers else {}
-            raw_body = exc.read().decode("utf-8", errors="replace")
+            status, response_headers, raw_body, _elapsed = execute_http_call(
+                request_definition["url"], method=method, headers=headers, data=data,
+                timeout_seconds=request_timeout, verify_ssl=verify_ssl,
+                proxy_url=proxy_url, proxy_urls=proxy_urls, no_proxy=no_proxy,
+            )
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             return CaseResult(
                 case_id, "error", attempt, error=str(exc),

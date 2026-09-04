@@ -681,5 +681,125 @@ paths:
             self.assertTrue((pipeline_root / "other.json").exists())
 
 
+class ReactServerDirectRequestTest(unittest.TestCase):
+    def handler_for(self, payload: dict[str, object]) -> tuple[StudioHandler, Mock]:
+        handler = object.__new__(StudioHandler)
+        handler.api_path = Mock(return_value=["api", "request"])
+        handler.read_body = Mock(return_value=payload)
+        send_json = Mock()
+        handler.send_json = send_json
+        return handler, send_json
+
+    def test_direct_request_success_with_json_response(self) -> None:
+        payload = {
+            "method": "GET",
+            "url": "https://api.example.com/users",
+        }
+        handler, send_json = self.handler_for(payload)
+
+        with patch("react_server.execute_http_call") as mock_call:
+            mock_call.return_value = (200, {"content-type": "application/json"}, '{"id": 1, "name": "Ada"}', 45.2)
+            handler.do_POST()
+
+        mock_call.assert_called_once_with(
+            "https://api.example.com/users", method="GET", headers={}, data=None,
+            timeout_seconds=10.0, verify_ssl=True,
+        )
+        send_json.assert_called_once_with(200, {
+            "status": 200,
+            "elapsedMs": 45.2,
+            "headers": {"content-type": "application/json"},
+            "body": {"id": 1, "name": "Ada"},
+            "rawBody": '{"id": 1, "name": "Ada"}',
+        })
+
+    def test_direct_request_with_params_headers_auth_body(self) -> None:
+        payload = {
+            "method": "POST",
+            "url": "https://api.example.com/items",
+            "params": [{"key": "tag", "value": "test"}],
+            "headers": "X-Custom: custom-val",
+            "auth": {"type": "Bearer Token", "token": "secret-token-xyz"},
+            "body": '{"title": "Item"}',
+        }
+        handler, send_json = self.handler_for(payload)
+
+        with patch("react_server.execute_http_call") as mock_call:
+            mock_call.return_value = (201, {"content-type": "application/json"}, '{"created": true}', 120.0)
+            handler.do_POST()
+
+        mock_call.assert_called_once_with(
+            "https://api.example.com/items?tag=test",
+            method="POST",
+            headers={
+                "X-Custom": "custom-val",
+                "Authorization": "Bearer secret-token-xyz",
+                "Content-Type": "application/json",
+            },
+            data=b'{"title": "Item"}',
+            timeout_seconds=10.0,
+            verify_ssl=True,
+        )
+        send_json.assert_called_once_with(200, {
+            "status": 201,
+            "elapsedMs": 120.0,
+            "headers": {"content-type": "application/json"},
+            "body": {"created": True},
+            "rawBody": '{"created": true}',
+        })
+
+    def test_direct_request_preserves_4xx_5xx_status_and_body(self) -> None:
+        payload = {
+            "method": "GET",
+            "url": "https://api.example.com/not-found",
+        }
+        handler, send_json = self.handler_for(payload)
+
+        with patch("react_server.execute_http_call") as mock_call:
+            mock_call.return_value = (404, {"content-type": "application/json"}, '{"error": "User not found"}', 30.5)
+            handler.do_POST()
+
+        send_json.assert_called_once_with(200, {
+            "status": 404,
+            "elapsedMs": 30.5,
+            "headers": {"content-type": "application/json"},
+            "body": {"error": "User not found"},
+            "rawBody": '{"error": "User not found"}',
+        })
+
+    def test_direct_request_rejects_relative_url_and_template_variables(self) -> None:
+        handler, send_json = self.handler_for({"method": "GET", "url": "/relative/path"})
+        handler.do_POST()
+        send_json.assert_called_once()
+        self.assertEqual(send_json.call_args[0][0], 400)
+        self.assertIn("절대 URL", send_json.call_args[0][1]["error"])
+
+        handler2, send_json2 = self.handler_for({"method": "GET", "url": "https://api.test/{{project.id}}"})
+        handler2.do_POST()
+        send_json2.assert_called_once()
+        self.assertEqual(send_json2.call_args[0][0], 400)
+        self.assertIn("프로젝트 변수 참조식", send_json2.call_args[0][1]["error"])
+
+    def test_direct_request_network_error_korean_message_and_masks_token(self) -> None:
+        token = "very-confidential-token-12345"
+        payload = {
+            "method": "GET",
+            "url": "https://unreachable.test/data",
+            "auth": {"type": "Bearer Token", "token": token},
+        }
+        handler, send_json = self.handler_for(payload)
+
+        with patch("react_server.execute_http_call") as mock_call:
+            import urllib.error
+            mock_call.side_effect = urllib.error.URLError(f"Connection refused with token {token}")
+            handler.do_POST()
+
+        send_json.assert_called_once()
+        status_code, response_payload = send_json.call_args[0]
+        self.assertEqual(status_code, 502)
+        self.assertNotIn(token, response_payload["error"])
+        self.assertIn("연결할 수 없습니다", response_payload["error"])
+
+
 if __name__ == "__main__":
     unittest.main()

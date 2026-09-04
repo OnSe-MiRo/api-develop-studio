@@ -20,7 +20,7 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 import yaml
@@ -39,6 +39,7 @@ from api_test.project_variables import (
     normalize_project_variables,
     project_variables_for_client,
 )
+from api_test.runner import execute_http_call, format_network_error
 
 
 ROOT = Path(__file__).resolve().parent
@@ -75,7 +76,9 @@ _COLLABORATION_STORE: CollaborationStore | None = None
 
 
 class ApiError(ValueError):
-    pass
+    def __init__(self, message: str, status_code: int = 400) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def collaboration_store() -> CollaborationStore:
@@ -1111,6 +1114,120 @@ def normalize_case_document(
     return document
 
 
+def mask_sensitive_values(text: str, sensitive: set[str]) -> str:
+    for secret in sensitive:
+        if secret and len(secret) > 2:
+            text = text.replace(secret, "***REDACTED***")
+    return text
+
+
+def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
+    raw_url = body.get("url")
+    if not isinstance(raw_url, str) or not raw_url.strip():
+        raise ApiError("URL을 입력하세요.")
+    url = raw_url.strip()
+    if "{{" in url and "}}" in url:
+        raise ApiError("프로젝트 변수 참조식({{...}})은 일회성 API 호출에서 지원되지 않습니다.")
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in ("http", "https") or not parsed.netloc:
+        raise ApiError("올바른 HTTP 또는 HTTPS 절대 URL을 입력하세요 (예: https://api.example.com).")
+
+    method = str(body.get("method", "GET")).upper()
+    if method not in ("GET", "POST", "PUT", "PATCH", "DELETE"):
+        raise ApiError(f"지원하지 않는 HTTP 메서드입니다: {method}")
+
+    params = body.get("params")
+    if params:
+        query_pairs: list[tuple[str, str]] = []
+        if isinstance(params, list):
+            for p in params:
+                if isinstance(p, dict) and str(p.get("key", "")).strip():
+                    query_pairs.append((str(p["key"]).strip(), str(p.get("value", ""))))
+        elif isinstance(params, dict):
+            for k, v in params.items():
+                if str(k).strip():
+                    query_pairs.append((str(k).strip(), str(v)))
+        if query_pairs:
+            encoded_query = urlencode(query_pairs)
+            separator = "&" if "?" in url else "?"
+            url = f"{url}{separator}{encoded_query}"
+
+    headers_dict: dict[str, str] = {}
+    raw_headers = body.get("headers")
+    if isinstance(raw_headers, str):
+        for line in raw_headers.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if ":" in line:
+                h_key, h_val = line.split(":", 1)
+                headers_dict[h_key.strip()] = h_val.strip()
+    elif isinstance(raw_headers, list):
+        for item in raw_headers:
+            if isinstance(item, dict) and str(item.get("key", "")).strip():
+                headers_dict[str(item["key"]).strip()] = str(item.get("value", "")).strip()
+    elif isinstance(raw_headers, dict):
+        for k, v in raw_headers.items():
+            if str(k).strip():
+                headers_dict[str(k).strip()] = str(v).strip()
+
+    sensitive_values: set[str] = set()
+
+    auth = body.get("auth")
+    if isinstance(auth, dict) and auth.get("type") == "Bearer Token":
+        token = str(auth.get("token", "")).strip()
+        if token:
+            headers_dict["Authorization"] = f"Bearer {token}"
+            sensitive_values.add(token)
+
+    for h_key, h_val in list(headers_dict.items()):
+        if h_key.lower() in ("authorization", "x-api-key", "cookie", "set-cookie"):
+            sensitive_values.add(h_val)
+
+    data: bytes | None = None
+    req_body = body.get("body")
+    if req_body is not None and req_body != "":
+        if isinstance(req_body, (dict, list)):
+            data = json.dumps(req_body).encode("utf-8")
+            headers_dict.setdefault("Content-Type", "application/json")
+        elif isinstance(req_body, str):
+            body_str = req_body.strip()
+            if body_str:
+                data = body_str.encode("utf-8")
+                headers_dict.setdefault("Content-Type", "application/json")
+
+    timeout_seconds = 10.0
+    if body.get("timeout"):
+        try:
+            timeout_seconds = max(0.1, min(60.0, float(body["timeout"])))
+        except (ValueError, TypeError):
+            pass
+
+    try:
+        status, response_headers, raw_response_body, elapsed_ms = execute_http_call(
+            url, method=method, headers=headers_dict, data=data,
+            timeout_seconds=timeout_seconds, verify_ssl=True,
+        )
+    except (URLError, TimeoutError, OSError) as exc:
+        msg = format_network_error(exc)
+        masked_msg = mask_sensitive_values(msg, sensitive_values)
+        status_code = 504 if ("시간이 초과" in masked_msg or isinstance(exc, TimeoutError)) else 502
+        raise ApiError(masked_msg, status_code=status_code)
+
+    try:
+        parsed_body = json.loads(raw_response_body) if raw_response_body else None
+    except json.JSONDecodeError:
+        parsed_body = raw_response_body
+
+    return {
+        "status": status,
+        "elapsedMs": elapsed_ms,
+        "headers": response_headers,
+        "body": parsed_body,
+        "rawBody": raw_response_body,
+    }
+
+
 class StudioHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         print(f"[react-server] {format % args}")
@@ -1359,6 +1476,11 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 )
                 self.send_attachment(archive, filename)
                 return
+            if parts == ["api", "request"]:
+                body = self.read_body()
+                result = handle_api_request(body)
+                self.send_json(200, result)
+                return
             if parts != ["api", "run"]:
                 raise ApiError("Unknown run endpoint")
             body = self.read_body()
@@ -1410,7 +1532,9 @@ class StudioHandler(SimpleHTTPRequestHandler):
             self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
         except RevisionRequiredError as exc:
             self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
-        except (ApiError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
+        except ApiError as exc:
+            self.send_json(getattr(exc, "status_code", 400), {"error": str(exc)})
+        except (CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
             self.send_json(400, {"error": str(exc)})
 
     def do_DELETE(self) -> None:  # noqa: N802
