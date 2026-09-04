@@ -1155,13 +1155,17 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     headers_dict: dict[str, str] = {}
     raw_headers = body.get("headers")
     if isinstance(raw_headers, str):
-        for line in raw_headers.splitlines():
+        for line_number, line in enumerate(raw_headers.splitlines(), start=1):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            if ":" in line:
-                h_key, h_val = line.split(":", 1)
-                headers_dict[h_key.strip()] = h_val.strip()
+            if ":" not in line:
+                raise ApiError(f"Headers {line_number}번째 줄은 이름: 값 형식이어야 합니다.")
+            h_key, h_val = line.split(":", 1)
+            h_key = h_key.strip()
+            if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", h_key):
+                raise ApiError(f"Headers {line_number}번째 줄의 이름이 올바르지 않습니다.")
+            headers_dict[h_key] = h_val.strip()
     elif isinstance(raw_headers, list):
         for item in raw_headers:
             if isinstance(item, dict) and str(item.get("key", "")).strip():

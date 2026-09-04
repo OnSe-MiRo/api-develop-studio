@@ -65,4 +65,16 @@ button { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; color
   .api-call-request-bar .method,
   .api-call-request-bar .url-input,
   .api-call-request-bar .run-button { width: 100%; box-sizing: border-box; }
+  .api-call-page .request-bar { padding: 16px 12px; }
+  .api-call-page .tabs { gap: 4px; padding: 0 8px; }
+  .api-call-page .tabs button { min-width: 0; padding: 13px 2px; font-size: 11px; }
+  .api-call-page .tab-content { padding: 18px 12px; }
+  .api-call-page .param-header,
+  .api-call-page .param-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px; gap: 6px; }
+  .api-call-page .param-row input { width: 100%; min-width: 0; }
+  .topbar { height: auto; min-height: 72px; flex-wrap: wrap; padding: 10px 16px; gap: 8px 10px; }
+  .topbar .brand { flex: 1 1 auto; }
+  .topbar .refresh { margin-left: 0; white-space: nowrap; }
+  .topbar nav { order: 3; width: 100%; height: 42px; }
+  .topbar nav button { flex: 1; padding: 0 8px; white-space: nowrap; }
 }

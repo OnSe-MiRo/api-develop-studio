@@ -780,6 +780,24 @@ class ReactServerDirectRequestTest(unittest.TestCase):
         self.assertEqual(send_json2.call_args[0][0], 400)
         self.assertIn("프로젝트 변수 참조식", send_json2.call_args[0][1]["error"])
 
+    def test_direct_request_rejects_malformed_header_lines(self) -> None:
+        for headers in ("BrokenHeader", ": value"):
+            with self.subTest(headers=headers):
+                handler, send_json = self.handler_for({
+                    "method": "GET",
+                    "url": "https://api.example.com/users",
+                    "headers": headers,
+                })
+
+                with patch("react_server.execute_http_call") as mock_call:
+                    handler.do_POST()
+
+                mock_call.assert_not_called()
+                send_json.assert_called_once()
+                status_code, response_payload = send_json.call_args[0]
+                self.assertEqual(status_code, 400)
+                self.assertIn("Headers 1번째 줄", response_payload["error"])
+
     def test_direct_request_network_error_korean_message_and_masks_token(self) -> None:
         token = "very-confidential-token-12345"
         payload = {
