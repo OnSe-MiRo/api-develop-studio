@@ -27,6 +27,8 @@ API 케이스와 파이프라인 목록에서도 각 항목 오른쪽의 `×` �
 
 `Authorization`은 No Auth, API Key, Bearer Token, JWT Bearer, Basic Auth, Digest Auth, OAuth 1.0, OAuth 2.0, Hawk Authentication, AWS Signature, NTLM Authentication, Akamai EdgeGrid, ASAP (Atlassian)을 제공합니다. API Key는 Header 또는 Query Params로 추가할 수 있고, OAuth 2.0·JWT·ASAP은 발급받은 토큰을 입력해 사용합니다. NTLM 실행에는 `requirements.txt`의 `requests-ntlm` 패키지가 필요합니다.
 
+일회성 `API 호출`의 `Proxy` 탭에서 이번 요청에만 적용할 HTTP/HTTPS 프록시 URL을 입력할 수 있습니다. `프록시 사용 안 함 (No Proxy)`을 선택하면 입력한 주소와 환경 프록시를 모두 우회합니다.
+
 ### API 문서에서 케이스 초안 채우기
 
 프로젝트 생성 또는 수정 화면의 `설정 > OpenAPI 설정`에서 OpenAPI 3.x 또는 Swagger 2.0의 원본 JSON/YAML 문서 URL(예: `https://api.example.com/openapi.json`)을 입력하거나 로컬 JSON 파일을 선택하고 저장합니다. URL과 파일 중 하나만 사용할 수 있으며, URL은 Swagger UI HTML 페이지 주소가 아니라 해당 UI가 참조하는 원본 문서 주소여야 합니다. 업로드하는 JSON 파일은 5MB 이하여야 합니다.

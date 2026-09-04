@@ -748,6 +748,32 @@ class ReactServerDirectRequestTest(unittest.TestCase):
             "rawBody": '{"created": true}',
         })
 
+    def test_direct_request_uses_configured_proxy_or_bypasses_all_proxies(self) -> None:
+        with self.subTest("configured proxy"):
+            handler, _send_json = self.handler_for({
+                "method": "GET", "url": "https://api.example.com/users", "proxy_url": "http://proxy.example.com:8080",
+            })
+            with patch("react_server.execute_http_call", return_value=(200, {}, "{}", 1.0)) as mock_call:
+                handler.do_POST()
+            self.assertEqual(mock_call.call_args.kwargs["proxy_url"], "http://proxy.example.com:8080")
+
+        with self.subTest("no proxy"):
+            handler, _send_json = self.handler_for({
+                "method": "GET", "url": "https://api.example.com/users", "no_proxy": True,
+            })
+            with patch("react_server.execute_http_call", return_value=(200, {}, "{}", 1.0)) as mock_call:
+                handler.do_POST()
+            self.assertTrue(mock_call.call_args.kwargs["no_proxy"])
+
+    def test_direct_request_rejects_invalid_proxy_url(self) -> None:
+        handler, send_json = self.handler_for({
+            "method": "GET", "url": "https://api.example.com/users", "proxy_url": "socks5://proxy.example.com:1080",
+        })
+        handler.do_POST()
+        send_json.assert_called_once()
+        self.assertEqual(send_json.call_args[0][0], 400)
+        self.assertIn("Proxy URL", send_json.call_args[0][1]["error"])
+
     def test_direct_request_preserves_4xx_5xx_status_and_body(self) -> None:
         payload = {
             "method": "GET",

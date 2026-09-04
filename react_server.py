@@ -1137,6 +1137,18 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     if method not in ("GET", "POST", "PUT", "PATCH", "DELETE"):
         raise ApiError(f"지원하지 않는 HTTP 메서드입니다: {method}")
 
+    no_proxy = body.get("no_proxy", False)
+    if not isinstance(no_proxy, bool):
+        raise ApiError("no_proxy는 true 또는 false여야 합니다.")
+    proxy_value = body.get("proxy_url", "")
+    if not isinstance(proxy_value, str):
+        raise ApiError("Proxy URL은 문자열이어야 합니다.")
+    proxy_url = proxy_value.strip()
+    if proxy_url:
+        parsed_proxy = urlparse(proxy_url)
+        if parsed_proxy.scheme not in ("http", "https") or not parsed_proxy.netloc:
+            raise ApiError("Proxy URL은 HTTP 또는 HTTPS 절대 URL이어야 합니다.")
+
     params = body.get("params")
     if params:
         query_pairs: list[tuple[str, str]] = []
@@ -1215,6 +1227,10 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
             "method": method, "headers": headers_dict, "data": data,
             "timeout_seconds": timeout_seconds, "verify_ssl": True,
         }
+        if proxy_url:
+            execute_options["proxy_url"] = proxy_url
+        if no_proxy:
+            execute_options["no_proxy"] = True
         if isinstance(auth, dict) and auth.get("type") in {"Digest Auth", "NTLM Authentication"}:
             execute_options["auth"] = auth
         status, response_headers, raw_response_body, elapsed_ms = execute_http_call(

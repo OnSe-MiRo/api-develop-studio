@@ -59,6 +59,8 @@ button { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; color
 .result-body-label { color: #475569; font-size: 12px; font-weight: 700; }
 .result-body-content { margin: 0; padding: 16px; border: 1px solid #dbe4f0; border-radius: 10px; background: #f8fafc; font: 12px/1.65 "SFMono-Regular", Consolas, monospace; color: #172033; max-height: 480px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
 .ghost.small { padding: 6px 10px; font-size: 12px; }
+.quick-proxy-settings { display: grid; max-width: 550px; gap: 14px; }
+.quick-proxy-settings .hint { margin: 0; }
 
 @media (max-width: 720px) {
   .api-call-request-bar { flex-direction: column; align-items: stretch; }
