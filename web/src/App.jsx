@@ -373,6 +373,8 @@ function ApiCallPage() {
   const [authValues, setAuthValues] = useState({})
   const [headers, setHeaders] = useState('')
   const [body, setBody] = useState('')
+  const [proxyUrl, setProxyUrl] = useState('')
+  const [noProxy, setNoProxy] = useState(false)
   const [requestTab, setRequestTab] = useState('Params')
 
   const [loading, setLoading] = useState(false)
@@ -418,6 +420,8 @@ function ApiCallPage() {
         headers,
         auth: { type: authType, ...authValues },
         body: ['GET', 'HEAD'].includes(method) ? undefined : body,
+        proxy_url: proxyUrl.trim(),
+        no_proxy: noProxy,
       }
       const response = await fetch('/api/request', {
         method: 'POST',
@@ -493,7 +497,7 @@ function ApiCallPage() {
         </div>
 
         <div className="tabs">
-          {['Params', 'Authorization', 'Headers', 'Body'].map(tab => (
+          {['Params', 'Authorization', 'Headers', 'Body', 'Proxy'].map(tab => (
             <button
               key={tab}
               className={requestTab === tab ? 'active' : ''}
@@ -561,6 +565,14 @@ function ApiCallPage() {
                 placeholder={'{\n  "name": "example"\n}'}
               />
             </div>
+          )}
+
+          {requestTab === 'Proxy' && (
+            <section className="quick-proxy-settings">
+              <label className="toggle"><input type="checkbox" checked={noProxy} onChange={event => setNoProxy(event.target.checked)} /><span>프록시 사용 안 함 (No Proxy)</span></label>
+              <Field label="Proxy URL (HTTP/HTTPS)"><input disabled={noProxy} value={proxyUrl} onChange={event => setProxyUrl(event.target.value)} placeholder="http://proxy.example.com:8080" /></Field>
+              <p className="hint">프록시 URL을 입력하면 이번 API 호출에만 적용합니다. No Proxy를 선택하면 설정된 주소와 환경 프록시를 모두 우회합니다.</p>
+            </section>
           )}
         </div>
       </section>
