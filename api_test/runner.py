@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
+from .authorization import AuthorizationError, apply_authorization, authorization_sensitive_values
 from .comparison import Difference, compare_json
 from .project_variables import (
     ProjectVariableError,
@@ -657,11 +658,38 @@ def execute_http_call(
     proxy_url: str | None = None,
     proxy_urls: dict[str, str] | None = None,
     no_proxy: bool = False,
+    auth: dict[str, Any] | None = None,
 ) -> tuple[int, dict[str, str], str, float]:
+    ntlm_auth = auth if isinstance(auth, dict) and auth.get("type") == "NTLM Authentication" else None
+    if ntlm_auth:
+        try:
+            import requests
+            from requests_ntlm import HttpNtlmAuth
+        except ImportError as exc:
+            raise AuthorizationError("NTLM Authentication을 실행하려면 requests-ntlm 패키지가 필요합니다.") from exc
+        username = str(ntlm_auth.get("username", ""))
+        domain = str(ntlm_auth.get("domain", "")).strip()
+        if domain and "\\" not in username:
+            username = f"{domain}\\{username}"
+        proxies: dict[str, str] | None = None
+        if no_proxy:
+            proxies = {"http": "", "https": ""}
+        elif proxy_urls:
+            proxies = proxy_urls
+        elif proxy_url:
+            proxies = {"http": proxy_url, "https": proxy_url}
+        start_time = time.perf_counter()
+        response = requests.request(
+            method.upper(), url, headers=headers or {}, data=data, timeout=timeout_seconds,
+            verify=verify_ssl, proxies=proxies, auth=HttpNtlmAuth(username, str(ntlm_auth.get("password", ""))),
+        )
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        return response.status_code, dict(response.headers), response.text, elapsed_ms
     request = urllib.request.Request(url, data=data, headers=headers or {}, method=method.upper())
     start_time = time.perf_counter()
     try:
-        if no_proxy or proxy_url or proxy_urls or not verify_ssl:
+        digest_auth = auth if isinstance(auth, dict) and auth.get("type") == "Digest Auth" else None
+        if no_proxy or proxy_url or proxy_urls or not verify_ssl or digest_auth:
             handlers: list[Any] = []
             if no_proxy:
                 handlers.append(urllib.request.ProxyHandler({}))
@@ -671,6 +699,10 @@ def execute_http_call(
                 handlers.append(urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url}))
             if not verify_ssl:
                 handlers.append(urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+            if digest_auth:
+                password_manager = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+                password_manager.add_password(None, url, str(digest_auth.get("username", "")), str(digest_auth.get("password", "")))
+                handlers.append(urllib.request.HTTPDigestAuthHandler(password_manager))
             opener = urllib.request.build_opener(*handlers)
             opened_response = opener.open(request, timeout=timeout_seconds)
         else:
@@ -770,15 +802,23 @@ class ApiTestRunner:
         elif payload is not None:
             data = json.dumps(payload).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
-        request = urllib.request.Request(request_definition["url"], data=data, headers=headers, method=method)
+        auth = request_definition.get("auth")
+        try:
+            authorized = apply_authorization(request_definition["url"], method, headers, auth, data)
+        except AuthorizationError as exc:
+            return CaseResult(
+                case_id, "error", attempt, error=str(exc), request_definition=request_definition,
+                expected_definition=expected, sensitive_values=set(sensitive_values or ()) | authorization_sensitive_values(auth),
+            )
+        sensitive_values = set(sensitive_values or ()) | authorization_sensitive_values(auth)
         request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
         try:
             status, response_headers, raw_body, _elapsed = execute_http_call(
-                request_definition["url"], method=method, headers=headers, data=data,
+                authorized.url, method=method, headers=authorized.headers, data=data,
                 timeout_seconds=request_timeout, verify_ssl=verify_ssl,
-                proxy_url=proxy_url, proxy_urls=proxy_urls, no_proxy=no_proxy,
+                proxy_url=proxy_url, proxy_urls=proxy_urls, no_proxy=no_proxy, auth=auth if isinstance(auth, dict) else None,
             )
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        except (urllib.error.URLError, TimeoutError, OSError, AuthorizationError) as exc:
             return CaseResult(
                 case_id, "error", attempt, error=str(exc),
                 request_definition=request_definition, expected_definition=expected,

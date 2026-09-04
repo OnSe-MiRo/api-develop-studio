@@ -5,7 +5,7 @@ import './format-menu.css'
 
 const emptyCase = {
   tag: 'sample', apiName: 'api_name', fileName: 'new_case', timeout: '', method: 'GET', url: '',
-  params: [{ key: '', value: '' }], authType: 'No Auth', authValue: '', headers: '', body: '', bodyMode: 'json', formData: [],
+  params: [{ key: '', value: '' }], authType: 'No Auth', authValues: {}, headers: '', body: '', bodyMode: 'json', formData: [],
   expectedStatus: '200', strict: true, expectedBody: '', validateExact: true, validateConditions: false, assertions: [], secretVariables: [],
 }
 
@@ -44,6 +44,21 @@ const clientLanguages = [
   ['python', 'Python'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript (Axios)'],
   ['java', 'Java'], ['kotlin', 'Kotlin'], ['go', 'Go'], ['csharp', 'C#'],
 ]
+const authorizationTypes = ['No Auth', 'API Key', 'Bearer Token', 'JWT Bearer', 'Basic Auth', 'Digest Auth', 'OAuth 1.0', 'OAuth 2.0', 'Hawk Authentication', 'AWS Signature', 'NTLM Authentication', 'Akamai EdgeGrid', 'ASAP (Atlassian)']
+const authorizationFields = {
+  'API Key': [['key', 'Key'], ['value', 'Value', 'secret'], ['addTo', 'Add to', 'select', ['Header', 'Query Params']]],
+  'Bearer Token': [['token', 'Token', 'secret']],
+  'JWT Bearer': [['token', 'JWT Token', 'secret'], ['headerPrefix', 'Header Prefix'], ['addTo', 'Add JWT token to', 'select', ['Request Header', 'Query Params']], ['key', 'Query Key']],
+  'Basic Auth': [['username', 'Username'], ['password', 'Password', 'secret']],
+  'Digest Auth': [['username', 'Username'], ['password', 'Password', 'secret']],
+  'OAuth 1.0': [['consumerKey', 'Consumer Key'], ['consumerSecret', 'Consumer Secret', 'secret'], ['accessToken', 'Access Token', 'secret'], ['tokenSecret', 'Token Secret', 'secret'], ['signatureMethod', 'Signature Method', 'select', ['HMAC-SHA256', 'HMAC-SHA1', 'PLAINTEXT']], ['realm', 'Realm'], ['callback', 'Callback URL'], ['verifier', 'Verifier']],
+  'OAuth 2.0': [['token', 'Access Token', 'secret'], ['headerPrefix', 'Header Prefix'], ['addTo', 'Add authorization data to', 'select', ['Request Headers', 'Query Params']], ['key', 'Query Key']],
+  'Hawk Authentication': [['id', 'Hawk Auth ID'], ['key', 'Hawk Auth Key', 'secret'], ['algorithm', 'Algorithm', 'select', ['sha256', 'sha1']], ['user', 'User'], ['ext', 'ext']],
+  'AWS Signature': [['accessKey', 'Access Key'], ['secretKey', 'Secret Key', 'secret'], ['region', 'AWS Region'], ['service', 'Service Name'], ['sessionToken', 'Session Token', 'secret']],
+  'NTLM Authentication': [['username', 'Username'], ['password', 'Password', 'secret'], ['domain', 'Domain'], ['workstation', 'Workstation']],
+  'Akamai EdgeGrid': [['accessToken', 'Access Token', 'secret'], ['clientToken', 'Client Token', 'secret'], ['clientSecret', 'Client Secret', 'secret']],
+  'ASAP (Atlassian)': [['token', 'JWT Token', 'secret'], ['headerPrefix', 'Header Prefix']],
+}
 const commonErrorOptions = [[400, 'Bad Request'], [401, 'Unauthorized'], [403, 'Forbidden'], [404, 'Not Found'], [409, 'Conflict'], [500, 'Internal Server Error']]
 const assertionFormRow = assertion => {
   const legacyFormat = assertion?.operator === 'format'
@@ -212,6 +227,24 @@ function Field({ label, children, wide = false }) {
   return <label className={`field ${wide ? 'wide' : ''}`}><span>{label}</span>{children}</label>
 }
 
+function AuthorizationEditor({ type, values, onTypeChange, onValueChange }) {
+  const fields = authorizationFields[type] || []
+  return <div className="auth-form">
+    <Field label="Type">
+      <select value={type} onChange={event => onTypeChange(event.target.value)} aria-label="인증 타입">
+        {authorizationTypes.map(value => <option key={value} value={value}>{value}</option>)}
+      </select>
+    </Field>
+    {fields.length > 0 && <div className="auth-fields">{fields.map(([key, label, kind, options]) => <Field key={key} label={label} wide>
+      {kind === 'select'
+        ? <select value={values[key] || options[0]} onChange={event => onValueChange(key, event.target.value)}>{options.map(option => <option key={option} value={option}>{option}</option>)}</select>
+        : <input type={kind === 'secret' ? 'password' : 'text'} value={values[key] || ''} onChange={event => onValueChange(key, event.target.value)} />}
+    </Field>)}</div>}
+    {type === 'No Auth' && <p className="hint">Authorization 정보를 요청에 추가하지 않습니다.</p>}
+    {type === 'NTLM Authentication' && <p className="hint">NTLM은 서버와의 인증 핸드셰이크를 수행합니다. 실행 환경에 <code>requests-ntlm</code> 패키지가 필요합니다.</p>}
+  </div>
+}
+
 function JsonArea({ value, onChange, placeholder }) {
   return <textarea className="json-area" value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} spellCheck="false" />
 }
@@ -337,7 +370,7 @@ function ApiCallPage() {
   const [url, setUrl] = useState('')
   const [params, setParams] = useState([{ key: '', value: '' }])
   const [authType, setAuthType] = useState('No Auth')
-  const [authToken, setAuthToken] = useState('')
+  const [authValues, setAuthValues] = useState({})
   const [headers, setHeaders] = useState('')
   const [body, setBody] = useState('')
   const [requestTab, setRequestTab] = useState('Params')
@@ -383,7 +416,7 @@ function ApiCallPage() {
         url: trimmedUrl,
         params: params.filter(p => p.key.trim()),
         headers,
-        auth: { type: authType, token: authToken },
+        auth: { type: authType, ...authValues },
         body: ['GET', 'HEAD'].includes(method) ? undefined : body,
       }
       const response = await fetch('/api/request', {
@@ -509,29 +542,7 @@ function ApiCallPage() {
           )}
 
           {requestTab === 'Authorization' && (
-            <div className="auth-form">
-              <Field label="Type">
-                <select
-                  value={authType}
-                  onChange={e => setAuthType(e.target.value)}
-                  aria-label="인증 타입"
-                >
-                  <option>No Auth</option>
-                  <option>Bearer Token</option>
-                </select>
-              </Field>
-              {authType === 'Bearer Token' && (
-                <Field label="Token" wide>
-                  <input
-                    type="password"
-                    value={authToken}
-                    onChange={e => setAuthToken(e.target.value)}
-                    placeholder="Bearer 토큰 값"
-                    aria-label="Bearer 토큰"
-                  />
-                </Field>
-              )}
-            </div>
+            <AuthorizationEditor type={authType} values={authValues} onTypeChange={value => { setAuthType(value); setAuthValues({}) }} onValueChange={(key, value) => setAuthValues(current => ({ ...current, [key]: value }))} />
           )}
 
           {requestTab === 'Headers' && (
@@ -942,7 +953,11 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       const requestUrl = splitRequestUrl(request.url)
       const headers = { ...(request.headers || {}) }
       const authorization = asText(headers.Authorization)
-      delete headers.Authorization
+      const storedAuth = request.auth && typeof request.auth === 'object'
+        ? request.auth
+        : authorization.startsWith('Bearer ') ? { type: 'Bearer Token', token: authorization.replace(/^Bearer /, '') } : { type: 'No Auth' }
+      if (!request.auth && authorization.startsWith('Bearer ')) delete headers.Authorization
+      const { type: loadedAuthType = 'No Auth', ...loadedAuthValues } = storedAuth
       const formData = Array.isArray(request.form_data) ? request.form_data.map(item => ({
         key: asText(item?.key), kind: item?.file ? 'file' : 'text', value: item?.file ? '' : String(item?.value ?? ''), file: null,
         storedFile: asText(item?.file), filename: asText(item?.filename) || asText(item?.file).split('/').pop(), contentType: asText(item?.content_type),
@@ -953,7 +968,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       setForm({
         tag: asText(tag), apiName: asText(apiName), fileName: caseName(fileName), method: asText(request.method) || 'GET', url: requestUrl.baseUrl,
         timeout: data.timeout === undefined ? '' : String(data.timeout), params: requestUrl.params.concat({ key: '', value: '' }),
-        authType: authorization.startsWith('Bearer ') ? 'Bearer Token' : 'No Auth', authValue: authorization.replace(/^Bearer /, ''),
+        authType: authorizationTypes.includes(loadedAuthType) ? loadedAuthType : 'No Auth', authValues: loadedAuthValues,
         headers: Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n'),
         body: request.body === undefined ? '' : JSON.stringify(request.body, null, 2), bodyMode: Array.isArray(request.form_data) ? 'form-data' : 'json', formData, expectedStatus: String(expected.status ?? 200),
         strict: expected.strict ?? true, expectedBody: data._expectedBodyRaw ?? (expected.body === undefined ? '' : JSON.stringify(expected.body, null, 2)),
@@ -988,11 +1003,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     if (!projectRef) throw new Error('프로젝트를 먼저 선택하세요.')
     if (!form.tag || !form.apiName || !form.fileName || !form.url) throw new Error('Tag, API 이름, 케이스 명, URL을 입력하세요.')
     const headers = parseHeaders(form.headers)
-    if (form.authType === 'Bearer Token') {
-      if (!form.authValue) throw new Error('Bearer Token을 입력하세요.')
-      headers.Authorization = `Bearer ${form.authValue}`
-    }
-    const request = { method: form.method, url: appendParams(form.url, form.params) }
+    const request = { method: form.method, url: appendParams(form.url, form.params), auth: { type: form.authType, ...form.authValues } }
     if (Object.keys(headers).length) request.headers = headers
     if (form.bodyMode === 'form-data') request.form_data = await formDataDocument()
     else {
@@ -1108,7 +1119,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       <section className="card request-card"><div className="request-bar"><select className="method" value={form.method} onChange={event => set('method', event.target.value)}>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => <option key={method}>{method}</option>)}</select><input className="url-input" value={form.url} placeholder="/v1/users (프로젝트 Base URL 기준)" onChange={event => set('url', event.target.value)} /></div>
         <div className="tabs">{['Params', 'Authorization', 'Headers', 'Body'].map(tab => <button key={tab} className={requestTab === tab ? 'active' : ''} onClick={() => setRequestTab(tab)}>{tab}</button>)}</div>
         <div className="tab-content" style={requestTab === 'Params' ? { minHeight: 0, paddingBottom: 14 } : undefined}>{requestTab === 'Params' && <><div className="param-header"><span>Key</span><span>Value</span><span /></div>{form.params.map((param, index) => <div className="param-row" key={index}><input value={param.key} placeholder="page" onChange={event => updateParam(index, 'key', event.target.value)} /><input value={param.value} placeholder="1" onChange={event => updateParam(index, 'value', event.target.value)} /><button className="icon" onClick={() => removeParam(index)}>×</button></div>)}<button className="text-button" onClick={() => setForm(current => ({ ...current, params: [...current.params, { key: '', value: '' }] }))}>＋ Parameter 추가</button></>}
-          {requestTab === 'Authorization' && <div className="auth-form"><Field label="Type"><select value={form.authType} onChange={event => set('authType', event.target.value)}><option>No Auth</option><option>Bearer Token</option></select></Field>{form.authType === 'Bearer Token' && <Field label="Token" wide><input type="password" value={form.authValue} onChange={event => set('authValue', event.target.value)} placeholder="토큰 값" /></Field>}</div>}
+          {requestTab === 'Authorization' && <AuthorizationEditor type={form.authType} values={form.authValues} onTypeChange={value => setForm(current => ({ ...current, authType: value, authValues: {} }))} onValueChange={(key, value) => setForm(current => ({ ...current, authValues: { ...current.authValues, [key]: value } }))} />}
           {requestTab === 'Headers' && <JsonArea value={form.headers} onChange={value => set('headers', value)} placeholder={'Content-Type: application/json\nX-Request-Id: example'} />}
           {requestTab === 'Body' && <div><div className="body-mode"><button className={form.bodyMode === 'json' ? 'active' : ''} onClick={() => set('bodyMode', 'json')}>raw JSON</button><button className={form.bodyMode === 'form-data' ? 'active' : ''} onClick={() => set('bodyMode', 'form-data')}>form-data</button></div>{form.bodyMode === 'form-data' ? <><div className="form-data-header"><span>Key</span><span>Type</span><span>Value / File</span><span /></div>{form.formData.map((item, index) => <div className="form-data-row" key={index}><input value={item.key} placeholder="file" onChange={event => updateFormData(index, 'key', event.target.value)} /><select value={item.kind} onChange={event => updateFormData(index, 'kind', event.target.value)}><option value="text">Text</option><option value="file">File</option></select>{item.kind === 'file' ? <label className="file-picker"><input type="file" onChange={event => updateFormData(index, 'file', event.target.files?.[0] || null)} /><span>{item.file?.name || item.filename || '파일 선택'}</span></label> : <input value={item.value} placeholder="value" onChange={event => updateFormData(index, 'value', event.target.value)} />}<button className="icon" onClick={() => removeFormData(index)}>×</button></div>)}<button className="text-button" onClick={() => setForm(current => ({ ...current, formData: [...current.formData, emptyFormDataRow()] }))}>＋ form-data 추가</button><p className="hint">선택한 파일은 저장·재실행할 수 있도록 <code>case/{'{tag}'}/{'{api_name}'}/files/</code>에 보관됩니다. multipart Content-Type은 자동으로 설정됩니다.</p></> : <JsonArea value={form.body} onChange={value => set('body', value)} placeholder={'{\n  "name": "Ada"\n}'} />}</div>}
         </div>

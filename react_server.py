@@ -32,6 +32,7 @@ from api_test.collaboration_store import (
     RevisionConflictError,
     RevisionRequiredError,
 )
+from api_test.authorization import AuthorizationError, apply_authorization, authorization_sensitive_values
 from api_test.project_variables import (
     ProjectVariableError,
     case_variables_for_client,
@@ -1178,11 +1179,7 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     sensitive_values: set[str] = set()
 
     auth = body.get("auth")
-    if isinstance(auth, dict) and auth.get("type") == "Bearer Token":
-        token = str(auth.get("token", "")).strip()
-        if token:
-            headers_dict["Authorization"] = f"Bearer {token}"
-            sensitive_values.add(token)
+    sensitive_values.update(authorization_sensitive_values(auth))
 
     for h_key, h_val in list(headers_dict.items()):
         if h_key.lower() in ("authorization", "x-api-key", "cookie", "set-cookie"):
@@ -1200,6 +1197,12 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
                 data = body_str.encode("utf-8")
                 headers_dict.setdefault("Content-Type", "application/json")
 
+    try:
+        authorized = apply_authorization(url, method, headers_dict, auth, data)
+    except AuthorizationError as exc:
+        raise ApiError(str(exc)) from exc
+    url, headers_dict = authorized.url, authorized.headers
+
     timeout_seconds = 10.0
     if body.get("timeout"):
         try:
@@ -1208,11 +1211,16 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
             pass
 
     try:
+        execute_options = {
+            "method": method, "headers": headers_dict, "data": data,
+            "timeout_seconds": timeout_seconds, "verify_ssl": True,
+        }
+        if isinstance(auth, dict) and auth.get("type") in {"Digest Auth", "NTLM Authentication"}:
+            execute_options["auth"] = auth
         status, response_headers, raw_response_body, elapsed_ms = execute_http_call(
-            url, method=method, headers=headers_dict, data=data,
-            timeout_seconds=timeout_seconds, verify_ssl=True,
+            url, **execute_options,
         )
-    except (URLError, TimeoutError, OSError) as exc:
+    except (URLError, TimeoutError, OSError, AuthorizationError) as exc:
         msg = format_network_error(exc)
         masked_msg = mask_sensitive_values(msg, sensitive_values)
         status_code = 504 if ("시간이 초과" in masked_msg or isinstance(exc, TimeoutError)) else 502
