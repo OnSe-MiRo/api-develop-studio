@@ -1,5 +1,6 @@
 import { Component, useEffect, useState } from 'react'
 import packageJson from '../package.json'
+import { useRoute, navigateTo } from './router'
 import './format-menu.css'
 
 const emptyCase = {
@@ -1050,47 +1051,65 @@ function ProjectSettings({ projects, projectReference, onSaved, onCancel }) {
 }
 
 function StudioApp() {
-  const [tab, setTab] = useState('project')
+  const route = useRoute()
+  const { tab, projectSettingsReference, caseReference, pipelineReference } = route
   const [projects, setProjects] = useState([])
   const [projectDetails, setProjectDetails] = useState({})
-  const [activeProject, setActiveProject] = useState('')
+  const [activeProject, setActiveProject] = useState(route.activeProject || '')
   const [project, setProject] = useState(null)
-  const [projectSettingsReference, setProjectSettingsReference] = useState('')
   const [caseItems, setCaseItems] = useState([])
   const [pipelineItems, setPipelineItems] = useState([])
-  const [caseReference, setCaseReference] = useState('')
-  const [pipelineReference, setPipelineReference] = useState('')
   const [error, setError] = useState('')
-  const refresh = async (preferredProject = activeProject) => {
+
+  const refresh = async preferredProject => {
     try {
+      const targetProject = preferredProject !== undefined ? preferredProject : (route.activeProject || activeProject)
       const projectData = await api('/api/projects')
-      const selectedProject = projectData.items.includes(preferredProject) ? preferredProject : (projectData.items[0] || '')
+      const selectedProject = projectData.items.includes(targetProject) ? targetProject : (projectData.items[0] || '')
       const filter = selectedProject ? `?project=${encodeURIComponent(selectedProject)}` : '?project=__none__'
       const [cases, pipelines, selectedDocument] = await Promise.all([
         api(`/api/cases${filter}`), api(`/api/pipelines${filter}`), selectedProject ? api(`/api/projects/${encodeURIComponent(selectedProject)}`) : Promise.resolve(null),
       ])
       setProjects(projectData.items); setProjectDetails(projectData.details || {}); setActiveProject(selectedProject); setProject(selectedDocument); setCaseItems(cases.items); setPipelineItems(pipelines.items); setError('')
+      if (selectedProject && !route.activeProject && tab !== 'project' && tab !== 'project-settings') {
+        navigateTo({ ...route, activeProject: selectedProject }, { replace: true })
+      }
     } catch (requestError) { setError(`서버 연결 오류: ${requestError.message}`) }
   }
-  const selectProject = async reference => { setCaseReference(''); setPipelineReference(''); await refresh(reference) }
-  const openProject = async reference => { await selectProject(reference); setTab('case-list') }
-  const saveProjectAndOpen = async reference => { await openProject(reference) }
-  const createProject = () => { setProjectSettingsReference(''); setTab('project-settings') }
-  const editProject = reference => { setProjectSettingsReference(reference); setTab('project-settings') }
-  const navigateTest = target => {
-    if (target === 'cases') { setCaseReference(''); setTab('case-list') }
-    else { setPipelineReference(''); setTab('pipeline-list') }
+
+  useEffect(() => { refresh(route.activeProject) }, [])
+
+  useEffect(() => {
+    if (route.activeProject && route.activeProject !== activeProject) {
+      refresh(route.activeProject)
+    }
+  }, [route.activeProject])
+
+  const selectProject = async reference => {
+    navigateTo({ ...route, activeProject: reference })
+    await refresh(reference)
   }
-  const navigateAuthor = target => setTab(target === 'generator' ? 'generator' : 'api-list')
-  const openCase = reference => { setCaseReference(reference); setTab('case-settings') }
-  const createCase = () => { setCaseReference(''); setTab('case-settings') }
-  const openPipeline = reference => { setPipelineReference(reference); setTab('pipeline-settings') }
-  const createPipeline = () => { setPipelineReference(''); setTab('pipeline-settings') }
-  useEffect(() => { refresh() }, [])
-  const editorProps = { caseItems, pipelineItems, projectRef: activeProject, project, refresh, onNavigate: navigateTest, onProjectList: () => setTab('project') }
-  const authorProps = { projects, projectRef: activeProject, project, refresh, onProjectChange: selectProject, onNavigate: navigateAuthor, onProjectList: () => setTab('project') }
+  const openProject = async reference => {
+    navigateTo({ tab: 'case-list', activeProject: reference })
+    await refresh(reference)
+  }
+  const saveProjectAndOpen = async reference => { await openProject(reference) }
+  const createProject = () => { navigateTo({ tab: 'project-settings', projectSettingsReference: '', activeProject: '' }) }
+  const editProject = reference => { navigateTo({ tab: 'project-settings', projectSettingsReference: reference, activeProject: reference }) }
+  const navigateTest = target => {
+    if (target === 'cases') { navigateTo({ tab: 'case-list', activeProject }) }
+    else { navigateTo({ tab: 'pipeline-list', activeProject }) }
+  }
+  const navigateAuthor = target => navigateTo({ tab: target === 'generator' ? 'generator' : 'api-list', activeProject })
+  const openCase = reference => { navigateTo({ tab: 'case-settings', activeProject, caseReference: reference }) }
+  const createCase = () => { navigateTo({ tab: 'case-settings', activeProject, caseReference: '' }) }
+  const openPipeline = reference => { navigateTo({ tab: 'pipeline-settings', activeProject, pipelineReference: reference }) }
+  const createPipeline = () => { navigateTo({ tab: 'pipeline-settings', activeProject, pipelineReference: '' }) }
+
+  const editorProps = { caseItems, pipelineItems, projectRef: activeProject, project, refresh, onNavigate: navigateTest, onProjectList: () => navigateTo({ tab: 'project' }) }
+  const authorProps = { projects, projectRef: activeProject, project, refresh, onProjectChange: selectProject, onNavigate: navigateAuthor, onProjectList: () => navigateTo({ tab: 'project' }) }
   const validationTab = ['project', 'project-settings', 'case-list', 'case-settings', 'pipeline-list', 'pipeline-settings'].includes(tab)
-  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div><nav><button className={validationTab ? 'selected' : ''} onClick={() => setTab('project')}>API 검증</button><button className={!validationTab ? 'selected' : ''} onClick={() => setTab('api-list')}>API 작성</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => setTab('project')} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => setTab('api-create')} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => setTab('api-list')} /> : <ClientGenerator {...authorProps} />}</>
+  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div><nav><button className={validationTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'project' })}>API 검증</button><button className={!validationTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'api-list', activeProject })}>API 작성</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : <ClientGenerator {...authorProps} />}</>
 }
 
 class ErrorBoundary extends Component {
