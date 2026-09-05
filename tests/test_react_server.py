@@ -42,6 +42,13 @@ from react_server import (
 
 
 class ReactServerRunTest(unittest.TestCase):
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        environment = patch.dict(os.environ, {"STUDIO_DB_PATH": str(Path(directory.name) / "studio.db")})
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def handler_for(self, payload: dict[str, object]) -> tuple[StudioHandler, Mock]:
         handler = object.__new__(StudioHandler)
         handler.api_path = Mock(return_value=["api", "run"])

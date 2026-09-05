@@ -1,5 +1,6 @@
 import { Component, useEffect, useState } from 'react'
 import packageJson from '../package.json'
+import ExecutionDashboard from './ExecutionDashboard'
 import { useRoute, navigateTo } from './router'
 import './format-menu.css'
 
@@ -325,6 +326,7 @@ function RunResult({ result }) {
   })
   const executionLog = outputLines.filter(line => !line.trim().startsWith('actual_response=')).join('\n')
   return <section className={`run-result ${result.error || result.exitCode ? 'failure' : 'success'}`}>
+    {result.historyWarning && <p className="notice" role="alert">{result.historyWarning}</p>}
     <div className="result-heading"><strong>{result.error ? '실행 오류' : result.exitCode ? `실행 실패 (종료 코드 ${result.exitCode})` : '실행 완료'}</strong></div>
     {apiCallResults.length > 0 && <div style={{ padding: '14px', borderTop: '1px solid #dbe4f0', background: '#f8fbff' }}><strong style={{ color: '#334155', fontSize: 13 }}>API 호출 결과</strong><pre style={{ maxHeight: 260, margin: '10px 0 0', border: '1px solid #dbe4f0', borderRadius: 8 }}>{apiCallResults.map((value, index) => `${apiCallResults.length > 1 ? `호출 ${index + 1}\n` : ''}${value}`).join('\n\n')}</pre></div>}
     <div className="result-heading"><strong>실행 로그</strong></div>
@@ -334,7 +336,7 @@ function RunResult({ result }) {
 
 function TestSidebar({ active, projectRef, project, onNavigate, onProjectList }) {
   const projectName = project?.name || projectRef.replace(/\.json$/, '')
-  return <aside className="sidebar"><button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button><div className="sidebar-title">현재 프로젝트</div><div className="current-project"><strong>{projectName}</strong>{project?.base_url && <code>{project.base_url}</code>}</div><div className="sidebar-title">테스트 구성</div><div className="side-nav"><button className={active === 'cases' ? 'active' : ''} onClick={() => onNavigate('cases')}>API 케이스</button><button className={active === 'pipeline' ? 'active' : ''} onClick={() => onNavigate('pipeline')}>파이프라인</button></div></aside>
+  return <aside className="sidebar"><button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button><div className="sidebar-title">현재 프로젝트</div><div className="current-project"><strong>{projectName}</strong>{project?.base_url && <code>{project.base_url}</code>}</div><div className="sidebar-title">테스트 구성</div><div className="side-nav"><button onClick={() => onNavigate('dashboard')}>실행 대시보드</button><button className={active === 'cases' ? 'active' : ''} onClick={() => onNavigate('cases')}>API 케이스</button><button className={active === 'pipeline' ? 'active' : ''} onClick={() => onNavigate('pipeline')}>파이프라인</button></div></aside>
 }
 
 function AuthorSidebar({ active, projects, projectRef, project, onProjectChange, onNavigate, onProjectList }) {
@@ -1055,6 +1057,7 @@ function StudioApp() {
   const { tab, projectSettingsReference, caseReference, pipelineReference } = route
   const [projects, setProjects] = useState([])
   const [projectDetails, setProjectDetails] = useState({})
+  const [dashboardRefresh, setDashboardRefresh] = useState(0)
   const [activeProject, setActiveProject] = useState(route.activeProject || '')
   const [project, setProject] = useState(null)
   const [caseItems, setCaseItems] = useState([])
@@ -1071,7 +1074,7 @@ function StudioApp() {
         api(`/api/cases${filter}`), api(`/api/pipelines${filter}`), selectedProject ? api(`/api/projects/${encodeURIComponent(selectedProject)}`) : Promise.resolve(null),
       ])
       setProjects(projectData.items); setProjectDetails(projectData.details || {}); setActiveProject(selectedProject); setProject(selectedDocument); setCaseItems(cases.items); setPipelineItems(pipelines.items); setError('')
-      if (selectedProject && !route.activeProject && tab !== 'project' && tab !== 'project-settings') {
+      if (selectedProject && !route.activeProject && tab !== 'project' && tab !== 'project-settings' && tab !== 'dashboard') {
         navigateTo({ ...route, activeProject: selectedProject }, { replace: true })
       }
     } catch (requestError) { setError(`서버 연결 오류: ${requestError.message}`) }
@@ -1097,7 +1100,8 @@ function StudioApp() {
   const createProject = () => { navigateTo({ tab: 'project-settings', projectSettingsReference: '', activeProject: '' }) }
   const editProject = reference => { navigateTo({ tab: 'project-settings', projectSettingsReference: reference, activeProject: reference }) }
   const navigateTest = target => {
-    if (target === 'cases') { navigateTo({ tab: 'case-list', activeProject }) }
+    if (target === 'dashboard') { navigateTo({ tab: 'dashboard', activeProject }) }
+    else if (target === 'cases') { navigateTo({ tab: 'case-list', activeProject }) }
     else { navigateTo({ tab: 'pipeline-list', activeProject }) }
   }
   const navigateAuthor = target => navigateTo({ tab: target === 'generator' ? 'generator' : 'api-list', activeProject })
@@ -1109,7 +1113,7 @@ function StudioApp() {
   const editorProps = { caseItems, pipelineItems, projectRef: activeProject, project, refresh, onNavigate: navigateTest, onProjectList: () => navigateTo({ tab: 'project' }) }
   const authorProps = { projects, projectRef: activeProject, project, refresh, onProjectChange: selectProject, onNavigate: navigateAuthor, onProjectList: () => navigateTo({ tab: 'project' }) }
   const validationTab = ['project', 'project-settings', 'case-list', 'case-settings', 'pipeline-list', 'pipeline-settings'].includes(tab)
-  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div><nav><button className={validationTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'project' })}>API 검증</button><button className={!validationTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'api-list', activeProject })}>API 작성</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : <ClientGenerator {...authorProps} />}</>
+  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div><nav><button className={validationTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'project' })}>API 검증</button><button className={!validationTab && tab !== 'dashboard' ? 'selected' : ''} onClick={() => navigateTo({ tab: 'api-list', activeProject })}>API 작성</button><button className={tab === 'dashboard' ? 'selected' : ''} onClick={() => navigateTo({ tab: 'dashboard', activeProject })}>대시보드</button></nav><button className="ghost refresh" onClick={() => { refresh(); setDashboardRefresh(value => value + 1) }}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'dashboard' ? <ExecutionDashboard key={route.activeProject} projects={projects} projectDetails={projectDetails} projectRef={route.activeProject} onProjectChange={reference => navigateTo({ tab: 'dashboard', activeProject: reference })} onNavigate={navigateTest} refreshKey={dashboardRefresh} /> : tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateTest('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateTest('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : <ClientGenerator {...authorProps} />}</>
 }
 
 class ErrorBoundary extends Component {

@@ -16,6 +16,9 @@ export function parseLocation() {
   const project = restoreJson(rawProject)
   const ref = query.get('ref') || ''
 
+  if (pathname === '/dashboard') {
+    return { tab: 'dashboard', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
+  }
   if (pathname === '/projects/new') {
     return { tab: 'project-settings', projectSettingsReference: '', activeProject: '', caseReference: '', pipelineReference: '' }
   }
@@ -58,6 +61,10 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
   let pathname = '/'
 
   switch (tab) {
+    case 'dashboard':
+      pathname = '/dashboard'
+      if (projectSlug) query.set('project', projectSlug)
+      break
     case 'project-settings':
       if (projectSettingsReference) {
         pathname = '/projects/settings'
