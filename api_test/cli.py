@@ -133,6 +133,12 @@ def apply_input_mappings(case: dict[str, Any], mappings: Any, completed_steps: d
 
 def _result_lines(result: CaseResult) -> list[str]:
     lines = [f"[{result.status.upper()}] {result.case_id} (attempts: {result.attempts})"]
+    if result.response_time_ms is not None:
+        timing = f"  Response time: {result.response_time_ms:.3f} ms"
+        limit = (result.expected_definition or {}).get("max_response_time_ms")
+        if limit is not None:
+            timing += f" (max: {limit} ms)"
+        lines.append(timing)
     if result.error:
         lines.append(f"  error: {_redact(result.error, sensitive_values=result.sensitive_values)}")
     if result.assertion_results:

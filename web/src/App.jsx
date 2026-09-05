@@ -6,7 +6,7 @@ import './format-menu.css'
 const emptyCase = {
   tag: 'sample', apiName: 'api_name', fileName: 'new_case', timeout: '', method: 'GET', url: '',
   params: [{ key: '', value: '' }], authType: 'No Auth', authValue: '', headers: '', body: '', bodyMode: 'json', formData: [],
-  expectedStatus: '200', strict: true, expectedBody: '', validateExact: true, validateConditions: false, assertions: [], secretVariables: [],
+  expectedStatus: '200', maxResponseTimeMs: '', strict: true, expectedBody: '', validateExact: true, validateConditions: false, assertions: [], secretVariables: [],
 }
 
 const asText = value => typeof value === 'string' ? value : ''
@@ -629,6 +629,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       setForm({
         tag: asText(tag), apiName: asText(apiName), fileName: caseName(fileName), method: asText(request.method) || 'GET', url: requestUrl.baseUrl,
         timeout: data.timeout === undefined ? '' : String(data.timeout), params: requestUrl.params.concat({ key: '', value: '' }),
+        maxResponseTimeMs: expected.max_response_time_ms === undefined ? '' : String(expected.max_response_time_ms),
         authType: authorization.startsWith('Bearer ') ? 'Bearer Token' : 'No Auth', authValue: authorization.replace(/^Bearer /, ''),
         headers: Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n'),
         body: request.body === undefined ? '' : JSON.stringify(request.body, null, 2), bodyMode: Array.isArray(request.form_data) ? 'form-data' : 'json', formData, expectedStatus: String(expected.status ?? 200),
@@ -680,6 +681,12 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       validation_modes: { exact_body: form.validateExact, conditions: form.validateConditions },
     }
     const timeoutText = asText(form.timeout).trim()
+    const responseTimeText = asText(form.maxResponseTimeMs).trim()
+    if (responseTimeText) {
+      const limit = Number(responseTimeText)
+      if (!Number.isFinite(limit) || limit <= 0) throw new Error('최대 응답 시간은 0보다 큰 숫자여야 합니다.')
+      expected.max_response_time_ms = limit
+    }
     const timeout = timeoutText ? Number(timeoutText) : undefined
     if (timeout !== undefined && (!Number.isFinite(timeout) || timeout <= 0)) throw new Error('API timeout은 0보다 큰 초 단위 숫자여야 합니다.')
     if (!Number.isInteger(expected.status)) throw new Error('Expected status는 정수여야 합니다.')
@@ -792,7 +799,8 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       <section className="card">
         <div className="section-header"><div><p className="eyebrow">ASSERTION</p><h2>기대 응답</h2></div></div>
         <div className="validation-method-section"><strong>검증 방법</strong><p className="hint">두 방법 중 하나만 선택하거나 둘 다 선택할 수 있습니다. Expected status는 선택과 관계없이 항상 검증합니다.</p><div className="validation-methods"><label className={`validation-method ${form.validateExact ? 'selected' : ''}`}><input type="checkbox" checked={form.validateExact} onChange={event => set('validateExact', event.target.checked)} /><span><strong>기대 응답 일치</strong><small>Expected body와 실제 응답의 값·구조를 비교합니다.</small></span></label><label className={`validation-method ${form.validateConditions ? 'selected' : ''}`}><input type="checkbox" checked={form.validateConditions} onChange={event => set('validateConditions', event.target.checked)} /><span><strong>변수별 조건</strong><small>선택한 변수의 범위·타입·형식·존재·길이를 검사합니다.</small></span></label></div></div>
-        <div className="expected-controls"><Field label="Expected status"><input value={form.expectedStatus} onChange={event => set('expectedStatus', event.target.value)} /></Field>{form.validateExact && <label className="toggle"><input type="checkbox" checked={form.strict} onChange={event => set('strict', event.target.checked)} /><span>strict 비교</span></label>}</div>
+        <div className="expected-controls"><Field label="Expected status"><input value={form.expectedStatus} onChange={event => set('expectedStatus', event.target.value)} /></Field><Field label="최대 응답 시간 (ms)"><input type="number" min="0" step="any" value={form.maxResponseTimeMs} onChange={event => set('maxResponseTimeMs', event.target.value)} placeholder="미설정" /></Field>{form.validateExact && <label className="toggle"><input type="checkbox" checked={form.strict} onChange={event => set('strict', event.target.checked)} /><span>strict 비교</span></label>}</div>
+        <p className="hint">최대 응답 시간을 설정하면 응답 본문 수신까지 걸린 시간이 기준을 초과할 때 실패합니다. 비우면 시간 검증을 끄며, 측정값은 실행 로그에 표시됩니다. API timeout은 요청 대기 제한입니다.</p>
         {(form.validateExact || form.validateConditions) && <><div className="expected-body-heading"><strong>{form.validateExact ? form.validateConditions ? 'Expected body / 변수 예시 JSON' : 'Expected body' : '변수 예시 JSON'}</strong><span>{form.validateExact ? form.validateConditions ? '일치 검증과 변수 조건 선택에 사용' : '일치 검증에 사용' : '변수 조건 선택에 사용'}</span></div><JsonArea value={form.expectedBody} onChange={value => set('expectedBody', value)} placeholder={'{\n  "id": 1\n}'} /></>}
         {form.validateConditions && <AssertionEditor assertions={form.assertions} variables={responseVariables} enabled onAdd={addAssertion} onUpdate={updateAssertion} onConfirm={confirmAssertion} onSelectVariable={selectAssertionVariable} onRemove={removeAssertion} />}
       </section>

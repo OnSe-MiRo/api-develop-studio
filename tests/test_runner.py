@@ -38,6 +38,88 @@ class FakeResponse:
 
 
 class ApiRunnerTest(unittest.TestCase):
+    def test_response_time_limit_includes_body_read_and_allows_equality(self) -> None:
+        case = {"request": {"url": "https://example.test/health"}, "expected": {"status": 200, "max_response_time_ms": 125}}
+        for elapsed, status in [(0.0625, "passed"), (0.125, "passed"), (0.25, "failed")]:
+            with self.subTest(elapsed=elapsed):
+                now = [10.0]
+                response = FakeResponse(200, {"ok": True})
+                original_read = response.read
+
+                def read_body() -> bytes:
+                    now[0] += elapsed
+                    return original_read()
+
+                response.read = read_body
+                with patch("api_test.runner.urllib.request.urlopen", return_value=response), patch("api_test.runner.time.perf_counter", side_effect=lambda: now[0]):
+                    result = ApiTestRunner().run_case("health", case)
+                self.assertEqual(result.status, status)
+                self.assertEqual(result.response_time_ms, elapsed * 1000)
+                self.assertIn(f"  Response time: {elapsed * 1000:.3f} ms (max: 125 ms)", cli._result_lines(result))
+                if status == "failed":
+                    self.assertEqual(result.differences[0].path, "$.response_time_ms")
+                    self.assertEqual(result.differences[0].expected, 125)
+                    self.assertEqual(result.differences[0].actual, 250)
+
+    def test_response_time_is_measured_without_a_limit(self) -> None:
+        case = {"request": {"url": "https://example.test/health"}, "expected": {"status": 200}}
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {})), patch("api_test.runner.time.perf_counter", side_effect=[10, 12]):
+            result = ApiTestRunner().run_case("health", case)
+        self.assertEqual(result.status, "passed")
+        self.assertEqual(result.response_time_ms, 2000)
+
+    def test_response_time_limit_rejects_invalid_values_before_request(self) -> None:
+        for limit in [0, -1, True, "125", None, float("nan"), float("inf"), [], {}]:
+            with self.subTest(limit=limit), patch("api_test.runner.urllib.request.urlopen") as request:
+                case = {"request": {"url": "https://example.test/health"}, "expected": {"status": 200, "max_response_time_ms": limit}}
+                with self.assertRaisesRegex(CaseConfigurationError, "expected.max_response_time_ms"):
+                    ApiTestRunner().run_case("health", case)
+                request.assert_not_called()
+
+    def test_response_time_limit_retries_each_attempt_independently(self) -> None:
+        case = {"request": {"url": "https://example.test/health"}, "expected": {"status": 200, "max_response_time_ms": 125}}
+        with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {})), patch("api_test.runner.time.perf_counter", side_effect=[10, 10.25, 15, 15.0625]), patch("api_test.runner.time.sleep") as sleep:
+            result = ApiTestRunner().run_case("health", case, retry=1, retry_interval_seconds=5)
+        self.assertEqual(result.status, "passed")
+        self.assertEqual(result.attempts, 2)
+        self.assertEqual(result.response_time_ms, 62.5)
+        sleep.assert_called_once_with(5)
+
+    def test_response_time_limit_applies_to_expected_http_errors(self) -> None:
+        response = urllib.error.HTTPError("https://example.test/health", 404, "Not Found", Message(), io.BytesIO(b'{}'))
+        case = {"request": {"url": "https://example.test/health"}, "expected": {"status": 404, "max_response_time_ms": 125}}
+        with response, patch("api_test.runner.urllib.request.urlopen", side_effect=response), patch("api_test.runner.time.perf_counter", side_effect=[10, 10.25]):
+            result = ApiTestRunner().run_case("health", case)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.response.status, 404)
+        self.assertEqual(result.response_time_ms, 250)
+
+    def test_request_timeout_remains_an_error_with_elapsed_time(self) -> None:
+        case = {"timeout": 1, "request": {"url": "https://example.test/health"}, "expected": {"status": 200, "max_response_time_ms": 125}}
+        with patch("api_test.runner.urllib.request.urlopen", side_effect=TimeoutError("timed out")), patch("api_test.runner.time.perf_counter", side_effect=[10, 11]):
+            result = ApiTestRunner().run_case("health", case)
+        self.assertEqual(result.status, "error")
+        self.assertEqual(result.response_time_ms, 1000)
+        self.assertIsNone(result.response)
+
+    def test_pipeline_fails_on_response_time_limit_and_logs_measurement(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case_root = root / "case"
+            case_dir = case_root / "sample" / "health"
+            case_dir.mkdir(parents=True)
+            (case_dir / "get.json").write_text(json.dumps({
+                "request": {"url": "https://example.test/health"},
+                "expected": {"status": 200, "max_response_time_ms": 125},
+            }), encoding="utf-8")
+            pipeline = root / "pipeline.json"
+            pipeline.write_text(json.dumps({"steps": [{"name": "health", "case": "sample/health/get.json"}]}), encoding="utf-8")
+            with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {})), patch("api_test.runner.time.perf_counter", side_effect=[10, 10.25]):
+                self.assertEqual(run_pipeline(pipeline, case_root, 2, root / "logs"), 1)
+            log = next((root / "logs").glob("api-test_*.log")).read_text(encoding="utf-8")
+            self.assertIn("Response time: 250.000 ms (max: 125 ms)", log)
+            self.assertIn("$.response_time_ms: response time exceeded maximum (ms)", log)
+
     def test_compare_reports_nested_difference(self) -> None:
         differences = compare_json({"user": {"id": 7}}, {"user": {"id": 8}})
         self.assertEqual(differences[0].path, "$.user.id")

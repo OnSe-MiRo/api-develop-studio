@@ -90,6 +90,7 @@ class CaseResult:
     request_definition: dict[str, Any] | None = None
     expected_definition: dict[str, Any] | None = None
     sensitive_values: set[str] = field(default_factory=set)
+    response_time_ms: float | None = None
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -501,6 +502,14 @@ def validate_assertions(assertions: Any) -> None:
                 raise CaseConfigurationError(f"{prefix}.format is only supported when {prefix}.value is string")
 
 
+def validate_response_time_limit(expected: dict[str, Any]) -> None:
+    if "max_response_time_ms" not in expected:
+        return
+    limit = expected["max_response_time_ms"]
+    if isinstance(limit, bool) or not isinstance(limit, (int, float)) or not math.isfinite(limit) or limit <= 0:
+        raise CaseConfigurationError("expected.max_response_time_ms must be a positive finite number of milliseconds")
+
+
 def response_validation_modes(expected: dict[str, Any]) -> tuple[bool, bool]:
     """Return exact-body and condition validation flags with legacy-case defaults."""
     modes = expected.get("validation_modes")
@@ -653,6 +662,7 @@ class ApiTestRunner:
         if not isinstance(request_definition.get("url"), str):
             raise CaseConfigurationError("request.url is required")
         _, validate_conditions = response_validation_modes(expected)
+        validate_response_time_limit(expected)
         if validate_conditions:
             validate_assertions(expected.get("assertions"))
         timeout_seconds = self.timeout_seconds
@@ -711,6 +721,8 @@ class ApiTestRunner:
             headers.setdefault("Content-Type", "application/json")
         request = urllib.request.Request(request_definition["url"], data=data, headers=headers, method=method)
         request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
+        decode_errors = "strict"
+        started_at = time.perf_counter()
         try:
             if no_proxy or proxy_url or proxy_urls or not verify_ssl:
                 handlers: list[Any] = []
@@ -729,18 +741,22 @@ class ApiTestRunner:
             with opened_response as opened:
                 status = opened.status
                 response_headers = dict(opened.headers.items())
-                raw_body = opened.read().decode("utf-8")
+                raw_body_bytes = opened.read()
         except urllib.error.HTTPError as exc:
             status = exc.code
             response_headers = dict(exc.headers.items()) if exc.headers else {}
-            raw_body = exc.read().decode("utf-8", errors="replace")
+            raw_body_bytes = exc.read()
+            decode_errors = "replace"
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             return CaseResult(
                 case_id, "error", attempt, error=str(exc),
                 request_definition=request_definition, expected_definition=expected,
                 sensitive_values=set(sensitive_values or ()),
+                response_time_ms=(time.perf_counter() - started_at) * 1000,
             )
 
+        response_time_ms = (time.perf_counter() - started_at) * 1000
+        raw_body = raw_body_bytes.decode("utf-8", errors=decode_errors)
         try:
             body: Any = json.loads(raw_body) if raw_body else None
         except json.JSONDecodeError:
@@ -748,6 +764,9 @@ class ApiTestRunner:
         response = HttpResponse(status, response_headers, body)
         differences: list[Difference] = []
         assertion_results: list[AssertionResult] = []
+        max_response_time_ms = expected.get("max_response_time_ms")
+        if max_response_time_ms is not None and response_time_ms > max_response_time_ms:
+            differences.append(Difference("$.response_time_ms", max_response_time_ms, response_time_ms, "response time exceeded maximum (ms)"))
         if "status" in expected and expected["status"] != status:
             differences.append(Difference("$.status", expected["status"], status, "status mismatch"))
         validate_exact_body, validate_conditions = response_validation_modes(expected)
@@ -761,4 +780,5 @@ class ApiTestRunner:
             assertion_results=assertion_results,
             request_definition=request_definition, expected_definition=expected,
             sensitive_values=set(sensitive_values or ()),
+            response_time_ms=response_time_ms,
         )

@@ -386,6 +386,7 @@ API 케이스의 URL·Params·Authorization·Headers·JSON Body·form-data 텍�
 - `request.form_data`: 선택 사항입니다. 지정하면 `body` 대신 `multipart/form-data` 요청을 만듭니다. 각 행은 텍스트 `{ "key": "title", "value": "profile" }` 또는 파일 `{ "key": "file", "file": "member/users/files/profile.png", "filename": "profile.png" }` 형식입니다. `content_type`을 선택적으로 지정할 수 있습니다. 파일 참조는 `case` 루트 기준이며, 화면에서 고른 파일은 `case/{tag}/{api_name}/files/`에 저장됩니다.
 - `timeout`: 선택 사항이며 초 단위의 양수입니다. 지정하면 해당 케이스의 API 요청에만 적용되고, 생략하면 CLI의 기본 timeout을 사용합니다.
 - `expected.status`: 기대 HTTP 상태 코드입니다.
+- `expected.max_response_time_ms`: 선택 사항인 최대 응답 시간(밀리초)입니다. 0보다 큰 유한한 숫자만 허용하며, 측정 시간이 기준보다 크면 실패합니다. 생략하면 응답 시간으로 통과 여부를 판정하지 않습니다.
 - `expected.body`: 기대 JSON 응답입니다.
 - `expected.strict`: 기본값은 `true`입니다. `true`면 객체의 키, 배열 길이와 순서, 값과 타입이 모두 일치해야 합니다. `false`면 기대 객체에 없는 추가 키와 배열의 뒤쪽 요소를 허용하고, 값이 같은 int·float(예: `9`, `9.0`)는 동일하게 비교합니다. boolean과 숫자(예: `true`, `1`)는 서로 다른 타입입니다.
 - `expected.assertions`: 응답 경로에 적용할 조건 배열입니다. 기존 `expected.body` 비교와 함께 사용할 수 있으며 모든 조건을 만족해야 합니다.
@@ -393,6 +394,15 @@ API 케이스의 URL·Params·Authorization·Headers·JSON Body·form-data 텍�
 - `expected.validation_modes.conditions`: `true`이면 `expected.assertions`를 평가합니다.
 
 불일치 시 `$.body.user.id`처럼 정확한 JSON 경로와 기대값·실제값이 출력됩니다.
+
+### 응답 시간 검증
+
+케이스 편집 화면의 **기대 응답 → 최대 응답 시간 (ms)**에서 설정합니다. 예를 들어 `"expected": {"status": 200, "max_response_time_ms": 500}`은 상태 코드가 200이고 응답 시간이 500ms 이하일 때 통과합니다. 입력란을 비우고 저장하면 시간 제한 검증이 해제됩니다. 응답 본문 검증 설정과 독립적으로 적용됩니다.
+
+- 요청 전송 직전부터 응답 본문 수신 완료까지를 단조 시계로 측정합니다. 연결·전송·수신 시간을 포함하고, 요청 데이터 준비·JSON 응답 해석·검증·재시도 대기는 제외합니다.
+- 단독 CLI 실행, 화면에서 저장하지 않고 실행, 저장된 케이스와 파이프라인 실행에 동일하게 적용됩니다. 재시도마다 별도로 측정하며 최종 시도의 측정값을 출력합니다.
+- 제한을 설정하지 않아도 실행 로그에 `Response time: 123.456 ms`가 표시됩니다. 제한 초과 시 `$.response_time_ms`에 기준과 실제 시간이 출력됩니다. HTTP 오류 상태 응답에도 시간 검증을 적용합니다.
+- `timeout`은 초 단위의 요청 대기 제한이고, `max_response_time_ms`는 수신한 응답의 성능 판정 기준입니다. 요청 시간 초과·연결 오류는 기존과 같이 `ERROR`로 처리하고 오류까지의 경과 시간을 출력합니다.
 
 ### 검증 방법 선택
 

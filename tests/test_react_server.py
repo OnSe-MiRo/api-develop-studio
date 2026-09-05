@@ -42,6 +42,18 @@ from react_server import (
 
 
 class ReactServerRunTest(unittest.TestCase):
+    def test_normalize_case_preserves_response_time_limit(self) -> None:
+        for limit in [0.5, 125]:
+            with self.subTest(limit=limit):
+                document = normalize_case_document({"expected": {"status": 200, "max_response_time_ms": limit}, "_expectedBodyRaw": "{}"})
+                self.assertEqual(document["expected"], {"status": 200, "max_response_time_ms": limit, "body": {}})
+        self.assertNotIn("max_response_time_ms", normalize_case_document({"expected": {"status": 200}})["expected"])
+
+    def test_normalize_case_rejects_invalid_response_time_limit(self) -> None:
+        for limit in [0, -1, True, "125", None, float("nan"), float("inf"), [], {}]:
+            with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "expected.max_response_time_ms"):
+                normalize_case_document({"expected": {"status": 200, "max_response_time_ms": limit}})
+
     def handler_for(self, payload: dict[str, object]) -> tuple[StudioHandler, Mock]:
         handler = object.__new__(StudioHandler)
         handler.api_path = Mock(return_value=["api", "run"])
@@ -57,6 +69,7 @@ class ReactServerRunTest(unittest.TestCase):
                 "request": {"url": "https://example.test/users"},
                 "expected": {
                     "status": 200, "strict": True, "body": {"score": 9},
+                    "max_response_time_ms": 125,
                     "assertions": [{"path": "body.score", "operator": "gte", "value": 8}],
                     "validation_modes": {"exact_body": False, "conditions": True},
                 },
@@ -73,6 +86,7 @@ class ReactServerRunTest(unittest.TestCase):
             temporary_path = case_root / reference
             document = json.loads(temporary_path.read_text(encoding="utf-8"))
             self.assertEqual(document["expected"]["body"]["score"], 9.0)
+            self.assertEqual(document["expected"]["max_response_time_ms"], 125)
             self.assertIsInstance(document["expected"]["body"]["score"], float)
             self.assertEqual(document["expected"]["assertions"][0]["path"], "body.score")
             self.assertEqual(document["expected"]["validation_modes"], {"exact_body": False, "conditions": True})

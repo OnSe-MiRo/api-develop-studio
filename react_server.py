@@ -25,6 +25,7 @@ from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 import yaml
 
+from api_test.runner import CaseConfigurationError, validate_response_time_limit
 from api_test.collaboration_store import (
     CollaborationStore,
     CollaborationStoreError,
@@ -1088,6 +1089,11 @@ def normalize_case_document(
         or not math.isfinite(timeout) or timeout <= 0
     ):
         raise ApiError("Case timeout must be a positive number of seconds")
+    if isinstance(document.get("expected"), dict):
+        try:
+            validate_response_time_limit(document["expected"])
+        except CaseConfigurationError as exc:
+            raise ApiError(str(exc)) from exc
     expected_body_raw = document.pop("_expectedBodyRaw", None)
     if expected_body_raw is not None:
         if not isinstance(expected_body_raw, str):
