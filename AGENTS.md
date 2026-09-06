@@ -9,6 +9,8 @@
 - 파일 수정 후 관련 테스트를 실행한다. React 화면을 수정했다면 `web/`에서 `npm run build`도 실행한다.
 - API 케이스 저장 구조는 `case/{tag}/{api_name}/{case_file}.json`을 유지한다.
 - Windows와 macOS/Linux 모두에서 동작하도록 파일 참조 경로는 `/` 구분자를 사용한다.
+- API 부하테스트 또는 결과 대시보드 계획을 수행할 때는 작업 시작, 의미 있는 변경, 검증, 차단과 완료 상태를 `docs/api-load-test-progress.md`에 같은 작업 안에서 기록한다.
+- API 개발 기능 로드맵을 수행할 때는 같은 기록을 `docs/api-development-progress.md`에 남긴다. 부하테스트 대시보드처럼 두 계획에 속하는 작업은 두 진행 문서를 같은 작업 안에서 동기화한다.
 
 ## Git 브랜치 전략
 
