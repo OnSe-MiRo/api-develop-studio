@@ -668,6 +668,7 @@ def execute_http_call(
     proxy_urls: dict[str, str] | None = None,
     no_proxy: bool = False,
     auth: dict[str, Any] | None = None,
+    measure_elapsed: bool = True,
 ) -> tuple[int, dict[str, str], str, float]:
     ntlm_auth = auth if isinstance(auth, dict) and auth.get("type") == "NTLM Authentication" else None
     if ntlm_auth:
@@ -687,15 +688,15 @@ def execute_http_call(
             proxies = proxy_urls
         elif proxy_url:
             proxies = {"http": proxy_url, "https": proxy_url}
-        start_time = time.perf_counter()
+        start_time = time.perf_counter() if measure_elapsed else None
         response = requests.request(
             method.upper(), url, headers=headers or {}, data=data, timeout=timeout_seconds,
             verify=verify_ssl, proxies=proxies, auth=HttpNtlmAuth(username, str(ntlm_auth.get("password", ""))),
         )
-        elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2) if start_time is not None else 0.0
         return response.status_code, dict(response.headers), response.text, elapsed_ms
     request = urllib.request.Request(url, data=data, headers=headers or {}, method=method.upper())
-    start_time = time.perf_counter()
+    start_time = time.perf_counter() if measure_elapsed else None
     try:
         digest_auth = auth if isinstance(auth, dict) and auth.get("type") == "Digest Auth" else None
         if no_proxy or proxy_url or proxy_urls or not verify_ssl or digest_auth:
@@ -724,7 +725,7 @@ def execute_http_call(
         status = exc.code
         response_headers = dict(exc.headers.items()) if exc.headers else {}
         raw_body = exc.read().decode("utf-8", errors="replace")
-    elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2) if start_time is not None else 0.0
     return status, response_headers, raw_body, elapsed_ms
 
 
@@ -824,10 +825,11 @@ class ApiTestRunner:
         request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
         started_at = time.perf_counter()
         try:
-            status, response_headers, raw_body, response_time_ms = execute_http_call(
+            status, response_headers, raw_body, _elapsed = execute_http_call(
                 authorized.url, method=method, headers=authorized.headers, data=data,
                 timeout_seconds=request_timeout, verify_ssl=verify_ssl,
                 proxy_url=proxy_url, proxy_urls=proxy_urls, no_proxy=no_proxy, auth=auth if isinstance(auth, dict) else None,
+                measure_elapsed=False,
             )
         except (urllib.error.URLError, TimeoutError, OSError, AuthorizationError) as exc:
             return CaseResult(
@@ -836,6 +838,7 @@ class ApiTestRunner:
                 sensitive_values=set(sensitive_values or ()),
                 response_time_ms=(time.perf_counter() - started_at) * 1000,
             )
+        response_time_ms = (time.perf_counter() - started_at) * 1000
         try:
             body: Any = json.loads(raw_body) if raw_body else None
         except json.JSONDecodeError:
