@@ -993,6 +993,26 @@ def validate_project_document(payload: dict[str, object]) -> None:
     parsed = urlparse(base_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ApiError("Project base_url must be an absolute HTTP URL")
+    base_urls = payload.get("base_urls", [])
+    if not isinstance(base_urls, list):
+        raise ApiError("Project base_urls must be an array")
+    base_url_names: set[str] = set()
+    for index, item in enumerate(base_urls, start=1):
+        if not isinstance(item, dict):
+            raise ApiError(f"Project base_urls[{index}] must be an object")
+        item_name = item.get("name")
+        item_url = item.get("url")
+        if not isinstance(item_name, str) or not item_name.strip():
+            raise ApiError(f"Project base_urls[{index}].name is required")
+        normalized_name = item_name.strip()
+        if normalized_name in base_url_names:
+            raise ApiError(f"Project base_urls name must be unique: {normalized_name}")
+        base_url_names.add(normalized_name)
+        if not isinstance(item_url, str) or not item_url.strip():
+            raise ApiError(f"Project base_urls[{index}].url is required")
+        parsed_item_url = urlparse(item_url)
+        if parsed_item_url.scheme not in {"http", "https"} or not parsed_item_url.netloc:
+            raise ApiError(f"Project base_urls[{index}].url must be an absolute HTTP URL")
     docs_url = payload.get("docs_url", "")
     if not isinstance(docs_url, str):
         raise ApiError("Project docs_url must be a string")
@@ -1054,8 +1074,23 @@ def validate_project_reference(payload: dict[str, object]) -> None:
     project_reference = payload.get("project")
     if not isinstance(project_reference, str) or not project_reference:
         raise ApiError("A project must be selected")
-    if not safe_file(PROJECT_ROOT, project_reference).is_file():
+    project_path = safe_file(PROJECT_ROOT, project_reference)
+    if not project_path.is_file():
         raise ApiError("Selected project does not exist")
+    base_url_name = payload.get("base_url_name")
+    if base_url_name is None:
+        return
+    if not isinstance(base_url_name, str) or not base_url_name.strip():
+        raise ApiError("Case base_url_name must be a non-empty string")
+    project = json.loads(project_path.read_text(encoding="utf-8"))
+    base_urls = project.get("base_urls", [])
+    available_names = {
+        item.get("name", "").strip()
+        for item in base_urls
+        if isinstance(item, dict) and isinstance(item.get("name"), str)
+    } if isinstance(base_urls, list) else set()
+    if base_url_name.strip() not in available_names:
+        raise ApiError(f"Selected project Base URL does not exist: {base_url_name.strip()}")
 
 
 def project_document_references(root: Path, project_reference: str) -> list[str]:

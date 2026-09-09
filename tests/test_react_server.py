@@ -37,6 +37,7 @@ from react_server import (
     project_json_files,
     project_summaries,
     validate_project_document,
+    validate_project_reference,
     visible_project_files,
 )
 
@@ -571,6 +572,35 @@ paths:
             validate_project_document({**payload, "docs_url": "/openapi.yaml"})
         with self.assertRaisesRegex(ValueError, "use_proxy"):
             validate_project_document({**payload, "advanced": {"use_proxy": "false"}})
+
+    def test_project_accepts_multiple_named_base_urls(self) -> None:
+        payload = {
+            "name": "Member",
+            "base_url": "https://api.example.test",
+            "base_urls": [
+                {"name": "staging", "url": "https://staging.example.test"},
+                {"name": "local", "url": "http://127.0.0.1:9000/api"},
+            ],
+        }
+
+        validate_project_document(payload)
+        with self.assertRaisesRegex(ValueError, "unique"):
+            validate_project_document({**payload, "base_urls": [payload["base_urls"][0], payload["base_urls"][0]]})
+        with self.assertRaisesRegex(ValueError, "absolute HTTP URL"):
+            validate_project_document({**payload, "base_urls": [{"name": "invalid", "url": "/api"}]})
+
+    def test_case_project_reference_validates_selected_base_url(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            (project_root / "member.json").write_text(json.dumps({
+                "name": "Member",
+                "base_url": "https://api.example.test",
+                "base_urls": [{"name": "staging", "url": "https://staging.example.test"}],
+            }), encoding="utf-8")
+            with patch("react_server.PROJECT_ROOT", project_root):
+                validate_project_reference({"project": "member.json", "base_url_name": "staging"})
+                with self.assertRaisesRegex(ValueError, "does not exist: production"):
+                    validate_project_reference({"project": "member.json", "base_url_name": "production"})
 
     def test_project_accepts_uploaded_json_docs_instead_of_url(self) -> None:
         docs_file = {
