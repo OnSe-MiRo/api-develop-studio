@@ -172,7 +172,37 @@ def project_request_settings(case: dict[str, Any], project_root: Path) -> Projec
         raise CaseConfigurationError("case.project must be a non-empty project JSON reference")
     project_path = resolve_case_path(project_root, project_reference)
     project = read_json(project_path)
+    base_url_name = case.get("base_url_name")
+    if base_url_name is not None and (not isinstance(base_url_name, str) or not base_url_name.strip()):
+        raise CaseConfigurationError("case.base_url_name must be a non-empty string")
     base_url = project.get("base_url")
+    additional_base_urls = project.get("base_urls", [])
+    if not isinstance(additional_base_urls, list):
+        raise CaseConfigurationError(f"project.base_urls must be an array: {project_reference}")
+    named_base_urls: dict[str, str] = {}
+    for index, item in enumerate(additional_base_urls, start=1):
+        if not isinstance(item, dict):
+            raise CaseConfigurationError(f"project.base_urls[{index}] must be an object: {project_reference}")
+        name = item.get("name")
+        url = item.get("url")
+        if not isinstance(name, str) or not name.strip():
+            raise CaseConfigurationError(f"project.base_urls[{index}].name is required: {project_reference}")
+        normalized_name = name.strip()
+        if normalized_name in named_base_urls:
+            raise CaseConfigurationError(f"project.base_urls name must be unique: {normalized_name}")
+        if not isinstance(url, str) or not url.strip():
+            raise CaseConfigurationError(f"project.base_urls[{index}].url is required: {project_reference}")
+        item_parsed = urlparse(url)
+        if item_parsed.scheme not in {"http", "https"} or not item_parsed.netloc:
+            raise CaseConfigurationError(
+                f"project.base_urls[{index}].url must be an absolute HTTP URL: {project_reference}"
+            )
+        named_base_urls[normalized_name] = url
+    if isinstance(base_url_name, str):
+        selected_name = base_url_name.strip()
+        if selected_name not in named_base_urls:
+            raise CaseConfigurationError(f"project Base URL is not defined: {selected_name}")
+        base_url = named_base_urls[selected_name]
     if not isinstance(base_url, str) or not base_url.strip():
         raise CaseConfigurationError(f"project.base_url is required: {project_reference}")
     parsed = urlparse(base_url)

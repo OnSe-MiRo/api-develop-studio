@@ -450,6 +450,47 @@ class ApiRunnerTest(unittest.TestCase):
             self.assertEqual(result.status, "passed")
             self.assertEqual(urlopen.call_args.args[0].full_url, "https://example.test/api/users")
 
+    def test_case_selects_a_named_project_base_url(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory) / "projects"
+            project_root.mkdir()
+            (project_root / "member.json").write_text(json.dumps({
+                "name": "Member API",
+                "base_url": "https://api.example.test",
+                "base_urls": [
+                    {"name": "staging", "url": "https://staging.example.test/api/"},
+                    {"name": "local", "url": "http://127.0.0.1:9000"},
+                ],
+            }), encoding="utf-8")
+            case = {
+                "project": "member.json",
+                "base_url_name": "staging",
+                "request": {"url": "/users"},
+                "expected": {"status": 200, "body": {"ok": True}},
+            }
+
+            settings = project_request_settings(case, project_root)
+            assert settings is not None
+            with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})) as urlopen:
+                result = ApiTestRunner().run_case("users", case, base_url=settings.base_url)
+
+            self.assertEqual(result.status, "passed")
+            self.assertEqual(settings.base_url, "https://staging.example.test/api")
+            self.assertEqual(urlopen.call_args.args[0].full_url, "https://staging.example.test/api/users")
+
+    def test_case_rejects_an_unknown_project_base_url_name(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory) / "projects"
+            project_root.mkdir()
+            (project_root / "member.json").write_text(json.dumps({
+                "name": "Member API",
+                "base_url": "https://api.example.test",
+                "base_urls": [{"name": "staging", "url": "https://staging.example.test"}],
+            }), encoding="utf-8")
+
+            with self.assertRaisesRegex(CaseConfigurationError, "not defined: production"):
+                project_request_settings({"project": "member.json", "base_url_name": "production"}, project_root)
+
     def test_project_advanced_proxy_and_verify_settings_are_applied(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
