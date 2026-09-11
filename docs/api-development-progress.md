@@ -1,5 +1,15 @@
 # API 개발 기능 진행 기록
 
+## FastAPI·PostgreSQL·Redis·Java WAS 개발 순서 계획 (2026-09-12)
+
+- 상태: 완료 — 구현이 아닌 로드맵 문서 정리.
+- 결정: FastAPI와 Uvicorn 전환으로 내부 업무 API 계약을 먼저 안정화하고, PostgreSQL 이관과 Redis cache-aside를 완료한 뒤 workspace 격리와 Java WAS 인증 BFF를 진행한다.
+- 저장소 경계: PostgreSQL은 영구 데이터의 단일 기준이고 Redis는 재생성 가능한 일반 캐시다. secret과 원문 request/response를 Redis에 저장하지 않으며 일반 캐시 장애는 PostgreSQL fallback으로 처리한다.
+- 사용자 저장 경계: provider subject는 내부 `user_id`에 연결하고 모든 협업 데이터는 `workspace_id`와 서버가 결정한 작성자 정보를 저장한다. 사용자·workspace·actor 값은 request body에서 받지 않는다.
+- 인증 경계: Java WAS는 로그인·Redis session·CSRF·외부 RBAC를 담당하고 FastAPI는 업무 권한과 workspace query를 담당한다. FastAPI 직접 외부 접근과 두 계층의 중복 인증 구현은 허용하지 않는다.
+- 순서: FND-2 migration·테스트 기반 → FND-3 FastAPI 전환 → FND-4 PostgreSQL·Redis → COL-2 workspace 격리 → COL-1 Java WAS·OIDC → 내부 서비스 인증 → 외부 포트 차단 → 종단 검증.
+- 제한: PostgreSQL·Redis 이관과 Java WAS·인증 provider의 실제 도입은 시작하지 않았으며 사내 SSO·Spring Security 표준 확정 전까지 Java 기술 선택 상태는 대기다.
+
 ## 예제 정책 테스트 추가 (2026-09-11)
 
 - 상태: 완료 — health Setup, API Key 누락 401, 유효한 예제 API Key 200 케이스와 `example-ownership-local.json` 추가.
@@ -23,11 +33,11 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-09
+- 최종 갱신일: 2026-09-12
 - 현재 단계: FND-1 빠른 호출 기능 통합 완료
 - 전체 상태: 진행
-- 작업 브랜치: `feature/quick-api-call-dev-integration`
-- 다음 작업: 실행 대시보드를 공통 실행 결과 모델과 정렬해 최신 `dev`에 통합
+- 작업 브랜치: `develop` (이번 작업은 계획 문서만 수정)
+- 다음 작업: FND-1의 실행 대시보드를 공통 실행 결과 모델과 정렬해 `develop`에 통합한 뒤 FND-2 기반 작업 착수
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -37,6 +47,8 @@
 | --- | --- | --- | --- | --- |
 | FND-1 | 빠른 호출·실행 대시보드 branch 안전 통합 | P0 | 진행 | 빠른 호출 통합 완료, 실행 대시보드는 후속 통합 |
 | FND-2 | frontend test·DB migration·모듈 분리 기반 | P0 | 대기 | 최소 migration 계약 |
+| FND-3 | FastAPI 백엔드 전환 | P0 | 대기 | 기존 HTTP 계약 matrix와 `TestClient` 전환 범위 확정 |
+| FND-4 | PostgreSQL 영구 저장소·Redis 캐시 | P0 | 대기 | SQLite 이관, 사용자·workspace 저장 계약, cache 대상과 장애 fallback 확정 |
 | API-1 | 빠른 API 호출 | P0 | 대기 | 공통 request model |
 | API-2 | 환경 프로필 | P0 | 대기 | 기존 `base_url` 호환 방식 |
 | API-3 | 공통 인증 모델 | P0 | 대기 | 1차 지원 방식 확정 |
@@ -51,8 +63,8 @@
 | OBS-1 | 기능 테스트 실행 이력 | P1 | 대기 | RUN-1 공통 metadata |
 | OBS-2 | 부하테스트 결과 대시보드 | P1 | 대기 | 별도 진행 기록 참조 |
 | IOP-1 | cURL·Postman·HAR 연동 | P1 | 대기 | 지원 형식과 round trip 기준 |
-| COL-1 | 로그인과 RBAC | P2 | 대기 | 인증 방식과 배포 형태 |
-| COL-2 | Workspace 데이터 격리 | P2 | 대기 | migration과 권한 query |
+| COL-1 | Java WAS 로그인 BFF와 RBAC | P2 | 대기 | 사내 SSO·Spring Security 표준과 OIDC provider 확정 |
+| COL-2 | Workspace 데이터 격리 | P2 | 대기 | COL-1 전에 migration과 권한 query 경계 구현 |
 | GOV-1 | API lifecycle과 변경 로그 | P2 | 대기 | release·revision 연결 |
 | DOC-1 | 개발자 문서 portal | P2 | 대기 | 공개 범위와 인증 |
 | EXT-1 | 비REST 프로토콜 확장 | P2 | 대기 | 사용자 수요 확인 |
@@ -72,6 +84,7 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 | 일시 | 작업 ID | 명령 또는 확인 방법 | 결과 | 비고 |
 | --- | --- | --- | --- | --- |
+| 2026-09-12 | PLAN | roadmap ID, 사용자·workspace 저장 계약, 의존 관계와 완료 기준 확인 | 완료 | 애플리케이션 구현은 시작하지 않음 |
 | 2026-09-09 | FND-1 | `python3 -m unittest discover -s tests -v` | 통과, 109개 | 응답시간 측정 중복 통합 결함 수정 후 전체 재실행 |
 | 2026-09-09 | FND-1 | `cd web && npm run build` | 통과 | Vite 8.2.1 production build |
 | 2026-09-09 | FND-1 | `python3 -m py_compile ...`, `docker compose config --quiet` | 통과 | 인증·runner·서버 컴파일과 Compose 구성 확인 |
@@ -84,6 +97,12 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 | 일자 | 결정 | 이유 | 영향 |
 | --- | --- | --- | --- |
+| 2026-09-12 | 로그인 전부터 모든 협업 데이터에 내부 user ID와 workspace 경계 적용 | email·요청 header 변경이나 reference 조작이 데이터 소유권을 바꾸지 않도록 보장 | 저장소 메서드에 검증된 `RequestContext` 필수 |
+| 2026-09-12 | 기존 SQLite 데이터는 local workspace·시스템 사용자로 이관 | 기존 데이터 손실 없이 다중 사용자 schema로 전환 | 이관 후 명시적인 소유권 양도 절차 필요 |
+| 2026-09-12 | PostgreSQL을 영구 데이터 기준, Redis를 재생성 가능한 캐시로 사용 | 캐시 장애와 영구 데이터 정합성을 분리하고 다중 사용자 확장 기반 확보 | FND-4에서 SQLite 이관과 cache-aside 구현 |
+| 2026-09-12 | 일반 캐시와 Java WAS session의 Redis namespace·TTL·장애 정책 분리 | 일반 조회 cache miss와 인증 session 손실은 허용 가능한 영향이 다름 | 일반 캐시는 DB fallback, session 장애는 인증 실패 처리 |
+| 2026-09-12 | FastAPI 내부 API와 PostgreSQL 전환 후 필요 시 Java WAS 인증 BFF 도입 | Java가 FastAPI를 실행하지 않으며 인증과 업무 API 책임 중복 방지 | FND-2 → FND-3 → FND-4 → COL-2 → COL-1 순서 적용 |
+| 2026-09-12 | Java WAS 도입 전 workspace 권한 query와 migration 구현 | 로그인만 추가해도 reference 조작과 데이터 혼선은 차단되지 않음 | 모든 문서·실행·secret에 workspace 경계 필요 |
 | 2026-09-07 | REST와 OpenAPI 핵심 흐름을 먼저 완성 | 현재 제품 구조와 보유 기능을 활용하고 범위 확산 방지 | GraphQL·gRPC·AsyncAPI는 P2 이후 검토 |
 | 2026-09-07 | 기능 테스트와 부하테스트가 공통 run metadata 사용 | 실행 이력 저장과 화면의 중복 방지 | RUN-1이 두 대시보드보다 선행 |
 | 2026-09-07 | quick-call과 execution-dashboard branch를 최신 기준에 재구성 | 두 branch가 후속 기능과 테스트보다 이전 기준에서 분기 | 원본 branch 직접 병합 금지 |
@@ -92,6 +111,14 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 ## 변경 이력
 
 최신 항목을 위에 추가하고 작업 ID, 변경 파일, 검증 결과, 알려진 제한과 다음 작업을 기록한다.
+
+### 2026-09-12 — PLAN — FastAPI·PostgreSQL·Redis·Java WAS 권장 순서 문서화
+
+- 변경: FND-3 FastAPI 전환, FND-4 PostgreSQL 이관·로그인 고려 저장 계약·Redis cache-aside, Java WAS 인증 BFF와 workspace 격리의 12단계 구현 순서 및 완료 기준 추가
+- 변경 파일: `docs/api-development-plan.md`, `docs/api-development-progress.md`
+- 검증: roadmap ID와 의존 관계, 문서 링크, Markdown 형식 및 `git diff --check` 확인
+- 제한: FastAPI, Uvicorn, PostgreSQL, Redis, Java WAS, OIDC와 DB migration 구현은 시작하지 않음
+- 다음: FND-2 기반 작업 후 FND-3의 기존 HTTP 계약 matrix를 작성하고 FND-4 SQLite 이관·사용자 데이터 schema 계약 설계
 
 ### 2026-09-09 — FND-1 — 빠른 호출 최신 `dev` 통합 완료
 

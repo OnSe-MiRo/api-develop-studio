@@ -18,7 +18,7 @@ OpenAPI 가져오기 또는 작성
 
 ## 2. 현재 기준과 보유 기능
 
-현재 기준 브랜치는 `feature/developer-docs`이며 기능 코드는 `786d0e3` 이후 상태를 기준으로 분석했다. 통합 대상은 실제 개발을 시작할 때 최신 통합 브랜치에서 다시 확인한다.
+현재 기준 브랜치는 `develop`이며 기능 코드는 `1ff112a` 이후 상태를 기준으로 분석했다. 통합 대상은 실제 개발을 시작할 때 최신 통합 브랜치에서 다시 확인한다.
 
 현재 제공 기능은 다음과 같다.
 
@@ -50,6 +50,10 @@ OpenAPI 가져오기 또는 작성
 - 명세, 케이스와 실행 결과는 서로 추적 가능한 안정 ID를 갖는다.
 - 장기 실행 작업은 HTTP request thread와 분리하고 동시 실행 수를 제한한다.
 - 새 데이터 구조는 schema version과 migration, 백업 및 복구 방법을 함께 제공한다.
+- PostgreSQL을 영구 데이터의 단일 기준으로 사용하고 Redis에는 원본에서 다시 만들 수 있는 값만 저장한다.
+- Redis 장애가 프로젝트·케이스의 정합성 손실로 이어지지 않도록 일반 캐시는 PostgreSQL fallback을 제공하고 보안 상태는 별도 실패 정책을 적용한다.
+- FastAPI는 업무 API와 도메인 권한을 담당하고, Java WAS를 도입할 경우 로그인·세션·SSO를 담당하는 인증 BFF로 한정한다.
+- Java WAS와 FastAPI가 사용자 인증을 중복 구현하지 않으며 FastAPI의 직접 외부 접근을 허용하지 않는다.
 - UI 기능에는 loading, empty, error, 충돌과 좁은 화면 상태를 포함한다.
 - 구현과 검증 진행은 [`API 개발 기능 진행 기록`](api-development-progress.md)에 같은 작업 안에서 갱신한다.
 
@@ -61,6 +65,8 @@ OpenAPI 가져오기 또는 작성
 | --- | --- | --- | --- |
 | FND-1 | 기능 브랜치 안전 통합 | 이미 개발된 기능을 회귀 없이 활용 | 빠른 호출·실행 대시보드를 최신 통합 기준으로 이식 |
 | FND-2 | 테스트와 migration 기반 | 기능 증가에 따른 회귀와 DB 호환성 방지 | frontend test, DB schema version, migration runner |
+| FND-3 | FastAPI 백엔드 전환 | 표준 API 계약과 향후 인증 경계 확보 | FastAPI, Uvicorn, 계약 테스트, Docker 실행 전환 |
+| FND-4 | PostgreSQL·Redis 기반 | 다중 사용자 데이터 정합성과 조회 확장성 확보 | PostgreSQL 전환, SQLite 이관, Redis cache-aside |
 | API-1 | 빠른 API 호출 | 케이스 저장 전 API 탐색 | method, URL, params, auth, headers, body, response와 저장 전환 |
 | API-2 | 환경 프로필 | 같은 케이스를 Local·Dev·Stage에서 재사용 | 환경별 Base URL, 변수 override, 활성 환경 선택 |
 | API-3 | 공통 인증 모델 | 인증 API를 반복 설정 없이 실행 | API Key, Basic, Bearer, OAuth 2.0과 secret 참조 |
@@ -85,7 +91,7 @@ OpenAPI 가져오기 또는 작성
 
 | ID | 기능 | 사용자 가치 | 최소 범위 |
 | --- | --- | --- | --- |
-| COL-1 | 로그인과 RBAC | 외부 다중 사용자 환경의 안전한 협업 | session, Owner·Editor·Runner·Viewer 권한 |
+| COL-1 | 로그인과 RBAC | 외부 다중 사용자 환경의 안전한 협업 | 필요 시 Java WAS 인증 BFF, session, Owner·Editor·Runner·Viewer 권한 |
 | COL-2 | Workspace 격리 | 팀별 프로젝트와 secret 분리 | 모든 문서·실행·secret query에 workspace 적용 |
 | GOV-1 | API lifecycle 관리 | 버전과 폐기 정책 추적 | release, changelog, deprecated 표시와 승인 기록 |
 | DOC-1 | 개발자 문서 portal | 소비자가 명세와 예제를 쉽게 탐색 | OpenAPI 기반 검색·예제·인증 안내 |
@@ -138,6 +144,61 @@ OpenAPI 가져오기 또는 작성
 - 빈 DB와 이전 DB 모두 최신 schema로 올라간다.
 - migration 실패 시 기존 DB가 부분 변경되지 않는다.
 - frontend의 loading, empty, error와 router 테스트를 CLI에서 실행할 수 있다.
+
+#### FND-3 FastAPI 백엔드 전환
+
+현재 `react_server.py`의 `ThreadingHTTPServer` 라우팅을 FastAPI로 이전하고 Uvicorn을 ASGI 서버로 사용한다. 전환 자체와 로그인·RBAC 도입을 한 변경에 섞지 않고, 현재 React와 CLI가 사용하는 HTTP 계약을 먼저 고정한다.
+
+1. 기존 method, path, status, JSON 오류, cookie, raw upload, ZIP 다운로드와 SPA fallback을 계약 테스트로 기록한다.
+2. 기존 `api_test`의 runner, authorization, ownership과 SQLite 저장 로직은 유지하고 FastAPI route에서 호출한다.
+3. 조회, CRUD·OpenAPI, 실행·ownership 순으로 route를 이전한다.
+4. FastAPI 기본 `422`가 기존 `400` 계약을 임의로 바꾸지 않도록 예외 mapping을 명시한다.
+5. `case/{tag}/{api_name}/{case_file}.json` reference는 `{reference:path}`로 처리하고 revision route와의 우선순위를 검증한다.
+6. Docker API 컨테이너를 단일 Uvicorn worker로 전환한 뒤 실제 HTTP와 React 흐름을 검증한다.
+7. SQLite, SDK 생성과 테스트 subprocess의 동시성 기준이 마련되기 전에는 다중 worker를 활성화하지 않는다.
+8. 모든 handler 직접 호출 테스트를 `TestClient` 계약 테스트로 전환한 뒤 `StudioHandler`를 제거한다.
+
+완료 기준: 기존 React 수정 없이 전체 API 흐름이 동작하고 상태 코드·응답·cookie·artifact 계약, 전체 Python 테스트, Vite build, Compose healthcheck와 실제 HTTP 검증이 통과한다.
+
+#### FND-4 PostgreSQL 영구 저장소와 Redis 캐시
+
+PostgreSQL은 프로젝트, 케이스, 파이프라인, revision, ownership, 실행 metadata와 향후 사용자·workspace의 단일 영구 저장소로 사용한다. Redis는 PostgreSQL 또는 파일 원본에서 다시 만들 수 있는 조회 결과만 저장하며 영구 저장소나 권한 판정의 유일한 근거로 사용하지 않는다.
+
+1. 저장소 인터페이스와 transaction 경계를 분리해 FastAPI route가 SQLite 구현에 직접 의존하지 않도록 한다.
+2. PostgreSQL schema와 migration을 먼저 작성하고 revision, hash, timestamp, soft-delete와 낙관적 잠금 계약을 유지한다.
+3. 기존 SQLite를 읽기 전용 snapshot으로 열어 PostgreSQL로 옮기는 idempotent migration 명령을 제공한다.
+4. 이관 전후의 row 수, document ID, revision, hash와 soft-delete 상태를 비교하고 실패 시 PostgreSQL transaction을 rollback한다.
+5. 현재 CLI 호환용 JSON 투영은 PostgreSQL commit 이후 생성하며 투영 실패를 DB commit 성공과 구분해 복구 가능하게 기록한다.
+6. connection pool, statement timeout, transaction timeout, busy 작업의 재시도 범위와 필수 index를 정의한다.
+7. Redis는 프로젝트 목록·요약, revision 조회와 정규화된 OpenAPI처럼 재생성 가능한 데이터에 cache-aside 방식으로 적용한다.
+8. cache key에는 환경, schema version, workspace와 resource revision을 포함하고 DB commit 이후 관련 key를 무효화한다.
+9. 일반 캐시가 unavailable이면 PostgreSQL을 조회하고, secret·인증 header·원문 request/response body는 Redis에 저장하지 않는다.
+10. 향후 Java WAS session을 Redis에 저장할 경우 일반 조회 캐시와 namespace·권한·TTL을 분리하고 session 저장 장애는 인증 실패로 처리한다.
+11. PostgreSQL과 Redis는 Docker 내부 네트워크에만 두고 PostgreSQL 영구 volume·백업, 두 서비스의 healthcheck와 애플리케이션 재연결을 검증한다.
+
+Redis를 job queue, 분산 lock 또는 rate-limit 원장으로 사용하는 것은 일반 캐시와 다른 신뢰성 계약이 필요하므로 RUN-2 또는 COL-1에서 별도 결정한다.
+
+로그인을 고려한 데이터 저장 계약:
+
+| 대상 | 필수 저장 정보 | 규칙 |
+| --- | --- | --- |
+| `users` | 내부 `user_id`, 상태, 생성·수정 시각 | email이나 provider subject를 PK로 사용하지 않는다. |
+| `user_identities` | `user_id`, provider, provider subject | provider와 subject 조합은 유일하고 email 변경과 무관하게 사용자를 식별한다. |
+| `workspaces` | `workspace_id`, 이름, 상태 | 모든 협업 데이터의 최상위 격리 경계로 사용한다. |
+| `workspace_members` | `workspace_id`, `user_id`, role, 상태 | 활성 membership만 데이터 접근과 실행을 허용한다. |
+| 프로젝트·케이스·파이프라인 | `workspace_id`, `created_by`, `updated_by`, revision | reference 유일성은 전역이 아니라 workspace 범위로 제한한다. |
+| 실행·artifact | `workspace_id`, `requested_by`, 상태, 보존 기한 | background job도 요청 사용자의 문맥과 권한 snapshot을 전달한다. |
+| `audit_events` | workspace, actor, action, target, request ID, 시각 | append-only로 기록하고 secret과 원문 credential은 저장하지 않는다. |
+
+- API request body에서 `user_id`, `workspace_id`, `created_by`와 `updated_by`를 받아 저장하지 않는다. 로그인 session 또는 검증된 내부 service token으로 만든 `RequestContext`에서만 결정한다.
+- 저장소의 모든 조회·수정·삭제 메서드는 `RequestContext`를 필수로 받고 `workspace_id` 조건을 누락한 reference 단독 조회를 제공하지 않는다.
+- 생성·수정·삭제와 revision·audit 기록은 같은 PostgreSQL transaction에서 처리한다. soft-delete에는 `deleted_by`와 `deleted_at`을 남긴다.
+- 회원 탈퇴나 membership 해제 시 프로젝트와 실행 이력을 cascade 삭제하지 않고 접근만 차단한다. 보존·양도·삭제는 별도 정책으로 처리한다.
+- 기존 SQLite 데이터는 migration 시 `local` 기본 workspace와 시스템 사용자에 연결하고, 이관 후 관리자가 실제 사용자·workspace에 소유권을 양도할 수 있게 한다.
+- Redis key에는 `workspace_id`와 resource revision을 포함한다. role·membership 변경 시 해당 사용자의 권한 캐시와 workspace 데이터 캐시를 무효화한다.
+- PostgreSQL Row-Level Security는 애플리케이션 query 검증을 대체하지 않는 방어 계층으로 검토한다. 적용 시 connection pool에서 request별 DB context를 transaction 안에서 설정하고 반환 전에 초기화되는지 검증한다.
+
+완료 기준: 빈 PostgreSQL과 SQLite 이관 PostgreSQL에서 같은 API 계약과 revision 이력이 유지되고, Redis hit·miss·만료·무효화·장애 fallback, 동시 write와 rollback 테스트가 통과한다.
 
 ### 1단계 — 탐색, 환경과 인증
 
@@ -277,11 +338,32 @@ CLI에 `--report-json`과 `--report-junit`을 추가한다. 사람용 stdout, �
 
 #### COL-1·COL-2 인증, 권한과 격리
 
-- 로그인과 session/token 검증
+- 사내 SSO 또는 Spring Security 표준이 확정된 경우 Java WAS를 로그인 BFF로 도입
+- 외부 OIDC provider의 Authorization Code 로그인을 사용하고 Java WAS가 session과 token을 관리
 - Owner, Admin, Editor, Runner, Viewer 권한
+- provider subject를 내부 `user_id`에 연결하고 email 변경이 데이터 소유권을 바꾸지 않도록 구성
 - workspace별 프로젝트, 문서, 실행, secret과 audit 격리
 - `X-Studio-Actor`를 신뢰하지 않고 인증 주체에서 actor 결정
+- Java WAS와 FastAPI 사이에는 짧은 수명의 서명 token 또는 mTLS를 사용하고 전달된 사용자 문맥을 검증
+- FastAPI는 내부 네트워크에만 두고 브라우저와 외부 클라이언트의 직접 접근 차단
 - 권한 변경과 secret 사용에 대한 감사 이벤트
+
+권장 개발 순서:
+
+1. FND-2에서 DB schema version, migration과 frontend 회귀 테스트 기반을 준비한다.
+2. FND-3에서 현재 HTTP 계약을 고정하고 FastAPI와 Uvicorn으로 백엔드를 전환한다.
+3. FND-4에서 PostgreSQL schema와 SQLite 이관 도구를 구현하고 PostgreSQL을 영구 저장소로 전환한다.
+4. Redis cache-aside와 장애 fallback을 적용하되 정합성·보안 판정은 PostgreSQL을 기준으로 유지한다.
+5. FastAPI에 `CurrentUser`와 `RequestContext` 의존성 경계를 추가하고 저장소 호출에서 사용자·workspace 문맥을 필수화하되 로컬 모드의 기존 동작은 보존한다.
+6. `users`, `user_identities`, `workspaces`, `workspace_members`와 role 모델을 PostgreSQL migration으로 추가한다.
+7. 기존 데이터를 기본 local workspace·시스템 사용자에 이관하고 프로젝트, 케이스, 파이프라인, revision, 실행 결과와 secret에 `workspace_id`와 작성자 필드를 연결한다.
+8. 모든 저장·조회·실행 query가 인증 주체의 workspace와 role을 검사하고 revision·audit가 같은 transaction에 기록되는지 검증한다.
+9. 로그인·SSO 요구가 확정되면 Spring Boot와 Tomcat 기반 Java WAS를 별도 모듈로 추가한다.
+10. Java WAS에서 OIDC 로그인, logout, Redis session, CSRF와 RBAC의 외부 진입 정책을 구현한다.
+11. Java WAS와 FastAPI 사이의 서비스 인증을 연결하고 사용자 ID, workspace와 role 전달을 검증한다.
+12. React의 `/api` 대상을 Java WAS로 변경하고 FastAPI의 host port를 제거한 뒤 session 만료, 다른 workspace reference 조작, 직접 FastAPI 접근과 감사 기록을 종단 검증한다.
+
+Java WAS는 FastAPI를 실행하는 서버가 아니다. Java WAS는 외부 인증 BFF이고 FastAPI는 Uvicorn에서 실행되는 내부 업무 API다. 로그인만 필요하고 사내 Java·SSO 표준이 없다면 Java WAS를 생략하고 FastAPI에서 외부 OIDC provider를 연동하는 단순 구성을 우선한다.
 
 완료 기준: 다른 workspace ID나 문서 reference를 조작해도 데이터와 실행 결과에 접근할 수 없고 권한별 허용·거부 테스트가 통과한다.
 
@@ -308,12 +390,15 @@ CLI에 `--report-json`과 `--report-junit`을 추가한다. 사람용 stdout, �
 | 선행 작업 | 후속 작업 | 이유 |
 | --- | --- | --- |
 | FND-1 | API-1, OBS-1 | 기존 구현을 최신 기준으로 먼저 복구 |
-| FND-2 | 모든 DB·UI 기능 | migration과 frontend 회귀 방지 필요 |
+| FND-2 | FND-3, FND-4와 모든 DB·UI 기능 | migration과 frontend 회귀 방지 필요 |
+| FND-3 | FND-4 | 저장소 전환 전에 안정된 내부 업무 API 계약 필요 |
+| FND-4 | COL-1, COL-2 | 다중 사용자 인증과 격리 전에 영구 저장소와 이관 경로 필요 |
 | API-2 | RUN-1, MOCK-1, 대시보드 | 모든 실행 결과에 환경 정보 필요 |
 | API-3 | 빠른 호출, 케이스, Mock | 요청마다 다른 인증 구현 방지 |
 | RUN-1 | RUN-2, OBS-1, OBS-2 | 대시보드와 job이 공유할 결과 계약 필요 |
 | OAS-1 | OAS-2, TST-1, MOCK-1 | 안정된 명세 모델이 기준 |
-| COL-1 | 외부 공개와 multi-workspace | actor header만으로는 보안 경계가 되지 않음 |
+| COL-2 | COL-1과 외부 공개 | 로그인 전에 workspace query와 migration 경계를 먼저 확보 |
+| COL-1 | 외부 공개 | actor header만으로는 보안 경계가 되지 않음 |
 
 핵심 순서는 `FND → API → RUN → OAS/TST → MOCK/OBS → COL/IOP`로 유지한다. 독립적인 UI 작업을 병렬화하더라도 데이터 계약과 migration이 먼저 승인되어야 한다.
 
@@ -321,7 +406,8 @@ CLI에 `--report-json`과 `--report-junit`을 추가한다. 사람용 stdout, �
 
 ### 보안
 
-- secret 평문을 SQLite 일반 컬럼, JSON 투영, 로그와 report에 저장하지 않는다.
+- secret 평문을 PostgreSQL·기존 SQLite 일반 컬럼, JSON 투영, 로그와 report에 저장하지 않는다.
+- 사용자·workspace·actor 식별자는 request body나 신뢰되지 않은 header가 아니라 검증된 `RequestContext`에서만 결정한다.
 - 외부 URL 요청에는 SSRF 방어 정책과 redirect 재검증을 적용한다.
 - 업로드, `$ref`, artifact와 case reference의 root 탈출을 거부한다.
 - 임의 스크립트 실행 기능을 기본 제공하지 않는다.
@@ -330,7 +416,8 @@ CLI에 `--report-json`과 `--report-junit`을 추가한다. 사람용 stdout, �
 
 - 목록 API는 pagination과 filter를 제공한다.
 - 장기 실행은 bounded worker에서 처리한다.
-- DB write는 transaction과 busy timeout을 사용하고 lock 오류를 측정한다.
+- PostgreSQL write는 transaction, connection pool과 timeout을 사용하고 lock·deadlock 오류를 측정한다.
+- Redis cache는 TTL, versioned key와 commit 이후 무효화 정책을 사용하며 장애 시 PostgreSQL fallback을 측정한다.
 - 대형 response와 report에는 크기 상한과 streaming 또는 truncation 정책을 둔다.
 
 ### 호환성
@@ -352,7 +439,10 @@ CLI에 `--report-json`과 `--report-junit`을 추가한다. 사람용 stdout, �
 | 영역 | 필수 검증 |
 | --- | --- |
 | runner·인증·환경 | 정상, 오류, timeout, secret 마스킹과 기존 JSON 호환 테스트 |
-| 저장소·migration | 빈 DB, 이전 DB, rollback, 동시 write와 workspace 격리 |
+| 저장소·migration | 빈 DB, 이전 DB, local workspace 이관, rollback, 동시 write와 workspace 격리 |
+| PostgreSQL·Redis | SQLite 이관 parity, transaction·lock, cache hit·miss·TTL·무효화와 장애 fallback |
+| 사용자 데이터 경계 | 변조된 actor·workspace 거부, email 변경, membership 해제, soft-delete, revision·audit 원자성 |
+| FastAPI·Java WAS | 기존 HTTP 계약, service 인증, cookie·CSRF, 직접 접근 차단과 proxy timeout |
 | OpenAPI | import→edit→export round trip, invalid `$ref`, breaking change fixture |
 | CLI·CI | exit code, JSON schema, JUnit parser와 artifact 생성 |
 | React | router, form 변환, loading·empty·error·conflict와 responsive layout |
