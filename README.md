@@ -236,6 +236,30 @@ order: TOTAL 2 | PASS 0 | FAIL 0 | ERROR 0 | SKIPPED 2
 
 ## 디렉터리 구조
 
+React 화면은 `web/src/pages/` 아래에 페이지별 폴더로 분리합니다.
+
+```text
+web/src/
+  App.jsx                 # 공통 헤더, 상태 및 페이지 연결
+  router.js               # URL 해석과 탐색
+  pages/
+    api-call/             # API 호출
+    projects/             # 프로젝트 목록
+    project-settings/     # 프로젝트 생성·설정
+    cases/                # 케이스 목록
+    case-editor/          # 케이스 생성·편집 및 조건 편집기
+    pipelines/            # 파이프라인 목록
+    pipeline-editor/      # 파이프라인 생성·편집
+    apis/                 # API 목록
+    api-create/           # API 작성
+    generator/            # SDK 생성
+  components/             # 여러 페이지에서 사용하는 UI
+  utils/studio.js         # 공통 요청·변환·검증 함수와 상수
+  styles.css              # 공통 스타일
+```
+
+페이지 전용 컴포넌트는 해당 페이지 폴더에 두고, 여러 페이지에서 쓰는 컴포넌트는 `components/`에 둡니다. 생성과 편집이 같은 화면을 사용하는 경우 하나의 페이지 폴더에서 관리합니다.
+
 케이스는 반드시 아래처럼 저장합니다. `{tag}`는 도메인·서비스·환경 등을 구분하는 이름이고, `{api_name}` 하나에 여러 JSON 케이스를 넣습니다.
 
 ```text
