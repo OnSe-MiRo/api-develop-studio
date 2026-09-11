@@ -38,6 +38,10 @@ class FakeResponse:
 
 
 class ApiRunnerTest(unittest.TestCase):
+    def setUp(self):
+        # Existing transport/assertion fixtures explicitly run in local bypass mode.
+        self.enterContext(patch.dict(os.environ, {"LOCAL_SERVER": "true", "SKIP_OWNERSHIP_VERIFICATION": "true"}))
+
     def test_response_time_limit_includes_body_read_and_allows_equality(self) -> None:
         case = {"request": {"url": "https://example.test/health"}, "expected": {"status": 200, "max_response_time_ms": 125}}
         for elapsed, status in [(0.0625, "passed"), (0.125, "passed"), (0.25, "failed")]:

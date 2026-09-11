@@ -726,6 +726,9 @@ paths:
 
 
 class ReactServerDirectRequestTest(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(patch.dict(os.environ, {"LOCAL_SERVER": "true", "SKIP_OWNERSHIP_VERIFICATION": "true"}))
+
     def handler_for(self, payload: dict[str, object]) -> tuple[StudioHandler, Mock]:
         handler = object.__new__(StudioHandler)
         handler.api_path = Mock(return_value=["api", "request"])

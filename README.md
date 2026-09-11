@@ -2,6 +2,11 @@
 
 JSON으로 HTTP 요청과 기대 응답을 정의하고, 응답 데이터가 정확히 같은지 검증하는 Python API 테스트 도구입니다.
 
+API 실행에는 기본적으로 프로젝트의 소유권 확인이 필요합니다. 프로젝트 설정의 `API 소유권 확인`에서
+검증하고, 외부 인증 API는 승인된 `Setup · 외부 1회` 단계로 실행할 수 있습니다.
+개인 PC에서 생략하려면 `LOCAL_SERVER=true`와 `SKIP_OWNERSHIP_VERIFICATION=true`를 함께 설정하세요.
+설정 조합, 서버 배포 응답, 만료와 외부 승인 절차는 [소유권 검증 운영 가이드](docs/ownership-verification.md)를 참고하세요.
+
 ## React 웹 화면
 
 기존 데스크톱 GUI 대신 React 기반 웹 화면을 제공합니다. API 케이스와 파이프라인을 한 화면에서 만들고, 저장·불러오기·실행할 수 있습니다.

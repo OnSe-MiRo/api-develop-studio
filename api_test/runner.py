@@ -699,6 +699,7 @@ def execute_http_call(
     no_proxy: bool = False,
     auth: dict[str, Any] | None = None,
     measure_elapsed: bool = True,
+    allow_redirects: bool = True,
 ) -> tuple[int, dict[str, str], str, float]:
     ntlm_auth = auth if isinstance(auth, dict) and auth.get("type") == "NTLM Authentication" else None
     if ntlm_auth:
@@ -722,6 +723,7 @@ def execute_http_call(
         response = requests.request(
             method.upper(), url, headers=headers or {}, data=data, timeout=timeout_seconds,
             verify=verify_ssl, proxies=proxies, auth=HttpNtlmAuth(username, str(ntlm_auth.get("password", ""))),
+            allow_redirects=allow_redirects,
         )
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2) if start_time is not None else 0.0
         return response.status_code, dict(response.headers), response.text, elapsed_ms
@@ -729,8 +731,13 @@ def execute_http_call(
     start_time = time.perf_counter() if measure_elapsed else None
     try:
         digest_auth = auth if isinstance(auth, dict) and auth.get("type") == "Digest Auth" else None
-        if no_proxy or proxy_url or proxy_urls or not verify_ssl or digest_auth:
+        if no_proxy or proxy_url or proxy_urls or not verify_ssl or digest_auth or not allow_redirects:
             handlers: list[Any] = []
+            if not allow_redirects:
+                class NoRedirect(urllib.request.HTTPRedirectHandler):
+                    def redirect_request(self, req, fp, code, msg, headers, newurl):
+                        return None
+                handlers.append(NoRedirect())
             if no_proxy:
                 handlers.append(urllib.request.ProxyHandler({}))
             elif proxy_urls:
@@ -762,6 +769,7 @@ def execute_http_call(
 class ApiTestRunner:
     def __init__(self, timeout_seconds: float = 10.0) -> None:
         self.timeout_seconds = timeout_seconds
+        self.request_guard = None
 
     def run_case(
         self,
@@ -854,12 +862,17 @@ class ApiTestRunner:
         sensitive_values = set(sensitive_values or ()) | authorization_sensitive_values(auth)
         request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
         started_at = time.perf_counter()
+        transport_options = {}
+        if self.request_guard is not None:
+            self.request_guard(authorized.url, method)
+            transport_options["allow_redirects"] = False
         try:
             status, response_headers, raw_body, _elapsed = execute_http_call(
                 authorized.url, method=method, headers=authorized.headers, data=data,
                 timeout_seconds=request_timeout, verify_ssl=verify_ssl,
                 proxy_url=proxy_url, proxy_urls=proxy_urls, no_proxy=no_proxy, auth=auth if isinstance(auth, dict) else None,
                 measure_elapsed=False,
+                **transport_options,
             )
         except (urllib.error.URLError, TimeoutError, OSError, AuthorizationError) as exc:
             return CaseResult(

@@ -1,0 +1,13 @@
+{
+  "project": "example-api.json",
+  "request": {
+    "method": "GET",
+    "url": "/example-api/secure-data",
+    "headers": { "X-API-Key": "example-api-key" }
+  },
+  "expected": {
+    "status": 200,
+    "strict": true,
+    "body": { "authorized": true, "message": "API key accepted" }
+  }
+}

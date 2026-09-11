@@ -1,5 +1,24 @@
 # API 개발 기능 진행 기록
 
+## 예제 정책 테스트 추가 (2026-09-11)
+
+- 상태: 완료 — health Setup, API Key 누락 401, 유효한 예제 API Key 200 케이스와 `example-ownership-local.json` 추가.
+- 기존 example 케이스와 프로젝트 설정은 보존. 소유권 생략과 API 요청 인증이 독립적인지 실제 예제 handler를 사용하는 전송 mock 테스트로 확인.
+- 검증: 전체 Python 138개 및 git diff --check 통과. 새 예제의 200→401→200 통과와 생략 비활성화 시 첫 요청 전 차단 확인.
+- 실제 HTTP: 기존 Docker와 분리한 `127.0.0.1:8877` 임시 서버에서 `example-ownership-local.json` 실행, 3단계 모두 PASS 및 exit code 0 확인.
+
+## 소유권 검증 및 외부 Setup (2026-09-11)
+
+- 상태: 완료 — `feature/ownership-verification` (로컬 구현, 커밋/병합/푸시 없음)
+- 범위: 일회용 HTTPS 챌린지, 로컬 모드 생략, 30일 미사용/90일 절대 만료, 승인된 외부 Setup 1회 호출.
+- 실행 경로: 웹/CLI 공통 정책 검사, 응답 값 전달 재사용, redirect 차단과 외부 재시도 금지.
+- 변경: `api_test/ownership.py`의 SQLite 검증/승인 상태, CLI/웹 실행 검사, 프로젝트 설정 패널, 빠른 호출 프로젝트 선택, 파이프라인 외부 Setup UI, 운영 가이드 추가.
+- 검증: 전체 Python 135개 통과(신규 정책 22개), Vite build, py_compile, git diff --check 통과.
+- 브라우저: 임시 데이터로 설정 패널, 토큰 발급/응답 표시, 새로고침 후 pending 유지와 원문 미노출, console error 없음 확인.
+- 환경 차단: 최초 임시 HTTP 서버 bind가 sandbox PermissionError로 실패했으며 승인된 재실행 후 UI 검증 완료.
+- 제한: 실제 외부 서버에 challenge를 배포하는 종단 검증은 수행하지 않음. HTTPS 전송/인증 판정은 mock 기반 테스트. 부하 생성기는 기존 저장소에 없으며 신규 생성기는 이번 범위에 포함하지 않음.
+- 다음: 실제 관리 대상 공개 HTTPS API에 안내 응답 배포 후 운영 검증. 향후 VU 실행기는 Setup을 반복 루프 밖에서 한 번 실행하도록 연결.
+
 이 문서는 [`API 개발 기능 로드맵`](api-development-plan.md)의 구현 상태를 기록하는 단일 기준 문서다. 코드 변경과 진행 기록 갱신은 같은 작업 범위에서 수행한다.
 
 ## 현재 요약

@@ -14,6 +14,9 @@ import shutil
 import subprocess
 import sys
 import zipfile
+import secrets
+import hmac
+from http.cookies import SimpleCookie
 from datetime import date, datetime
 from tempfile import TemporaryDirectory
 from http import HTTPStatus
@@ -42,6 +45,7 @@ from api_test.project_variables import (
     project_variables_for_client,
 )
 from api_test.runner import execute_http_call, format_network_error
+from api_test.ownership import OwnershipStore, OwnershipError, local_policy, execution_guard, fingerprint
 
 
 ROOT = Path(__file__).resolve().parent
@@ -1255,6 +1259,9 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     except AuthorizationError as exc:
         raise ApiError(str(exc)) from exc
     url, headers_dict = authorized.url, authorized.headers
+    guarded = not local_policy()["skip_verification"]
+    if guarded:
+        execution_guard(body.get("project"), PROJECT_ROOT)(url, method)
 
     timeout_seconds = 10.0
     if body.get("timeout"):
@@ -1268,6 +1275,8 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
             "method": method, "headers": headers_dict, "data": data,
             "timeout_seconds": timeout_seconds, "verify_ssl": True,
         }
+        if guarded:
+            execute_options["allow_redirects"] = False
         if proxy_url:
             execute_options["proxy_url"] = proxy_url
         if no_proxy:
@@ -1298,6 +1307,61 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
 
 
 class StudioHandler(SimpleHTTPRequestHandler):
+    def check_request_origin(self):
+        if not hasattr(self, "headers"):  # Unit-test handlers have no HTTP connection.
+            return
+        host = self.headers.get("Host", "")
+        if local_policy()["local_server"] and urlparse("http://" + host).hostname not in ("localhost", "127.0.0.1", "::1"):
+            raise OwnershipError("로컬 서버 Host가 올바르지 않습니다.")
+        request_origin = self.headers.get("Origin")
+        if request_origin and urlparse(request_origin).netloc != host:
+            raise OwnershipError("다른 출처의 실행·설정 변경 요청은 허용하지 않습니다.")
+
+    def ownership_session(self, create=False):
+        cookie = SimpleCookie()
+        try:
+            cookie.load(self.headers.get("Cookie", ""))
+        except Exception:
+            cookie = SimpleCookie()
+        value = cookie.get("studio_ownership")
+        if value and re.fullmatch(r"[A-Za-z0-9_-]{43}", value.value):
+            return value.value
+        if not create:
+            raise OwnershipError("프로젝트 설정을 열어 검증 세션을 시작하세요.")
+        token = secrets.token_urlsafe(32)
+        self.ownership_cookie = f"studio_ownership={token}; Path=/; HttpOnly; SameSite=Strict"
+        return token
+
+    def ownership_action(self, parts):
+        request_origin = self.headers.get("Origin", "")
+        if not request_origin or urlparse(request_origin).netloc != self.headers.get("Host"):
+            raise OwnershipError("동일 출처의 웹 UI에서 요청하세요.")
+        if local_policy()["local_server"] and urlparse(request_origin).hostname not in ("localhost", "127.0.0.1", "::1"):
+            raise OwnershipError("로컬 모드에서는 loopback 웹 UI만 허용됩니다.")
+        session = self.ownership_session()
+        project = self.query_value("project")
+        stored = collaboration_store().get("projects", project or "")
+        if not stored:
+            raise OwnershipError("저장된 프로젝트를 선택하세요.")
+        body = self.read_body()
+        service = OwnershipStore()
+        action = parts[2] if len(parts) == 3 else ""
+        if action == "issue":
+            result = service.issue(project, stored.document, body.get("url"), session)
+        elif action == "verify":
+            result = service.verify(project, stored.document, body.get("verification_id"), session)
+        elif action in ("grant", "remove-grant"):
+            if not local_policy()["local_server"]:
+                key = os.environ.get("STUDIO_APPROVER_KEY", "")
+                supplied = self.headers.get("X-Studio-Approver-Key", "")
+                if len(key) < 32 or not hmac.compare_digest(key, supplied):
+                    raise OwnershipError("외부 호출 승인에는 서버 운영자의 승인 키가 필요합니다.")
+            service.grant(project, body.get("url"), body.get("method"), action == "remove-grant")
+            result = {"saved": True}
+        else:
+            raise OwnershipError("지원하지 않는 소유권 요청입니다.")
+        self.send_json(200, result)
+
     def log_message(self, format: str, *args: object) -> None:
         print(f"[react-server] {format % args}")
 
@@ -1306,6 +1370,10 @@ class StudioHandler(SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(encoded)))
+        if getattr(self, "ownership_cookie", None):
+            self.send_header("Set-Cookie", self.ownership_cookie)
+            self.ownership_cookie = None
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(encoded)
 
@@ -1376,10 +1444,19 @@ class StudioHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         try:
+            self.check_request_origin()
             if self.serve_example_api():
                 return
             parts = self.api_path()
             store = collaboration_store()
+            if parts == ["api", "ownership"]:
+                self.ownership_session(create=True)
+                project = self.query_value("project")
+                stored = store.get("projects", project or "")
+                if not stored:
+                    raise OwnershipError("저장된 프로젝트를 선택하세요.")
+                self.send_json(200, OwnershipStore().status(project, stored.document))
+                return
             if parts == ["api", "cases"]:
                 references = store.list_references("cases", self.query_value("project"))
                 self.send_json(200, {"items": references, "details": case_summaries(CASE_ROOT, references)})
@@ -1422,11 +1499,12 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 self.send_json(200, {**project, "_storage": stored.metadata()})
             else:
                 self.serve_frontend()
-        except (ApiError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
+        except (ApiError, OwnershipError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
             self.send_json(400, {"error": str(exc)})
 
     def do_PUT(self) -> None:  # noqa: N802
         try:
+            self.check_request_origin()
             parts = self.api_path()
             payload, expected_revision = storage_request(self.read_body())
             store = collaboration_store()
@@ -1454,20 +1532,26 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 expected_revision=expected_revision,
                 actor_id=self.actor_id(),
             )
+            if kind == "projects" and (existing is None or fingerprint(existing) != fingerprint(payload)):
+                OwnershipStore().revoke(parts[2])
             path = safe_file({"cases": CASE_ROOT, "pipelines": PIPELINE_ROOT, "projects": PROJECT_ROOT}[kind], parts[2])
             self.send_json(200, {"path": str(path.relative_to(ROOT)), "_storage": stored.metadata()})
         except RevisionConflictError as exc:
             self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
         except RevisionRequiredError as exc:
             self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
-        except (ApiError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
+        except (ApiError, OwnershipError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
             self.send_json(400, {"error": str(exc)})
 
     def do_POST(self) -> None:  # noqa: N802
         try:
+            self.check_request_origin()
             if self.serve_example_api():
                 return
             parts = self.api_path()
+            if parts[:2] == ["api", "ownership"]:
+                self.ownership_action(parts)
+                return
             if len(parts) == 3 and parts[:2] == ["api", "uploads"]:
                 path = safe_attachment_file(CASE_ROOT, parts[2])
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -1589,7 +1673,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     )
                     command = [sys.executable, "run_api_tests.py", str(temporary_pipeline)]
                 else:
-                    command = [sys.executable, "run_api_tests.py", *pipelines]
+                    command = [sys.executable, "run_api_tests.py", *[str(safe_file(PIPELINE_ROOT, item)) for item in pipelines]]
                     if cases:
                         command.extend(["--case", *cases])
                 result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
@@ -1603,11 +1687,14 @@ class StudioHandler(SimpleHTTPRequestHandler):
             self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
         except ApiError as exc:
             self.send_json(getattr(exc, "status_code", 400), {"error": str(exc)})
+        except OwnershipError as exc:
+            self.send_json(403, {"error": str(exc), "code": "OWNERSHIP_POLICY_DENIED"})
         except (CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
             self.send_json(400, {"error": str(exc)})
 
     def do_DELETE(self) -> None:  # noqa: N802
         try:
+            self.check_request_origin()
             parts = self.api_path()
             if len(parts) != 3 or parts[0] != "api" or parts[1] not in {"cases", "pipelines", "projects"}:
                 raise ApiError("Unknown delete endpoint")
@@ -1622,9 +1709,11 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 for pipeline_reference in deleted_pipelines:
                     store.delete("pipelines", pipeline_reference, actor_id=self.actor_id())
             store.delete(parts[1], parts[2], actor_id=self.actor_id())
+            if parts[1] == "projects":
+                OwnershipStore().revoke(parts[2], remove=True)
             root_name = {"cases": "case", "pipelines": "pipelines", "projects": "projects"}[parts[1]]
             self.send_json(200, {"deleted": f"{root_name}/{parts[2]}", "deleted_pipelines": deleted_pipelines})
-        except (ApiError, CollaborationStoreError, OSError) as exc:
+        except (ApiError, OwnershipError, CollaborationStoreError, OSError) as exc:
             self.send_json(400, {"error": str(exc)})
 
     def serve_frontend(self) -> None:
@@ -1645,6 +1734,9 @@ class StudioHandler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     host = os.environ.get("API_TEST_HOST", "127.0.0.1")
+    policy = local_policy()
+    if policy["local_server"] and host not in ("127.0.0.1", "::1", "localhost"):
+        raise SystemExit("LOCAL_SERVER=true에서는 loopback 주소로만 실행할 수 있습니다.")
     port = int(os.environ.get("API_TEST_PORT", "8765"))
     server = ThreadingHTTPServer((host, port), StudioHandler)
     print(f"API Develop Studio server: http://{host}:{port}")

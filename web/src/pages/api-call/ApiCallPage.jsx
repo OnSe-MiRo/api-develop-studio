@@ -1,9 +1,13 @@
 import { Field } from '../../components/Field.jsx'
 import { AuthorizationEditor } from '../../components/AuthorizationEditor.jsx'
 import { JsonArea } from '../../components/JsonArea.jsx'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../../utils/studio.js'
 
 function ApiCallPage() {
+  const [project, setProject] = useState('')
+  const [projects, setProjects] = useState([])
+  useEffect(() => { api('/api/projects').then(data => setProjects(data.items || [])).catch(error => setErrorNotice(error.message)) }, [])
   const [method, setMethod] = useState('GET')
   const [url, setUrl] = useState('')
   const [params, setParams] = useState([{ key: '', value: '' }])
@@ -52,6 +56,7 @@ function ApiCallPage() {
 
     try {
       const payload = {
+        project,
         method,
         url: trimmedUrl,
         params: params.filter(p => p.key.trim()),
@@ -98,6 +103,7 @@ function ApiCallPage() {
 
   return (
     <main className="project-page api-call-page">
+      <section className="card"><Field label="소유권 확인 프로젝트"><select value={project} onChange={event => setProject(event.target.value)}><option value="">프로젝트 선택 (로컬 인증 생략 시 선택사항)</option>{projects.map(item => <option key={item}>{item}</option>)}</select></Field><p className="hint">프로젝트 설정에서 대상 Base URL을 저장하고 소유권을 확인하세요.</p></section>
       <section className="card">
         <div className="section-header">
           <div>

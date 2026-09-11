@@ -11,6 +11,7 @@ from typing import Any
 
 from .run_log import create_run_logger
 from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, project_request_settings, read_json, resolve_case_path
+from .ownership import OwnershipError, execution_guard, local_policy
 
 
 SENSITIVE_FIELD_PARTS = ("authorization", "token", "secret", "password", "apikey", "cookie")
@@ -223,9 +224,14 @@ def _run_case_with_project_settings(
     context: dict[str, CaseResult] | None = None,
     retry: int = 0,
     retry_interval_seconds: float = 0,
+    external_setup: bool = False,
 ) -> CaseResult:
     """Run a case with its project's shared request settings applied."""
     project_settings = project_request_settings(case_document, project_root)
+    if external_setup or not local_policy()["skip_verification"]:
+        runner.request_guard = execution_guard(case_document.get("project"), project_root, external_setup)
+    else:
+        runner.request_guard = None
     return runner.run_case(
         case_id,
         case_document,
@@ -264,6 +270,23 @@ def run_pipeline(
     runner = ApiTestRunner(timeout)
     results: dict[str, CaseResult] = {}
     failures = 0
+    test_started = False
+    external_cases = set()
+    for step in steps:
+        if not isinstance(step, dict) or step.get("phase", "test") not in ("setup", "test"):
+            raise CaseConfigurationError("단계 phase는 setup 또는 test여야 합니다.")
+        if not isinstance(step.get("external_once", False), bool):
+            raise CaseConfigurationError("external_once는 true 또는 false여야 합니다.")
+        if step.get("phase", "test") == "test":
+            test_started = True
+        elif test_started:
+            raise CaseConfigurationError("Setup 단계는 테스트 단계 앞에 배치하세요.")
+        if step.get("external_once"):
+            if step.get("phase") != "setup" or step.get("case") in external_cases:
+                raise CaseConfigurationError("외부 1회 호출은 중복 없는 Setup 단계에서만 가능합니다.")
+            if _retry_config(step, defaults)[0] != 0 or step.get("continue_on_failure", False):
+                raise CaseConfigurationError("외부 Setup은 재시도와 실패 후 계속 실행을 허용하지 않습니다.")
+            external_cases.add(step.get("case"))
     for index, raw_step in enumerate(steps, start=1):
         if not isinstance(raw_step, dict) or not isinstance(raw_step.get("case"), str):
             raise CaseConfigurationError(f"steps[{index}] needs a case string")
@@ -276,6 +299,10 @@ def run_pipeline(
         case_path = resolve_case_path(case_root, raw_step["case"])
         logger.info("Step started: name=%s case=%s retry=%s retry_interval_seconds=%s", name, case_path, retry, interval)
         case_document = apply_input_mappings(read_json(case_path), raw_step.get("input_mappings"), results, index)
+        if pipeline.get("project") and case_document.get("project") != pipeline["project"]:
+            raise CaseConfigurationError("파이프라인과 케이스의 프로젝트가 다릅니다.")
+        if raw_step.get("external_once") and case_document.get("request", {}).get("auth", {}).get("type") in ("Digest Auth", "NTLM Authentication"):
+            raise CaseConfigurationError("외부 1회 호출에서는 추가 handshake가 필요한 인증을 사용할 수 없습니다.")
         result = _run_case_with_project_settings(
             runner,
             name,
@@ -285,6 +312,7 @@ def run_pipeline(
             context=results,
             retry=retry,
             retry_interval_seconds=interval,
+            external_setup=raw_step.get("external_once") is True,
         )
         results[name] = result
         for line in _result_lines(result):
@@ -361,14 +389,14 @@ def main() -> int:
     for pipeline_path in args.pipelines:
         try:
             exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root))
-        except CaseConfigurationError as exc:
+        except (CaseConfigurationError, OwnershipError) as exc:
             print(f"Configuration error in {pipeline_path}: {exc}")
             exit_code = 2
 
     if args.case_references:
         try:
             exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root))
-        except CaseConfigurationError as exc:
+        except (CaseConfigurationError, OwnershipError) as exc:
             print(f"Configuration error in direct cases: {exc}")
             exit_code = 2
     return exit_code

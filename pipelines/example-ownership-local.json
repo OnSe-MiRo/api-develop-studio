@@ -1,0 +1,9 @@
+{
+  "project": "example-api.json",
+  "defaults": { "retry": 0, "retry_interval_seconds": 0 },
+  "steps": [
+    { "name": "setup_health", "case": "example/health/check_health.json", "phase": "setup" },
+    { "name": "reject_missing_key", "case": "example/security/reject_missing_api_key.json" },
+    { "name": "accept_example_key", "case": "example/security/accept_example_api_key.json" }
+  ]
+}

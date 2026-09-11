@@ -1,0 +1,9 @@
+{
+  "project": "example-api.json",
+  "request": { "method": "GET", "url": "/example-api/health" },
+  "expected": {
+    "status": 200,
+    "strict": true,
+    "body": { "status": "ok", "service": "example-api" }
+  }
+}
