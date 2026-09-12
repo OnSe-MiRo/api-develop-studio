@@ -51,6 +51,10 @@ from api_test.project_variables import (
 )
 from api_test.runner import execute_http_call, format_network_error
 from api_test.ownership import OwnershipStore, OwnershipError, local_policy, execution_guard, fingerprint
+from api_test.routes import dashboard as dashboard_routes
+from api_test.routes import documents as document_routes
+from api_test.routes import openapi as openapi_routes
+from api_test.routes import execution as execution_routes
 
 
 ROOT = Path(__file__).resolve().parent
@@ -1528,19 +1532,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
             if self.serve_example_api():
                 return
             parts = self.api_path()
-            if parts == ["api", "dashboard"]:
-                try:
-                    data = execution_history().dashboard(
-                        project=self.query_value("project") or "",
-                        days=int(self.query_value("days") or "7"),
-                        status=self.query_value("status") or "",
-                        page=int(self.query_value("page") or "1"),
-                    )
-                except (TypeError, ValueError) as exc:
-                    raise ApiError("대시보드 조회 조건이 올바르지 않습니다.") from exc
-                except sqlite3.Error as exc:
-                    raise ApiError("실행 이력을 불러오지 못했습니다.") from exc
-                self.send_json(200, data)
+            if dashboard_routes.handle_get(self, parts, sys.modules[__name__]):
                 return
             store = collaboration_store()
             if parts == ["api", "ownership"]:
@@ -1551,47 +1543,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     raise OwnershipError("저장된 프로젝트를 선택하세요.")
                 self.send_json(200, OwnershipStore().status(project, stored.document))
                 return
-            if parts == ["api", "cases"]:
-                references = store.list_references("cases", self.query_value("project"))
-                self.send_json(200, {"items": references, "details": case_summaries(CASE_ROOT, references)})
-            elif parts == ["api", "pipelines"]:
-                self.send_json(200, {"items": store.list_references("pipelines", self.query_value("project"))})
-            elif parts == ["api", "projects"]:
-                references = store.list_references("projects")
-                if not example_project_enabled():
-                    references = [reference for reference in references if reference != EXAMPLE_PROJECT_REFERENCE]
-                self.send_json(200, {"items": references, "details": project_summaries(PROJECT_ROOT, references)})
-            elif len(parts) == 4 and parts[:2] == ["api", "cases"] and parts[3] == "revisions":
-                self.send_json(200, {"items": store.revisions("cases", parts[2])})
-            elif len(parts) == 4 and parts[:2] == ["api", "pipelines"] and parts[3] == "revisions":
-                self.send_json(200, {"items": store.revisions("pipelines", parts[2])})
-            elif len(parts) == 4 and parts[:2] == ["api", "projects"] and parts[3] == "revisions":
-                ensure_example_project_enabled(parts[2])
-                self.send_json(200, {"items": store.revisions("projects", parts[2])})
-            elif len(parts) == 3 and parts[:2] == ["api", "cases"]:
-                stored = store.get("cases", parts[2])
-                if stored is None:
-                    raise DocumentNotFoundError("JSON file not found")
-                document = case_variables_for_client(stored.document)
-                expected = document.get("expected", {})
-                if isinstance(expected, dict) and "body" in expected:
-                    # JavaScript parses 9.0 as 9. Keep the original JSON numeric spelling for the editor.
-                    document["_expectedBodyRaw"] = json.dumps(expected["body"], ensure_ascii=False, indent=2)
-                document["_storage"] = stored.metadata()
-                self.send_json(200, document)
-            elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
-                stored = store.get("pipelines", parts[2])
-                if stored is None:
-                    raise DocumentNotFoundError("JSON file not found")
-                self.send_json(200, {**stored.document, "_storage": stored.metadata()})
-            elif len(parts) == 3 and parts[:2] == ["api", "projects"]:
-                ensure_example_project_enabled(parts[2])
-                stored = store.get("projects", parts[2])
-                if stored is None:
-                    raise DocumentNotFoundError("JSON file not found")
-                project = project_variables_for_client(stored.document)
-                self.send_json(200, {**project, "_storage": stored.metadata()})
-            else:
+            if not document_routes.handle_get(self, parts, sys.modules[__name__]):
                 self.serve_frontend()
         except (ApiError, OwnershipError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
             self.send_json(400, {"error": str(exc)})
@@ -1600,36 +1552,8 @@ class StudioHandler(SimpleHTTPRequestHandler):
         try:
             self.check_request_origin()
             parts = self.api_path()
-            payload, expected_revision = storage_request(self.read_body())
-            store = collaboration_store()
-            if len(parts) == 3 and parts[:2] == ["api", "cases"]:
-                kind = "cases"
-                current = store.get(kind, parts[2])
-                payload = normalize_case_document(payload, current.document if current is not None else None)
-                validate_project_reference(payload)
-            elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
-                kind = "pipelines"
-                validate_project_reference(payload)
-            elif len(parts) == 3 and parts[:2] == ["api", "projects"]:
-                ensure_example_project_enabled(parts[2])
-                kind = "projects"
-                current = store.get(kind, parts[2])
-                existing = current.document if current is not None else None
-                payload = normalize_project_document(payload, existing)
-                validate_project_document(payload)
-            else:
+            if not document_routes.handle_put(self, parts, sys.modules[__name__]):
                 raise ApiError("Unknown save endpoint")
-            stored = store.save(
-                kind,
-                parts[2],
-                payload,
-                expected_revision=expected_revision,
-                actor_id=self.actor_id(),
-            )
-            if kind == "projects" and (existing is None or fingerprint(existing) != fingerprint(payload)):
-                OwnershipStore().revoke(parts[2])
-            path = safe_file({"cases": CASE_ROOT, "pipelines": PIPELINE_ROOT, "projects": PROJECT_ROOT}[kind], parts[2])
-            self.send_json(200, {"path": str(path.relative_to(ROOT)), "_storage": stored.metadata()})
         except RevisionConflictError as exc:
             self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
         except RevisionRequiredError as exc:
@@ -1652,126 +1576,11 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 path.write_bytes(self.read_upload())
                 self.send_json(200, {"path": path.relative_to(CASE_ROOT).as_posix()})
                 return
-            if parts == ["api", "docs"]:
-                body = self.read_body()
-                document = body.get("document")
-                bundle = body.get("bundle")
-                url = body.get("url")
-                no_proxy = body.get("no_proxy", False)
-                for_case = body.get("for_case", False)
-                if not isinstance(no_proxy, bool):
-                    raise ApiError("API docs no_proxy must be true or false")
-                if not isinstance(for_case, bool):
-                    raise ApiError("API docs for_case must be true or false")
-                source_count = int(document is not None) + int(bundle is not None) + int(isinstance(url, str) and bool(url.strip()))
-                if source_count != 1:
-                    raise ApiError("Use exactly one API docs URL, document, or bundle")
-                if bundle is not None:
-                    operations = openapi_document_operations(resolve_openapi_bundle(bundle), for_case=for_case)
-                elif document is not None:
-                    operations = openapi_document_operations(document, for_case=for_case)
-                else:
-                    assert isinstance(url, str)
-                    operations = load_openapi_document(url.strip(), no_proxy=no_proxy, for_case=for_case)
-                self.send_json(200, {"operations": normalize_openapi_value(operations)})
+            if openapi_routes.handle_post(self, parts, sys.modules[__name__]):
                 return
-            if len(parts) == 5 and parts[:2] == ["api", "projects"] and parts[3:] == ["openapi", "operations"]:
-                ensure_example_project_enabled(parts[2])
-                payload, expected_revision = storage_request(self.read_body())
-                store = collaboration_store()
-                current = store.get("projects", parts[2])
-                if current is None:
-                    raise ApiError("선택한 프로젝트를 찾을 수 없습니다.")
-                has_source = (
-                    bool(current.document.get("docs_url"))
-                    or isinstance(current.document.get("docs_file"), dict)
-                    or isinstance(current.document.get("docs_bundle"), dict)
-                )
-                source_document = project_openapi_document(current.document) if has_source else None
-                document, operation = author_openapi_operation(current.document, payload, source_document)
-                updated_project = {
-                    **current.document,
-                    "docs_url": "",
-                    "docs_bundle": split_openapi_bundle(document),
-                }
-                updated_project.pop("docs_file", None)
-                validate_project_document(updated_project)
-                stored = store.save(
-                    "projects", parts[2], updated_project, expected_revision=expected_revision,
-                    actor_id=self.actor_id(), action="author_openapi_operation",
-                )
-                self.send_json(200, {"operation": operation, "_storage": stored.metadata()})
+            if execution_routes.handle_post(self, parts, sys.modules[__name__]):
                 return
-            if parts == ["api", "generate"]:
-                body = self.read_body()
-                project_reference = body.get("project")
-                language = body.get("language")
-                if not isinstance(project_reference, str) or not project_reference:
-                    raise ApiError("생성할 프로젝트를 선택하세요.")
-                if not isinstance(language, str):
-                    raise ApiError("생성 언어를 선택하세요.")
-                ensure_example_project_enabled(project_reference)
-                stored = collaboration_store().get("projects", project_reference)
-                if stored is None:
-                    raise ApiError("선택한 프로젝트를 찾을 수 없습니다.")
-                document = project_openapi_document(stored.document)
-                project_name = stored.document.get("name", project_reference.removesuffix(".json"))
-                bundle = stored.document.get("docs_bundle")
-                archive, filename = generate_openapi_archive(
-                    document, language, project_name if isinstance(project_name, str) else project_reference,
-                    bundle if isinstance(bundle, dict) else None,
-                )
-                self.send_attachment(archive, filename)
-                return
-            if parts == ["api", "request"]:
-                body = self.read_body()
-                result = handle_api_request(body)
-                self.send_json(200, result)
-                return
-            if parts != ["api", "run"]:
-                raise ApiError("Unknown run endpoint")
-            body = self.read_body()
-            pipelines = body.get("pipelines", [])
-            cases = body.get("cases", [])
-            inline_case = body.get("inlineCase")
-            inline_pipeline = body.get("inlinePipeline")
-            if not isinstance(pipelines, list) or not isinstance(cases, list) or not all(isinstance(item, str) for item in pipelines + cases):
-                raise ApiError("pipelines and cases must be string arrays")
-            preview_count = int(inline_case is not None) + int(inline_pipeline is not None)
-            if preview_count > 1 or (preview_count and (pipelines or cases)):
-                raise ApiError("Run either saved targets or one unsaved case/pipeline")
-
-            with TemporaryDirectory(prefix="api-test-preview-") as directory:
-                if inline_case is not None:
-                    if not isinstance(inline_case, dict):
-                        raise ApiError("inlineCase must be an object")
-                    reference = body.get("caseReference", "preview/unsaved/unsaved_case.json")
-                    if not isinstance(reference, str):
-                        raise ApiError("caseReference must be a string")
-                    temporary_case_root = Path(directory) / "case"
-                    temporary_case_path = safe_file(temporary_case_root, reference)
-                    temporary_case_path.parent.mkdir(parents=True, exist_ok=True)
-                    temporary_case_path.write_text(
-                        json.dumps(normalize_case_document(inline_case), ensure_ascii=False, indent=2) + "\n",
-                        encoding="utf-8",
-                    )
-                    command = [
-                        sys.executable, "run_api_tests.py", "--case-root", str(temporary_case_root), "--file-root", str(CASE_ROOT), "--case", reference,
-                    ]
-                elif inline_pipeline is not None:
-                    if not isinstance(inline_pipeline, dict):
-                        raise ApiError("inlinePipeline must be an object")
-                    temporary_pipeline = Path(directory) / "unsaved_pipeline.json"
-                    temporary_pipeline.write_text(
-                        json.dumps(inline_pipeline, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
-                    )
-                    command = [sys.executable, "run_api_tests.py", str(temporary_pipeline)]
-                else:
-                    command = [sys.executable, "run_api_tests.py", *[str(safe_file(PIPELINE_ROOT, item)) for item in pipelines]]
-                    if cases:
-                        command.extend(["--case", *cases])
-                response = execute_studio_run(command, body)
-            self.send_json(200, response)
+            raise ApiError("Unknown run endpoint")
         except subprocess.TimeoutExpired as exc:
             message = "OpenAPI 클라이언트 생성 시간이 300초를 초과했습니다." if self.api_path() == ["api", "generate"] else "Test run timed out after 300 seconds"
             payload = {"error": message}
@@ -1793,23 +1602,8 @@ class StudioHandler(SimpleHTTPRequestHandler):
         try:
             self.check_request_origin()
             parts = self.api_path()
-            if len(parts) != 3 or parts[0] != "api" or parts[1] not in {"cases", "pipelines", "projects"}:
+            if not document_routes.handle_delete(self, parts, sys.modules[__name__]):
                 raise ApiError("Unknown delete endpoint")
-            store = collaboration_store()
-            if parts[1] == "projects":
-                ensure_example_project_enabled(parts[2])
-            deleted_pipelines: list[str] = []
-            if parts[1] == "projects":
-                if store.list_references("cases", parts[2]):
-                    raise ApiError("Delete the project's API cases before deleting the project")
-                deleted_pipelines = store.list_references("pipelines", parts[2])
-                for pipeline_reference in deleted_pipelines:
-                    store.delete("pipelines", pipeline_reference, actor_id=self.actor_id())
-            store.delete(parts[1], parts[2], actor_id=self.actor_id())
-            if parts[1] == "projects":
-                OwnershipStore().revoke(parts[2], remove=True)
-            root_name = {"cases": "case", "pipelines": "pipelines", "projects": "projects"}[parts[1]]
-            self.send_json(200, {"deleted": f"{root_name}/{parts[2]}", "deleted_pipelines": deleted_pipelines})
         except (ApiError, OwnershipError, CollaborationStoreError, OSError) as exc:
             self.send_json(400, {"error": str(exc)})
 

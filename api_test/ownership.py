@@ -16,6 +16,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from api_test.migrations import migrate_ownership_database
+
 
 class OwnershipError(ValueError):
     pass
@@ -103,16 +105,7 @@ class OwnershipStore:
         conn = sqlite3.connect(self.path, timeout=10)
         conn.row_factory = sqlite3.Row
         try:
-            conn.executescript("""
-                CREATE TABLE IF NOT EXISTS proofs (
-                    project TEXT, origin TEXT, fingerprint TEXT, id TEXT UNIQUE,
-                    session_hash TEXT, token_hash TEXT, state TEXT, issued REAL,
-                    verified REAL, last_used REAL, attempts INTEGER DEFAULT 0,
-                    PRIMARY KEY(project, origin));
-                CREATE TABLE IF NOT EXISTS grants (
-                    project TEXT, url TEXT, method TEXT, last_used REAL DEFAULT 0,
-                    PRIMARY KEY(project, url, method));
-            """)
+            migrate_ownership_database(conn)
             conn.execute("BEGIN IMMEDIATE")
             yield conn
             conn.commit()

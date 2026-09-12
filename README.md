@@ -231,7 +231,12 @@ python3 run_api_tests.py pipelines/my_pipeline.json --project-root projects
 
 ```bash
 python3 -m unittest discover -s tests -v
+cd web
+npm test
+npm run build
 ```
+
+프런트엔드 테스트는 Vitest와 React Testing Library로 router, form 변환, loading·empty·error 상태를 검증합니다.
 
 ## 실행 로그
 
@@ -297,6 +302,8 @@ projects/
 ## 협업 영구 저장소
 
 웹 스튜디오에서 저장하는 프로젝트·API 케이스·파이프라인은 기본적으로 `data/studio.db` SQLite 데이터베이스에 저장됩니다. 각 문서는 변경되지 않는 ID와 증가하는 리비전을 가지며, 수정할 때마다 전체 JSON 스냅샷과 변경 사용자·시각이 새 리비전으로 기록됩니다.
+
+서버와 실행 이력 저장소는 연결 시 `schema_migrations`를 확인하고 아직 적용되지 않은 migration을 버전 순서대로 한 transaction에서 실행합니다. 기존 무버전 DB의 테이블과 데이터는 유지하며, migration 하나라도 실패하면 해당 실행에서 발생한 schema 변경과 version 기록을 모두 rollback합니다. 소유권 DB도 같은 방식으로 별도 version을 관리합니다.
 
 기존 CLI 호환성을 위해 현재 리비전은 동시에 다음 JSON 파일로 반영됩니다.
 

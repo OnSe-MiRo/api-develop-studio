@@ -12,6 +12,8 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from api_test.migrations import migrate_studio_database
+
 
 ALLOWED_STATUSES = ("passed", "failed", "error", "timeout")
 
@@ -26,22 +28,8 @@ class ExecutionHistory:
         connection = sqlite3.connect(self.path, timeout=10)
         connection.row_factory = sqlite3.Row
         try:
+            migrate_studio_database(connection)
             with connection:
-                connection.execute(
-                    """CREATE TABLE IF NOT EXISTS executions (
-                        run_id TEXT PRIMARY KEY,
-                        started_at TEXT NOT NULL,
-                        finished_at TEXT NOT NULL,
-                        duration_ms REAL NOT NULL,
-                        status TEXT NOT NULL,
-                        exit_code INTEGER,
-                        projects TEXT NOT NULL,
-                        targets TEXT NOT NULL
-                    )"""
-                )
-                connection.execute(
-                    "CREATE INDEX IF NOT EXISTS executions_started ON executions(started_at)"
-                )
                 yield connection
         finally:
             connection.close()

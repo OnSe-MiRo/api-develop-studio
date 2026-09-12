@@ -34,10 +34,10 @@
 ## 현재 요약
 
 - 최종 갱신일: 2026-09-12
-- 현재 단계: FND-1 완료
+- 현재 단계: FND-2 완료
 - 전체 상태: 진행
-- 반영 브랜치: `feature/execution-dashboard-integration` → `develop`
-- 다음 작업: FND-2 frontend test·DB migration·route 모듈 분리 기반 착수
+- 반영 브랜치: `feature/fnd-2-testing-migrations` (로컬 구현, 커밋·병합·푸시 없음)
+- 다음 작업: FND-3 기존 HTTP 계약 matrix 작성 및 FastAPI `TestClient` 전환 착수
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -46,7 +46,7 @@
 | ID | 작업 | 우선순위 | 상태 | 다음 확인 사항 |
 | --- | --- | --- | --- | --- |
 | FND-1 | 빠른 호출·실행 대시보드 branch 안전 통합 | P0 | 완료 | 빠른 호출과 실행 대시보드 최신 `develop` 통합 |
-| FND-2 | frontend test·DB migration·모듈 분리 기반 | P0 | 대기 | 최소 migration 계약 |
+| FND-2 | frontend test·DB migration·모듈 분리 기반 | P0 | 완료 | Python 150개·frontend 8개·실제 HTTP 검증 통과 |
 | FND-3 | FastAPI 백엔드 전환 | P0 | 대기 | 기존 HTTP 계약 matrix와 `TestClient` 전환 범위 확정 |
 | FND-4 | PostgreSQL 영구 저장소·Redis 캐시 | P0 | 대기 | SQLite 이관, 사용자·workspace 저장 계약, cache 대상과 장애 fallback 확정 |
 | API-1 | 빠른 API 호출 | P0 | 대기 | 공통 request model |
@@ -73,17 +73,23 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 ## 현재 작업
 
-- 작업 ID: FND-1
-- 목표: 기능 테스트 실행마다 공통 run ID와 비밀값 없는 metadata를 저장하고 프로젝트별 실행 대시보드에서 조회
-- 변경 파일: `api_test/execution_history.py`, `react_server.py`, 관련 테스트, `web/src/pages/dashboard/`, `web/src/App.jsx`, `web/src/router.js`, 공통 컴포넌트, `README.md`, 이 진행 기록
-- 시작 시각: 2026-09-12 18:17 KST
-- 상태: 완료 — 기능 브랜치 구현·검증 후 `develop` fast-forward 병합
-- 확인이 필요한 사항: frontend test는 FND-2에서 도입 예정이므로 현재는 Vite build와 실제 브라우저로 검증
+- 작업 ID: FND-2
+- 목표: 기존 HTTP·URL 계약을 유지하며 route와 React shell을 분리하고 versioned SQLite migration 및 frontend 회귀 테스트 기반을 추가
+- 변경 파일: DB migration runner와 관련 저장소, `react_server.py` route 모듈, React shell·상태 컴포넌트, frontend/Python 테스트, 이 진행 기록
+- 시작 시각: 2026-09-12 KST
+- 상태: 완료 — `feature/fnd-2-testing-migrations`에서 구현 및 검증 완료, 커밋·병합·푸시 없음
+- 확인이 필요한 사항: FND-3에서 현재 method·path·status·body·cookie·attachment·SPA fallback 계약을 `TestClient` matrix로 고정
 
 ## 검증 기록
 
 | 일시 | 작업 ID | 명령 또는 확인 방법 | 결과 | 비고 |
 | --- | --- | --- | --- | --- |
+| 2026-09-12 | FND-2 | `python3 -m unittest discover -s tests -v` | 통과, 150개 | 신규 migration 4개와 기존 route 회귀 포함 |
+| 2026-09-12 | FND-2 | `cd web && npm test`, `npm run build` | 통과, 8개·build 성공 | router 3개, form 변환 3개, dashboard loading·empty·error 2개 |
+| 2026-09-12 | FND-2 | `python3 -m py_compile ...`, `docker compose config --quiet`, `git diff --check` | 통과 | route 모듈과 전체 Python source compile 포함 |
+| 2026-09-12 | FND-2 | `127.0.0.1:8879` 실제 `GET /api/projects`, `GET /api/dashboard`, `GET /dashboard` | 통과, 모두 200 | `python3 react_server.py` 실행 경로와 SPA fallback 확인 |
+| 2026-09-12 | FND-2 | 첫 frontend test 실행 | 실패 후 해소 | 테스트 간 DOM cleanup 누락으로 중복 element 발견, 공통 setup에 cleanup 추가 후 8개 통과 |
+| 2026-09-12 | FND-2 | 최초 로컬 HTTP 서버 bind | 실패 후 해소 | sandbox `PermissionError`, 승인된 재실행으로 실제 HTTP 검증 완료 |
 | 2026-09-12 | FND-1 | `python3 -m unittest discover -s tests -v` | 통과, 146개 | 실행 이력 신규 8개 포함 전체 회귀 |
 | 2026-09-12 | FND-1 | `cd web && npm run build`, `python3 -m py_compile ...`, `docker compose config --quiet`, `git diff --check` | 통과 | frontend test 명령은 FND-2 도입 전이라 없음 |
 | 2026-09-12 | FND-1 | 저장소 root에서 `npm run build` 재검증 시도 | 실패 후 해소 | root에 `package.json`이 없어 실패, `web/`에서 재실행해 통과 |
@@ -102,6 +108,8 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 | 일자 | 결정 | 이유 | 영향 |
 | --- | --- | --- | --- |
+| 2026-09-12 | Studio DB와 ownership DB에 독립적인 순차 migration 목록과 `schema_migrations` 사용 | 기존 무버전 DB를 보존하면서 향후 schema 변경 순서와 적용 여부를 명확히 관리 | 한 migration 실행 중 실패하면 schema와 version 기록 전체 rollback |
+| 2026-09-12 | legacy HTTP handler는 유지하고 document·execution·OpenAPI·dashboard route만 모듈로 분리 | FND-3 전환 전 기존 HTTP 계약과 테스트 patch 지점을 바꾸지 않기 위해 단계적으로 책임 분리 | `StudioHandler`는 공통 origin·body·응답·예외 mapping과 dispatch 담당 |
 | 2026-09-12 | 실행 metadata를 별도 DB가 아니라 `STUDIO_DB_PATH`의 Studio DB에 UUID Run ID로 저장 | RUN-1과 OBS-1이 재사용할 공통 실행 식별자와 저장 경계를 먼저 맞춤 | 웹 실행 응답·대시보드 이력이 같은 Run ID를 사용하고 Docker data volume에 보존 |
 | 2026-09-12 | 이력에는 대상·프로젝트·시각·상태·소요 시간·종료 코드만 저장 | 요청·응답 본문, header, 인증정보와 runner 출력의 2차 노출 방지 | 상세 원문은 기존 실행 화면·로그에만 존재하며 대시보드는 metadata만 조회 |
 | 2026-09-12 | 로그인 전부터 모든 협업 데이터에 내부 user ID와 workspace 경계 적용 | email·요청 header 변경이나 reference 조작이 데이터 소유권을 바꾸지 않도록 보장 | 저장소 메서드에 검증된 `RequestContext` 필수 |
@@ -118,6 +126,17 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 ## 변경 이력
 
 최신 항목을 위에 추가하고 작업 ID, 변경 파일, 검증 결과, 알려진 제한과 다음 작업을 기록한다.
+
+### 2026-09-12 — FND-2 — 테스트·migration·route 모듈 기반
+
+- 변경: Studio/ownership SQLite에 순차 version migration과 전체 실행 rollback 추가, 기존 무버전 DB 데이터 보존 승격 지원
+- 구조: `react_server.py`에서 document·execution·OpenAPI·dashboard route를 `api_test/routes/`로 분리하고 React 공통 topbar·오류 shell을 `StudioShell`로 분리
+- frontend test: Vitest·React Testing Library 명령과 공통 jsdom setup을 추가하고 router, form 변환, dashboard loading·empty·error·retry를 검증
+- 변경 파일: `api_test/migrations.py`, 저장소 3개, `api_test/routes/`, `react_server.py`, migration 테스트, `web/package*.json`, Vite 설정, `StudioShell`, frontend 테스트, `README.md`, 이 진행 기록
+- 검증: Python 150개, frontend 8개, Vite build, py_compile, Compose config, diff check와 실제 HTTP 3개 route 모두 통과
+- 제한: 서버 framework는 FND-3 전까지 `ThreadingHTTPServer` 유지. route 모듈은 현재 handler의 공통 request/response helper를 주입받아 기존 계약을 보존
+- 반영: `feature/fnd-2-testing-migrations` 로컬 working tree에 구현. 커밋·병합·원격 푸시는 수행하지 않음
+- 다음: FND-3 HTTP 계약 matrix 작성 후 FastAPI route로 단계 전환
 
 ### 2026-09-12 — FND-1 — 실행 대시보드 최신 `develop` 기준 재구성
 
