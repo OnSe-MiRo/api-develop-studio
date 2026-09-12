@@ -5,6 +5,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+import uuid
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -43,6 +44,13 @@ from react_server import (
 
 
 class ReactServerRunTest(unittest.TestCase):
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        environment = patch.dict(os.environ, {"STUDIO_DB_PATH": str(Path(directory.name) / "studio.db")})
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def test_normalize_case_preserves_response_time_limit(self) -> None:
         for limit in [0.5, 125]:
             with self.subTest(limit=limit):
@@ -99,7 +107,10 @@ class ReactServerRunTest(unittest.TestCase):
 
         self.assertIsNotNone(temporary_path)
         self.assertFalse(temporary_path.exists())
-        send_json.assert_called_once_with(200, {"exitCode": 0, "output": "inline case passed"})
+        response = send_json.call_args.args[1]
+        self.assertEqual(response["exitCode"], 0)
+        self.assertEqual(response["output"], "inline case passed")
+        uuid.UUID(response["runId"])
 
     def test_runs_inline_pipeline_from_temporary_file(self) -> None:
         pipeline = {
@@ -120,7 +131,10 @@ class ReactServerRunTest(unittest.TestCase):
 
         self.assertIsNotNone(temporary_path)
         self.assertFalse(temporary_path.exists())
-        send_json.assert_called_once_with(200, {"exitCode": 1, "output": "inline pipeline failed"})
+        response = send_json.call_args.args[1]
+        self.assertEqual(response["exitCode"], 1)
+        self.assertEqual(response["output"], "inline pipeline failed")
+        uuid.UUID(response["runId"])
 
     def test_filters_saved_documents_by_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

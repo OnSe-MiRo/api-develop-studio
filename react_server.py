@@ -5,19 +5,23 @@ from __future__ import annotations
 import io
 import hashlib
 import json
+import logging
 import math
 import mimetypes
 import os
 import posixpath
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import zipfile
 import secrets
 import hmac
+import uuid
 from http.cookies import SimpleCookie
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from time import perf_counter
 from tempfile import TemporaryDirectory
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -28,6 +32,7 @@ from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 import yaml
 
+from api_test.execution_history import ExecutionHistory
 from api_test.runner import CaseConfigurationError, validate_response_time_limit
 from api_test.collaboration_store import (
     CollaborationStore,
@@ -85,6 +90,81 @@ class ApiError(ValueError):
     def __init__(self, message: str, status_code: int = 400) -> None:
         super().__init__(message)
         self.status_code = status_code
+
+
+def execution_history() -> ExecutionHistory:
+    database_path = Path(os.environ.get("STUDIO_DB_PATH", ROOT / "data" / "studio.db"))
+    return ExecutionHistory(database_path)
+
+
+def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[str, object]]]:
+    projects: set[str] = set()
+    targets: list[dict[str, object]] = []
+
+    def add(kind: str, reference: str, document: object = None, preview: bool = False) -> None:
+        if document is None:
+            try:
+                root = CASE_ROOT if kind == "case" else PIPELINE_ROOT
+                document = json.loads(safe_file(root, reference).read_text(encoding="utf-8"))
+            except (ApiError, OSError, json.JSONDecodeError):
+                document = {}
+        project = document.get("project") if isinstance(document, dict) else None
+        if isinstance(project, str) and project:
+            projects.add(project)
+        targets.append({"kind": kind, "reference": reference, "preview": preview})
+
+    if body.get("inlineCase") is not None:
+        reference = body.get("caseReference", "preview/unsaved/unsaved_case.json")
+        add("case", reference if isinstance(reference, str) else "preview/unsaved/unsaved_case.json", body["inlineCase"], True)
+    elif body.get("inlinePipeline") is not None:
+        add("pipeline", "저장 전 파이프라인", body["inlinePipeline"], True)
+    else:
+        for reference in body.get("cases", []):
+            if isinstance(reference, str):
+                add("case", reference)
+        pipelines = [item for item in body.get("pipelines", []) if isinstance(item, str)]
+        if not pipelines and not body.get("cases"):
+            pipelines = project_json_files(PIPELINE_ROOT, None)
+            if not example_project_enabled():
+                example_pipelines = set(project_json_files(PIPELINE_ROOT, EXAMPLE_PROJECT_REFERENCE))
+                pipelines = [reference for reference in pipelines if reference not in example_pipelines]
+        for reference in pipelines:
+            add("pipeline", reference)
+    return sorted(projects), targets
+
+
+def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str, object]:
+    projects, targets = execution_metadata(body)
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    started = perf_counter()
+    status, exit_code = "error", None
+    response: dict[str, object] = {"runId": run_id}
+    try:
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
+        exit_code = result.returncode
+        status = "passed" if exit_code == 0 else "failed" if exit_code == 1 else "error"
+        response.update({"exitCode": exit_code, "output": result.stdout + result.stderr})
+        return response
+    except subprocess.TimeoutExpired as exc:
+        status = "timeout"
+        setattr(exc, "run_id", run_id)
+        raise
+    finally:
+        try:
+            execution_history().record(
+                run_id=run_id,
+                started_at=started_at,
+                finished_at=datetime.now(timezone.utc).isoformat(),
+                duration_ms=(perf_counter() - started) * 1000,
+                status=status,
+                exit_code=exit_code,
+                projects=projects,
+                targets=targets,
+            )
+        except (OSError, sqlite3.Error, ValueError):
+            response["historyWarning"] = "실행 이력을 저장하지 못했습니다. 저장소 상태를 확인하세요."
+            logging.warning(response["historyWarning"])
 
 
 def collaboration_store() -> CollaborationStore:
@@ -1448,6 +1528,20 @@ class StudioHandler(SimpleHTTPRequestHandler):
             if self.serve_example_api():
                 return
             parts = self.api_path()
+            if parts == ["api", "dashboard"]:
+                try:
+                    data = execution_history().dashboard(
+                        project=self.query_value("project") or "",
+                        days=int(self.query_value("days") or "7"),
+                        status=self.query_value("status") or "",
+                        page=int(self.query_value("page") or "1"),
+                    )
+                except (TypeError, ValueError) as exc:
+                    raise ApiError("대시보드 조회 조건이 올바르지 않습니다.") from exc
+                except sqlite3.Error as exc:
+                    raise ApiError("실행 이력을 불러오지 못했습니다.") from exc
+                self.send_json(200, data)
+                return
             store = collaboration_store()
             if parts == ["api", "ownership"]:
                 self.ownership_session(create=True)
@@ -1676,11 +1770,14 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     command = [sys.executable, "run_api_tests.py", *[str(safe_file(PIPELINE_ROOT, item)) for item in pipelines]]
                     if cases:
                         command.extend(["--case", *cases])
-                result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
-            self.send_json(200, {"exitCode": result.returncode, "output": result.stdout + result.stderr})
-        except subprocess.TimeoutExpired:
+                response = execute_studio_run(command, body)
+            self.send_json(200, response)
+        except subprocess.TimeoutExpired as exc:
             message = "OpenAPI 클라이언트 생성 시간이 300초를 초과했습니다." if self.api_path() == ["api", "generate"] else "Test run timed out after 300 seconds"
-            self.send_json(504, {"error": message})
+            payload = {"error": message}
+            if getattr(exc, "run_id", None):
+                payload["runId"] = exc.run_id
+            self.send_json(504, payload)
         except RevisionConflictError as exc:
             self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
         except RevisionRequiredError as exc:

@@ -34,10 +34,10 @@
 ## 현재 요약
 
 - 최종 갱신일: 2026-09-12
-- 현재 단계: FND-1 빠른 호출 기능 통합 완료
+- 현재 단계: FND-1 완료
 - 전체 상태: 진행
-- 작업 브랜치: `develop` (이번 작업은 계획 문서만 수정)
-- 다음 작업: FND-1의 실행 대시보드를 공통 실행 결과 모델과 정렬해 `develop`에 통합한 뒤 FND-2 기반 작업 착수
+- 반영 브랜치: `feature/execution-dashboard-integration` → `develop`
+- 다음 작업: FND-2 frontend test·DB migration·route 모듈 분리 기반 착수
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -45,7 +45,7 @@
 
 | ID | 작업 | 우선순위 | 상태 | 다음 확인 사항 |
 | --- | --- | --- | --- | --- |
-| FND-1 | 빠른 호출·실행 대시보드 branch 안전 통합 | P0 | 진행 | 빠른 호출 통합 완료, 실행 대시보드는 후속 통합 |
+| FND-1 | 빠른 호출·실행 대시보드 branch 안전 통합 | P0 | 완료 | 빠른 호출과 실행 대시보드 최신 `develop` 통합 |
 | FND-2 | frontend test·DB migration·모듈 분리 기반 | P0 | 대기 | 최소 migration 계약 |
 | FND-3 | FastAPI 백엔드 전환 | P0 | 대기 | 기존 HTTP 계약 matrix와 `TestClient` 전환 범위 확정 |
 | FND-4 | PostgreSQL 영구 저장소·Redis 캐시 | P0 | 대기 | SQLite 이관, 사용자·workspace 저장 계약, cache 대상과 장애 fallback 확정 |
@@ -73,17 +73,22 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 ## 현재 작업
 
-- 작업 ID: 없음
-- 목표: 없음
-- 변경 예정 파일: 없음
-- 시작 시각: 없음
-- 상태: 대기
-- 확인이 필요한 사항: FND-1의 남은 범위인 실행 대시보드 통합 필요
+- 작업 ID: FND-1
+- 목표: 기능 테스트 실행마다 공통 run ID와 비밀값 없는 metadata를 저장하고 프로젝트별 실행 대시보드에서 조회
+- 변경 파일: `api_test/execution_history.py`, `react_server.py`, 관련 테스트, `web/src/pages/dashboard/`, `web/src/App.jsx`, `web/src/router.js`, 공통 컴포넌트, `README.md`, 이 진행 기록
+- 시작 시각: 2026-09-12 18:17 KST
+- 상태: 완료 — 기능 브랜치 구현·검증 후 `develop` fast-forward 병합
+- 확인이 필요한 사항: frontend test는 FND-2에서 도입 예정이므로 현재는 Vite build와 실제 브라우저로 검증
 
 ## 검증 기록
 
 | 일시 | 작업 ID | 명령 또는 확인 방법 | 결과 | 비고 |
 | --- | --- | --- | --- | --- |
+| 2026-09-12 | FND-1 | `python3 -m unittest discover -s tests -v` | 통과, 146개 | 실행 이력 신규 8개 포함 전체 회귀 |
+| 2026-09-12 | FND-1 | `cd web && npm run build`, `python3 -m py_compile ...`, `docker compose config --quiet`, `git diff --check` | 통과 | frontend test 명령은 FND-2 도입 전이라 없음 |
+| 2026-09-12 | FND-1 | 저장소 root에서 `npm run build` 재검증 시도 | 실패 후 해소 | root에 `package.json`이 없어 실패, `web/`에서 재실행해 통과 |
+| 2026-09-12 | FND-1 | `127.0.0.1:8878` 실제 `POST /api/run`, `GET /api/dashboard`, `/dashboard?project=example-api` | 통과 | 정책 차단은 error, 로컬 승인 실행은 passed로 각각 저장 확인 |
+| 2026-09-12 | FND-1 | 브라우저 프로젝트 필터·Run ID·뒤로 가기·319px 폭·console 확인 | 통과 | document/body 폭 304px, viewport 319px, 표만 내부 스크롤, console error 없음 |
 | 2026-09-12 | PLAN | roadmap ID, 사용자·workspace 저장 계약, 의존 관계와 완료 기준 확인 | 완료 | 애플리케이션 구현은 시작하지 않음 |
 | 2026-09-09 | FND-1 | `python3 -m unittest discover -s tests -v` | 통과, 109개 | 응답시간 측정 중복 통합 결함 수정 후 전체 재실행 |
 | 2026-09-09 | FND-1 | `cd web && npm run build` | 통과 | Vite 8.2.1 production build |
@@ -97,6 +102,8 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 | 일자 | 결정 | 이유 | 영향 |
 | --- | --- | --- | --- |
+| 2026-09-12 | 실행 metadata를 별도 DB가 아니라 `STUDIO_DB_PATH`의 Studio DB에 UUID Run ID로 저장 | RUN-1과 OBS-1이 재사용할 공통 실행 식별자와 저장 경계를 먼저 맞춤 | 웹 실행 응답·대시보드 이력이 같은 Run ID를 사용하고 Docker data volume에 보존 |
+| 2026-09-12 | 이력에는 대상·프로젝트·시각·상태·소요 시간·종료 코드만 저장 | 요청·응답 본문, header, 인증정보와 runner 출력의 2차 노출 방지 | 상세 원문은 기존 실행 화면·로그에만 존재하며 대시보드는 metadata만 조회 |
 | 2026-09-12 | 로그인 전부터 모든 협업 데이터에 내부 user ID와 workspace 경계 적용 | email·요청 header 변경이나 reference 조작이 데이터 소유권을 바꾸지 않도록 보장 | 저장소 메서드에 검증된 `RequestContext` 필수 |
 | 2026-09-12 | 기존 SQLite 데이터는 local workspace·시스템 사용자로 이관 | 기존 데이터 손실 없이 다중 사용자 schema로 전환 | 이관 후 명시적인 소유권 양도 절차 필요 |
 | 2026-09-12 | PostgreSQL을 영구 데이터 기준, Redis를 재생성 가능한 캐시로 사용 | 캐시 장애와 영구 데이터 정합성을 분리하고 다중 사용자 확장 기반 확보 | FND-4에서 SQLite 이관과 cache-aside 구현 |
@@ -111,6 +118,16 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 ## 변경 이력
 
 최신 항목을 위에 추가하고 작업 ID, 변경 파일, 검증 결과, 알려진 제한과 다음 작업을 기록한다.
+
+### 2026-09-12 — FND-1 — 실행 대시보드 최신 `develop` 기준 재구성
+
+- 변경: 웹 기능 테스트 실행에 UUID Run ID를 부여하고 성공·실패·오류·시간 초과 metadata를 Studio DB에 저장, 기간·프로젝트·결과 필터와 일별 추이·페이지 조회 API 및 `/dashboard` 화면 추가
+- 보안: 요청·응답 본문, header, 인증정보와 runner 출력은 이력에 저장하지 않으며 저장 실패는 실행 결과를 보존하고 경고만 반환
+- 변경 파일: `api_test/execution_history.py`, `react_server.py`, `tests/test_execution_history.py`, `tests/test_react_server.py`, `web/src/pages/dashboard/`, `web/src/App.jsx`, `web/src/router.js`, 공통 컴포넌트, `README.md`, 이 진행 기록
+- 검증: Python 146개, Vite build, py_compile, Compose config, git diff check 통과. 실제 HTTP error·passed 기록과 조회, 브라우저 직접 경로·필터·뒤로 가기·319px·console 확인 통과
+- 제한: CLI 직접 실행 이력, 개별 case/step 상세 결과, JSON·JUnit 출력은 RUN-1 범위. frontend test는 FND-2에서 도입 예정
+- 반영: `feature/execution-dashboard-integration`에서 검증 후 `develop`에 fast-forward 병합. 원격 반영과 기능 브랜치 삭제는 수행하지 않음
+- 다음: FND-2의 frontend test·DB migration·route 모듈 분리 착수
 
 ### 2026-09-12 — PLAN — FastAPI·PostgreSQL·Redis·Java WAS 권장 순서 문서화
 

@@ -8,6 +8,7 @@ import { PipelineEditor } from './pages/pipeline-editor/PipelineEditor.jsx'
 import { ApiList } from './pages/apis/ApiList.jsx'
 import { ApiAuthorEditor } from './pages/api-create/ApiAuthorEditor.jsx'
 import { ClientGenerator } from './pages/generator/ClientGenerator.jsx'
+import { ExecutionDashboard } from './pages/dashboard/ExecutionDashboard.jsx'
 import { api } from './utils/studio.js'
 import { Component, useEffect, useState } from 'react'
 import { useRoute, navigateTo } from './router.js'
@@ -23,6 +24,7 @@ function StudioApp() {
   const [caseItems, setCaseItems] = useState([])
   const [pipelineItems, setPipelineItems] = useState([])
   const [error, setError] = useState('')
+  const [dashboardRefresh, setDashboardRefresh] = useState(0)
 
   const refresh = async preferredProject => {
     try {
@@ -34,7 +36,7 @@ function StudioApp() {
         api(`/api/cases${filter}`), api(`/api/pipelines${filter}`), selectedProject ? api(`/api/projects/${encodeURIComponent(selectedProject)}`) : Promise.resolve(null),
       ])
       setProjects(projectData.items); setProjectDetails(projectData.details || {}); setActiveProject(selectedProject); setProject(selectedDocument); setCaseItems(cases.items); setPipelineItems(pipelines.items); setError('')
-      if (selectedProject && !route.activeProject && tab !== 'project' && tab !== 'project-settings' && tab !== 'api-call') {
+      if (selectedProject && !route.activeProject && tab !== 'project' && tab !== 'project-settings' && tab !== 'api-call' && tab !== 'dashboard') {
         navigateTo({ ...route, activeProject: selectedProject }, { replace: true })
       }
     } catch (requestError) { setError(`서버 연결 오류: ${requestError.message}`) }
@@ -60,7 +62,8 @@ function StudioApp() {
   const createProject = () => { navigateTo({ tab: 'project-settings', projectSettingsReference: '', activeProject: '' }) }
   const editProject = reference => { navigateTo({ tab: 'project-settings', projectSettingsReference: reference, activeProject: reference }) }
   const navigateProjectSection = target => {
-    if (target === 'cases') navigateTo({ tab: 'case-list', activeProject })
+    if (target === 'dashboard') navigateTo({ tab: 'dashboard', activeProject })
+    else if (target === 'cases') navigateTo({ tab: 'case-list', activeProject })
     else if (target === 'pipeline') navigateTo({ tab: 'pipeline-list', activeProject })
     else if (target === 'apis') navigateTo({ tab: 'api-list', activeProject })
     else if (target === 'generator') navigateTo({ tab: 'generator', activeProject })
@@ -86,7 +89,8 @@ function StudioApp() {
     onProjectList: () => navigateTo({ tab: 'project' }),
   }
   const isApiCallTab = tab === 'api-call'
-  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div><nav><button className={isApiCallTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'api-call', activeProject })}>API 호출</button><button className={!isApiCallTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'project', activeProject })}>프로젝트</button></nav><button className="ghost refresh" onClick={() => refresh()}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'api-call' ? <ApiCallPage /> : tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateProjectSection('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateProjectSection('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : <ClientGenerator {...authorProps} />}</>
+  const isDashboardTab = tab === 'dashboard'
+  return <><header className="topbar"><div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div><nav><button className={isApiCallTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'api-call', activeProject })}>API 호출</button><button className={!isApiCallTab && !isDashboardTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'project', activeProject })}>프로젝트</button><button className={isDashboardTab ? 'selected' : ''} onClick={() => navigateTo({ tab: 'dashboard', activeProject: '' })}>대시보드</button></nav><button className="ghost refresh" onClick={() => { refresh(); setDashboardRefresh(value => value + 1) }}>↻ 새로고침</button></header>{error && <div className="connection-error">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}{tab === 'dashboard' ? <ExecutionDashboard projects={projects} projectDetails={projectDetails} projectRef={route.activeProject || ''} onProjectChange={reference => navigateTo({ tab: 'dashboard', activeProject: reference })} onOpenCases={() => navigateTo({ tab: 'case-list', activeProject: route.activeProject })} refreshKey={dashboardRefresh} /> : tab === 'api-call' ? <ApiCallPage /> : tab === 'project' ? <ProjectList projects={projects} projectDetails={projectDetails} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} refresh={refresh} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateProjectSection('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateProjectSection('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : <ClientGenerator {...authorProps} />}</>
 }
 
 class ErrorBoundary extends Component {

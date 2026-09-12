@@ -19,6 +19,9 @@ export function parseLocation() {
   if (pathname === '/api-call') {
     return { tab: 'api-call', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
+  if (pathname === '/dashboard') {
+    return { tab: 'dashboard', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
+  }
   if (pathname === '/projects/new') {
     return { tab: 'project-settings', projectSettingsReference: '', activeProject: '', caseReference: '', pipelineReference: '' }
   }
@@ -69,6 +72,10 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
   switch (tab) {
     case 'api-call':
       pathname = '/api-call'
+      break
+    case 'dashboard':
+      pathname = '/dashboard'
+      if (projectSlug) query.set('project', projectSlug)
       break
     case 'project-settings':
       if (projectSettingsReference) {

@@ -23,6 +23,9 @@ function ProjectSidebar({ active, projects, projectRef, project, onProjectChange
       )}
       <div className="sidebar-title">테스트 구성</div>
       <div className="side-nav">
+        <button className={active === 'dashboard' ? 'active' : ''} onClick={() => onNavigate('dashboard')}>
+          실행 대시보드
+        </button>
         <button className={active === 'cases' ? 'active' : ''} onClick={() => onNavigate('cases')}>
           API 케이스
         </button>
