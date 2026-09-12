@@ -36,7 +36,7 @@
 - 최종 갱신일: 2026-09-12
 - 현재 단계: FND-2 완료
 - 전체 상태: 진행
-- 반영 브랜치: `feature/fnd-2-testing-migrations` (로컬 구현, 커밋·병합·푸시 없음)
+- 반영 브랜치: `feature/fnd-2-testing-migrations` (커밋 `ce5e614`, 원격 푸시 완료; 병합 없음)
 - 다음 작업: FND-3 기존 HTTP 계약 matrix 작성 및 FastAPI `TestClient` 전환 착수
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
@@ -77,7 +77,7 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 목표: 기존 HTTP·URL 계약을 유지하며 route와 React shell을 분리하고 versioned SQLite migration 및 frontend 회귀 테스트 기반을 추가
 - 변경 파일: DB migration runner와 관련 저장소, `react_server.py` route 모듈, React shell·상태 컴포넌트, frontend/Python 테스트, 이 진행 기록
 - 시작 시각: 2026-09-12 KST
-- 상태: 완료 — `feature/fnd-2-testing-migrations`에서 구현 및 검증 완료, 커밋·병합·푸시 없음
+- 상태: 완료 — `feature/fnd-2-testing-migrations`에서 구현·검증·커밋·원격 푸시 완료, 병합 없음
 - 확인이 필요한 사항: FND-3에서 현재 method·path·status·body·cookie·attachment·SPA fallback 계약을 `TestClient` matrix로 고정
 
 ## 검증 기록
@@ -135,7 +135,7 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 변경 파일: `api_test/migrations.py`, 저장소 3개, `api_test/routes/`, `react_server.py`, migration 테스트, `web/package*.json`, Vite 설정, `StudioShell`, frontend 테스트, `README.md`, 이 진행 기록
 - 검증: Python 150개, frontend 8개, Vite build, py_compile, Compose config, diff check와 실제 HTTP 3개 route 모두 통과
 - 제한: 서버 framework는 FND-3 전까지 `ThreadingHTTPServer` 유지. route 모듈은 현재 handler의 공통 request/response helper를 주입받아 기존 계약을 보존
-- 반영: `feature/fnd-2-testing-migrations` 로컬 working tree에 구현. 커밋·병합·원격 푸시는 수행하지 않음
+- 반영: `feature/fnd-2-testing-migrations`의 `ce5e614`로 커밋하고 `origin/feature/fnd-2-testing-migrations`에 푸시. 병합은 수행하지 않음
 - 다음: FND-3 HTTP 계약 matrix 작성 후 FastAPI route로 단계 전환
 
 ### 2026-09-12 — FND-1 — 실행 대시보드 최신 `develop` 기준 재구성
