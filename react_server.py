@@ -205,6 +205,23 @@ def ensure_example_project_enabled(reference: str) -> None:
         raise ApiError("The example project is disabled. Set EXAMPLE_PROJECT=true to enable it.")
 
 
+def ensure_example_document_writable(
+    kind: str,
+    reference: str,
+    *documents: object,
+) -> None:
+    """Keep the bundled example project and its fixtures read-only."""
+    is_example = kind == "projects" and reference == EXAMPLE_PROJECT_REFERENCE
+    if kind in {"cases", "pipelines"}:
+        is_example = any(
+            isinstance(document, dict)
+            and document.get("project") == EXAMPLE_PROJECT_REFERENCE
+            for document in documents
+        )
+    if is_example:
+        raise ApiError("내장 Example 프로젝트와 예제 파일은 변경할 수 없습니다.")
+
+
 def ensure_example_project_security_key(store: CollaborationStore) -> None:
     """Add the secure-data demo key using the active encryption backend once."""
     if not example_project_enabled():
@@ -1589,7 +1606,12 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 stored = store.get("projects", parts[2])
                 if stored is None:
                     raise DocumentNotFoundError("JSON file not found")
-                project = project_variables_for_client(stored.document)
+                visible_secret_values = (
+                    {"api_key": EXAMPLE_API_KEY}
+                    if parts[2] == EXAMPLE_PROJECT_REFERENCE
+                    else None
+                )
+                project = project_variables_for_client(stored.document, visible_secret_values)
                 self.send_json(200, {**project, "_storage": stored.metadata()})
             else:
                 self.serve_frontend()
@@ -1607,12 +1629,26 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 current = store.get(kind, parts[2])
                 payload = normalize_case_document(payload, current.document if current is not None else None)
                 validate_project_reference(payload)
+                ensure_example_document_writable(
+                    kind,
+                    parts[2],
+                    current.document if current is not None else None,
+                    payload,
+                )
             elif len(parts) == 3 and parts[:2] == ["api", "pipelines"]:
                 kind = "pipelines"
                 validate_project_reference(payload)
+                current = store.get(kind, parts[2])
+                ensure_example_document_writable(
+                    kind,
+                    parts[2],
+                    current.document if current is not None else None,
+                    payload,
+                )
             elif len(parts) == 3 and parts[:2] == ["api", "projects"]:
                 ensure_example_project_enabled(parts[2])
                 kind = "projects"
+                ensure_example_document_writable(kind, parts[2], payload)
                 current = store.get(kind, parts[2])
                 existing = current.document if current is not None else None
                 payload = normalize_project_document(payload, existing)
@@ -1677,6 +1713,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 return
             if len(parts) == 5 and parts[:2] == ["api", "projects"] and parts[3:] == ["openapi", "operations"]:
                 ensure_example_project_enabled(parts[2])
+                ensure_example_document_writable("projects", parts[2])
                 payload, expected_revision = storage_request(self.read_body())
                 store = collaboration_store()
                 current = store.get("projects", parts[2])
@@ -1798,6 +1835,12 @@ class StudioHandler(SimpleHTTPRequestHandler):
             store = collaboration_store()
             if parts[1] == "projects":
                 ensure_example_project_enabled(parts[2])
+            current = store.get(parts[1], parts[2])
+            ensure_example_document_writable(
+                parts[1],
+                parts[2],
+                current.document if current is not None else None,
+            )
             deleted_pipelines: list[str] = []
             if parts[1] == "projects":
                 if store.list_references("cases", parts[2]):

@@ -139,16 +139,23 @@ def normalize_project_variables(
     return {"plain": plain, "secret": secret}
 
 
-def project_variables_for_client(project: dict[str, Any]) -> dict[str, Any]:
-    """Return a project document that exposes encrypted variable names but never their values."""
+def project_variables_for_client(
+    project: dict[str, Any],
+    visible_secret_values: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Return client-safe project variables, optionally including explicit public fixtures."""
     result = dict(project)
     variables = project.get("variables", {})
     plain = variables.get("plain", {}) if isinstance(variables, dict) else {}
     secret = variables.get("secret", {}) if isinstance(variables, dict) else {}
+    visible_secret_values = visible_secret_values or {}
     result["variables"] = {
         "plain": dict(plain) if isinstance(plain, dict) else {},
         "secret": {
-            name: {"configured": True}
+            name: {
+                "configured": True,
+                **({"value": visible_secret_values[name]} if name in visible_secret_values else {}),
+            }
             for name in secret
             if isinstance(name, str)
         } if isinstance(secret, dict) else {},

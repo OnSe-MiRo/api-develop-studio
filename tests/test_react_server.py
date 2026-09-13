@@ -22,6 +22,7 @@ from react_server import (
     StudioHandler,
     case_summaries,
     ensure_example_project_security_key,
+    ensure_example_document_writable,
     author_openapi_operation,
     generate_openapi_archive,
     delete_project_pipelines,
@@ -158,6 +159,32 @@ class ReactServerRunTest(unittest.TestCase):
             with patch.dict(os.environ, {"EXAMPLE_PROJECT": "true"}, clear=False):
                 self.assertTrue(example_project_enabled())
                 self.assertEqual(visible_project_files(root), [EXAMPLE_PROJECT_REFERENCE, "member.json"])
+
+    def test_example_project_and_linked_fixtures_are_read_only(self) -> None:
+        protected = {"project": EXAMPLE_PROJECT_REFERENCE}
+        for kind, reference, documents in (
+            ("projects", EXAMPLE_PROJECT_REFERENCE, ()),
+            ("cases", "example/health/check.json", (protected,)),
+            ("pipelines", "example-api.json", (protected,)),
+        ):
+            with self.subTest(kind=kind), self.assertRaisesRegex(ValueError, "변경할 수 없습니다"):
+                ensure_example_document_writable(kind, reference, *documents)
+
+        ensure_example_document_writable("projects", "member.json", {})
+        ensure_example_document_writable("cases", "member/users/get.json", {"project": "member.json"})
+
+    def test_example_project_put_is_rejected_before_storage(self) -> None:
+        handler = object.__new__(StudioHandler)
+        handler.api_path = Mock(return_value=["api", "projects", EXAMPLE_PROJECT_REFERENCE])
+        handler.read_body = Mock(return_value={"name": "Changed", "base_url": "https://changed.test"})
+        handler.send_json = Mock()
+        store = Mock()
+
+        with patch("react_server.collaboration_store", return_value=store):
+            handler.do_PUT()
+
+        handler.send_json.assert_called_once_with(400, {"error": "내장 Example 프로젝트와 예제 파일은 변경할 수 없습니다."})
+        store.save.assert_not_called()
 
     def test_project_summaries_return_name_and_base_url_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -654,6 +681,13 @@ paths:
         self.assertEqual(
             project_variables_for_client(stored)["variables"]["secret"],
             {"api_key": {"configured": True}},
+        )
+        self.assertEqual(
+            project_variables_for_client(
+                stored,
+                {"api_key": EXAMPLE_API_KEY},
+            )["variables"]["secret"],
+            {"api_key": {"configured": True, "value": EXAMPLE_API_KEY}},
         )
 
         preserved_payload = {

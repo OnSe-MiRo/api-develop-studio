@@ -132,7 +132,7 @@ docker compose down
 
 ### 컨테이너 내장 예제 API
 
-외부 네트워크 없이 API 케이스와 파이프라인을 확인하려면 `.env`에서 `EXAMPLE_PROJECT=true`로 설정한 뒤 컨테이너를 다시 시작하세요. `example-api` 프로젝트를 열어 개별 케이스를 실행하거나 `example-api.json` 파이프라인을 실행할 수 있습니다. 예제 API는 `POST /example-api/users`로 사용자 생성 결과를 반환하고, 다음 단계가 그 응답의 `id`를 사용해 `GET /example-api/users/{id}`를 호출합니다. `GET /example-api/secure-data`는 `X-API-Key` 헤더 인증 예제를 제공하며, `security/get_secure_data` 케이스는 프로젝트 공통 보안 변수 `{{project.api_key}}`를 사용합니다. 이 값은 현재 암호화 서비스로 암호화되어 예제 프로젝트에 한 번 저장되며, 기능 확인용 공개 예제이므로 실제 서비스 비밀값으로 사용하면 안 됩니다.
+외부 네트워크 없이 API 케이스와 파이프라인을 확인하려면 `.env`에서 `EXAMPLE_PROJECT=true`로 설정한 뒤 컨테이너를 다시 시작하세요. `example-api` 프로젝트를 열어 개별 케이스를 실행하거나 `example-api.json` 파이프라인을 실행할 수 있습니다. 내장 예제 프로젝트·케이스·파이프라인은 읽기 전용이며 실행은 가능합니다. 예제 API는 `POST /example-api/users`로 사용자 생성 결과를 반환하고, 다음 단계가 그 응답의 `id`를 사용해 `GET /example-api/users/{id}`를 호출합니다. `GET /example-api/secure-data`는 `X-API-Key` 헤더 인증 예제를 제공하며, `security/get_secure_data` 케이스는 프로젝트 공통 보안 변수 `{{project.api_key}}`를 사용합니다. 이 값은 현재 암호화 서비스로 암호화되어 예제 프로젝트에 한 번 저장되며, 예제 프로젝트 설정 화면에서는 공개 fixture 값 `example-api-key`를 확인할 수 있습니다. 기능 확인용 공개 예제이므로 실제 서비스 비밀값으로 사용하면 안 됩니다.
 
 ## 빠른 실행
 
