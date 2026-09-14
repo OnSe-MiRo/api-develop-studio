@@ -33,10 +33,10 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-14
-- 현재 단계: FND-4 완료
+- 최종 갱신일: 2026-09-15
+- 현재 단계: OpenAPI Generator 서버 구조 전환 완료
 - 전체 상태: 진행
-- 반영 브랜치: `develop`에서 분기한 `feature/fnd-4-postgres-redis`에 로컬 구현. 이번 작업의 커밋·병합·푸시는 수행하지 않음.
+- 반영 브랜치: `feature/openapi-generated-server`. 기존 API-1·2·3 미커밋 변경을 보존하여 이어서 구현. 커밋·병합·푸시는 수행하지 않음.
 - 다음 작업: COL-2 request별 인증 문맥·workspace·실행/artifact 격리
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
@@ -49,9 +49,9 @@
 | FND-2 | frontend test·DB migration·모듈 분리 기반 | P0 | 완료 | Python 150개·frontend 8개·실제 HTTP 검증 통과 |
 | FND-3 | FastAPI 백엔드 전환 | P0 | 완료 | Python 166개·frontend 8개·build·실제 HTTP/React·Docker healthcheck·SDK ZIP 통과 |
 | FND-4 | PostgreSQL 영구 저장소·Redis 캐시 | P0 | 완료 | 전체 Python 206개·frontend 8개·build·실제 Compose HTTP·장애 복구·백업 복원 통과 |
-| API-1 | 빠른 API 호출 | P0 | 대기 | 공통 request model |
-| API-2 | 환경 프로필 | P0 | 대기 | 기존 `base_url` 호환 방식 |
-| API-3 | 공통 인증 모델 | P0 | 대기 | 1차 지원 방식 확정 |
+| API-1 | 빠른 API 호출 | P0 | 완료 | JSON·Text·Form Data, 케이스 저장 전환, 응답 대기 취소, cURL 마스킹 |
+| API-2 | 환경 프로필 | P0 | 완료 | 기존 base_url 호환, 웹·CLI 선택, 암호화 override |
+| API-3 | 공통 인증 모델 | P0 | 완료 | 1차 No Auth·API Key·Basic·Bearer 완료. OAuth 2.0 발급은 2차 |
 | RUN-1 | 구조화된 실행 결과와 CI report | P0 | 대기 | 결과 JSON schema |
 | RUN-2 | 비동기 job과 실행 제한 | P0 | 대기 | worker lifecycle |
 | OAS-1 | OpenAPI operation·schema·security 편집 | P0 | 대기 | 편집 데이터 모델 |
@@ -73,13 +73,15 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 ## 현재 작업
 
-- 작업 ID: FND-4
-- 목표: PostgreSQL 영구 저장소와 SQLite 이관, Redis revision cache-aside, 서버 문맥 및 투영 복구 경계 구현
-- 시작 시각: 2026-09-14 KST
-- 상태: 완료 — `feature/fnd-4-postgres-redis` 로컬 구현·검증
-- 검증: 전체 Python 206개(외부 서비스 통합 포함), frontend 8개와 build, 실제 Compose HTTP 및 장애/복원 검증 통과
-- 운영 이관·배포: 수행하지 않음. 기존 SQLite와 기존 실행 서비스는 보존하고 임시 데이터/컨테이너로만 검증
-- 계약 및 운영 절차: [FND-4 저장소 운영 계약](fnd-4-storage.md)
+- 작업 ID: OpenAPI Generator 서버 구조 전환
+- 목표: Studio 명세에서 생성한 라우터·모델과 직접 작성하는 서비스 분리
+- 시작: 2026-09-14 KST / 완료: 2026-09-15 KST
+- 상태: 완료 — `feature/openapi-generated-server` 작업 트리
+- 결과: 29 operations·41 schemas·9개 도메인 router, 앱 진입점·dependency·implementation·service 분리. Generator 7.24.0 고정 재생성 스크립트와 CI 추가.
+- 검증: Python 222개 중 181개 통과·외부 서비스 설정 의존 41개 skip. frontend 14개·build·compile·diff check·실제 재생성 --check 통과. 임시 Uvicorn 실제 HTTP CRUD·revision suffix·빠른 호출 통과.
+- 계약 및 사용법: [OpenAPI Generator 서버 구조](generated-server.md)
+- 범위: 기존 업무 검증·원문 JSON·오류 계약을 유지. DTO 강제 HTTP 입력 검증과 공유 도우미의 전면 클래스/DI 재작성은 포함하지 않음.
+- 커밋·병합·푸시·배포: 수행하지 않음.
 
 ## 검증 기록
 
@@ -218,3 +220,30 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 실제 검증: 분리된 `fnd4-validation` Compose 이미지 build와 API/PostgreSQL/Redis/encryption healthcheck 통과. 실제 CRUD·revision 409·body/actor 신뢰 경계·soft-delete·정책 차단 subprocess의 Run ID/대시보드 저장 통과. Redis 중단 중 HTTP fallback 200, PostgreSQL 중단 중 503, DB 재시작 뒤 API 재시작 없는 pool 복구 확인. `pg_dump` → 새 DB `pg_restore` 후 문서 수와 ID/revision/hash/삭제 상태 digest 일치. 최종 이미지의 `repair_projections --all` 통과.
 - 환경 차단 및 해소: 최초 Git ref 쓰기, Docker socket·로컬 PostgreSQL TCP가 sandbox에 차단되어 해당 작업에 한정한 권한 확장 후 검증 완료. 처음 추가한 SQLite WAL 설정의 동시 접속 lock 오류는 중복 설정을 제거해 해소.
 - 완료 범위: 개발·검증과 두 진행 문서 갱신. 원본 데이터 실제 이관, 기존 환경 배포, 커밋·병합·푸시는 수행하지 않음.
+
+## API-1·API-2·API-3 (2026-09-14)
+
+- 시작: feature/api-exploration-profiles, 기존 빠른 호출·암호화 변수·인증 처리 재사용.
+- 변경: 환경 저장·조회·암호화 보존, 공통→환경→케이스 변수 적용, CLI --environment와 웹 실행 연결. No Auth·API Key header/query·Basic·Bearer 프로필을 빠른 호출·케이스·파이프라인에서 재사용.
+- 변경: 빠른 호출 JSON/Text/Form Data, 응답 크기·마스킹, 응답 대기 취소·재실행, cURL 복사, case/{tag}/{api_name}/{case_file}.json 저장. 케이스 편집기의 Text·프로필 보존과 환경 선택 지원.
+- 검증: 저장·조회 FastAPI 계약, 세 환경, 인증 방식, 케이스 override, 빠른 호출/저장 케이스 전송 URL·인증·본문 일치, 파이프라인 적용·로그 마스킹, 화면 실행·저장·취소 테스트 통과.
+- 회귀: python3 -m unittest discover -s tests -q — 217개 중 176개 통과·외부 PostgreSQL/Redis 설정 의존 41개 skip. web/의 npm test 14개, npm run build, git diff --check 통과.
+- 조정: 응답 sizeBytes 추가에 맞춰 기존 계약 기대값 3개 갱신. 환경 주소를 소유권 fingerprint와 검증 허용 목록에 포함.
+- 상태: 완료 — API-3은 문서에 명시된 1차 인증 범위. 서버 전송 강제 종료·OAuth 2.0 발급·외부 서비스 종단 검증은 포함하지 않음.
+- 최종 반영: feature/api-exploration-profiles 작업 트리. 커밋·병합·푸시 없음.
+
+## OpenAPI Generator 서버 구조 전환 (2026-09-14)
+
+- 시작: feature/openapi-generated-server. 기존 API-1·2·3 미커밋 변경을 보존하여 이어서 작업.
+- 시작 상태: 진행 — Studio 명세와 생성 라우터·모델, 구현 계층, 앱 진입점 분리 및 재생성 검사. 완료 결과는 아래 2026-09-15 기록 참조.
+- 계약: 기존 400/409 오류, secret 보존, 경로 reference, 업로드 제한, 동기 작업 thread pool을 유지.
+
+### OpenAPI Generator 전환 변경·검증·완료 (2026-09-15)
+
+- 변경: openapi/studio.yaml에 프로젝트·케이스·파이프라인·실행·OpenAPI·소유권·업로드·Example 명세 작성. api_test/generated는 Generator가 생성하며 서비스 코드는 별도 유지.
+- 변경: api_test/main.py에서 생성 APIRouter를 등록. dependencies.py에서 origin·업로드 제한·thread pool 유지. 기존 업무 operation을 services/로 이동하고 기존 routes/는 호환 어댑터로 전환. react_server.py는 호환 진입점으로 축소.
+- 조정: 기본 Generator 모델의 자유 형식 object 상속/import 문제를 사용자 템플릿으로 해소. DTO는 BaseModel과 extra=allow를 사용하고 명시적 null·추가 필드·별칭을 보존. 입력 업무 검증은 기존 서비스에서 수행하여 기존 400/409와 원문 숫자 표현을 유지.
+- 검증: python3 -m unittest discover -s tests -q — 222개 중 181개 통과, 외부 PostgreSQL/Redis 설정 의존 41개 skip. web/ npm test 14개 및 npm run build, Python compile, git diff --check 통과.
+- 재생성: /tmp/fnd4-venv/bin/python scripts/generate_server.py --check 통과. 모든 operation의 생성 route/implementation 연결과 DTO read/write 계약 검사 추가. CI는 requirements.txt의 동일 고정 버전으로 검사.
+- 실제 HTTP: 임시 SQLite·임의 loopback 포트 Uvicorn에서 schema, 프로젝트/케이스 CRUD, revision suffix와 실제 빠른 HTTP 전송 통과. 최초 bind 차단은 검증 명령에 한정된 권한 확장으로 해소. 검증 fixture의 macOS /var→/private/var 경로 차이는 fixture resolve로 해소.
+- 완료: feature/openapi-generated-server 로컬 변경. 기존 API-1·2·3 작업 포함 보존. 커밋·병합·푸시·배포·실제 PostgreSQL/Redis 재검증은 수행하지 않음.

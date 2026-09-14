@@ -1,7 +1,7 @@
 # OpenAPI/Swagger YAML document import.
 PyYAML>=6.0,<7
 
-# Generate language-specific client SDK archives from saved OpenAPI documents.
+# Generate the Studio FastAPI server and language-specific client SDK archives.
 openapi-generator-cli==7.24.0
 
 # Fernet authenticated encryption for project secret variables.

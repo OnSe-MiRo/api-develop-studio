@@ -39,6 +39,25 @@ class AsgiContractTest(unittest.TestCase):
         self.project = {"name": "Contract", "base_url": "https://example.test"}
         self.assertEqual(self.client.put("/api/projects/p.json", json=self.project).status_code, 200)
 
+    def test_environment_profiles_roundtrip_and_request_contract(self):
+        from cryptography.fernet import Fernet
+        with patch.dict(os.environ, {"API_TEST_ENCRYPTION_KEY": Fernet.generate_key().decode(), "API_TEST_ENCRYPTION_URL": "", "LOCAL_SERVER": "true", "SKIP_OWNERSHIP_VERIFICATION": "true"}):
+            document = {"name": "Profiles", "base_url": "https://common.example", "default_environment": "dev",
+                        "environments": {"dev": {"base_url": "https://dev.example", "variables": {"secret": {"token": {"value": "private-credential"}}},
+                            "auth_profiles": {"login": {"type": "Bearer Token", "token": "{{project.token}}"}}}}}
+            saved = self.client.put("/api/projects/profiles.json", json=document)
+            self.assertEqual(saved.status_code, 200, saved.text)
+            loaded = self.client.get("/api/projects/profiles.json")
+            self.assertNotIn("private-credential", loaded.text)
+            self.assertEqual(loaded.json()["environments"]["dev"]["variables"]["secret"]["token"], {"configured": True})
+            with patch.object(studio, "execute_http_call", return_value=(200, {}, '{"echo":"private-credential"}', 1)) as call:
+                response = self.client.post("/api/request", json={"project": "profiles.json", "url": "/echo", "auth_profile": "login"})
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(call.call_args.args[0], "https://dev.example/echo")
+                self.assertNotIn("private-credential", response.text)
+            denied = self.client.post("/api/request", json={"project": "profiles.json", "environment": "missing", "url": "/echo"})
+            self.assertEqual(denied.status_code, 400)
+
     def test_nested_and_encoded_case_crud_and_revision_precedence(self):
         reference = "팀/users/get.json"
         path = "/api/cases/" + quote(reference, safe="")

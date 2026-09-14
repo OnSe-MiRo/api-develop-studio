@@ -1,0 +1,10 @@
+"""Generated router registry. Application setup lives in api_test/main.py."""
+{{#apiInfo}}{{#apis}}
+from {{apiPackage}}.{{classFilename}} import router as {{classname}}Router
+{{/apis}}{{/apiInfo}}
+
+routers = [
+{{#apiInfo}}{{#apis}}
+    {{classname}}Router,
+{{/apis}}{{/apiInfo}}
+]

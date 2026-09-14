@@ -1,0 +1,92 @@
+"""Application composition for the generated Studio API."""
+from __future__ import annotations
+import json
+import os
+import subprocess
+from copy import deepcopy
+from pathlib import Path
+import yaml
+import uvicorn
+from fastapi import APIRouter, FastAPI, Depends
+from fastapi.exceptions import RequestValidationError
+from api_test.database import DATABASE_ERRORS
+from api_test.dependencies import request_context
+
+
+def create_app(studio) -> FastAPI:
+    app = FastAPI(title="API Develop Studio", docs_url=None, redoc_url=None,
+                  openapi_url="/api/schema.json", redirect_slashes=False)
+    app.state.studio = studio
+    def error_response(request, exc):
+        context = getattr(request.state, "studio", None) or studio.StudioRequest(request, b"")
+        status, payload = 400, {"error": str(exc)}
+        if isinstance(exc, RequestValidationError):
+            payload = {"error": "Invalid request JSON"}
+        elif isinstance(exc, (studio.RevisionConflictError, studio.RevisionRequiredError)) and request.method in {"PUT", "POST"}:
+            status, payload = 409, {"error": str(exc), "currentRevision": exc.current_revision}
+        elif isinstance(exc, subprocess.TimeoutExpired):
+            status = 504
+            payload = {"error": "OpenAPI 클라이언트 생성 시간이 300초를 초과했습니다." if request.url.path == "/api/generate" else "Test run timed out after 300 seconds"}
+            if getattr(exc, "run_id", None):
+                payload["runId"] = exc.run_id
+        elif isinstance(exc, studio.OwnershipError) and request.method == "POST":
+            status, payload = 403, {"error": str(exc), "code": "OWNERSHIP_POLICY_DENIED"}
+        elif isinstance(exc, studio.ApiError) and request.method == "POST":
+            status = exc.status_code
+        if isinstance(exc, DATABASE_ERRORS):
+            status, payload = 503, {"error": "저장소에 연결할 수 없습니다. 잠시 후 다시 시도하세요."}
+        return context.json_response(status, payload)
+
+    for error in (studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
+                  OSError, json.JSONDecodeError, subprocess.TimeoutExpired, RequestValidationError, *DATABASE_ERRORS):
+        app.add_exception_handler(error, error_response)
+
+    from api_test.generated.main import routers
+    combined = APIRouter()
+    for router in routers:
+        combined.routes.extend(router.routes)
+    # Register suffix operations before greedy document references across all tags.
+    combined.routes.sort(key=lambda route: (route.path.endswith(':path}'), -len(route.path)))
+    app.include_router(combined)
+
+    def frontend(request, studio):
+        return request.frontend_response()
+
+    def unknown(request, studio):
+        messages = {"POST": "Unknown run endpoint", "PUT": "Unknown save endpoint", "DELETE": "Unknown delete endpoint"}
+        raise studio.ApiError(messages[request.command])
+
+    @app.get('/{reference:path}', include_in_schema=False)
+    async def frontend_route(context=Depends(request_context)):
+        return await context.call(frontend)
+
+    @app.api_route('/{reference:path}', methods=['POST', 'PUT', 'DELETE'], include_in_schema=False)
+    async def unknown_route(context=Depends(request_context)):
+        return await context.call(unknown)
+
+    # Publish the canonical contract rather than reverse engineering opaque request context.
+    specification = yaml.safe_load((Path(__file__).resolve().parents[1] / 'openapi/studio.yaml').read_text())
+    public_spec = deepcopy(specification)
+    for path in public_spec['paths'].values():
+        for operation in path.values():
+            for key in list(operation):
+                if key.startswith('x-studio-'):
+                    del operation[key]
+    app.openapi = lambda: deepcopy(public_spec)
+    return app
+
+
+from api_test.services import studio
+app = create_app(studio)
+studio.app = app
+
+
+def run():
+    host = os.environ.get('API_TEST_HOST', '127.0.0.1')
+    if studio.local_policy()['local_server'] and host not in ('127.0.0.1', '::1', 'localhost'):
+        raise SystemExit('LOCAL_SERVER=true에서는 loopback 주소로만 실행할 수 있습니다.')
+    uvicorn.run(app, host=host, port=int(os.environ.get('API_TEST_PORT', '8765')), workers=1, proxy_headers=False)
+
+
+if __name__ == '__main__':
+    run()

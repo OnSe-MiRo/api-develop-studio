@@ -9,7 +9,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, quote, quote_plus, urlencode, urlparse, urlunparse
 
 
 class AuthorizationError(ValueError):
@@ -140,10 +140,20 @@ def _aws_header(url: str, method: str, headers: dict[str, str], payload: bytes |
     return result
 
 
+def sensitive_value_variants(values: set[str]) -> set[str]:
+    """Include transport encodings so echoed query credentials are also redacted."""
+    return {variant for value in values if value for variant in (value, quote(value, safe=""), quote_plus(value))}
+
+
 def authorization_sensitive_values(auth: object) -> set[str]:
     if not isinstance(auth, dict):
         return set()
-    return {_text(value) for key, value in auth.items() if any(part in key.lower() for part in ("token", "secret", "password", "key")) and _text(value)}
+    values = {_text(value) for key, value in auth.items() if any(part in key.lower() for part in ("token", "secret", "password", "key")) and _text(value)}
+    if auth.get("type") == "API Key" and _text(auth.get("value")):
+        values.add(_text(auth["value"]))
+    if auth.get("type") == "Basic Auth":
+        values.add(base64.b64encode(f"{auth.get('username', '')}:{auth.get('password', '')}".encode()).decode())
+    return sensitive_value_variants(values)
 
 
 def apply_authorization(url: str, method: str, headers: dict[str, str], auth: object, payload: bytes | None = None) -> AuthorizedRequest:

@@ -1,0 +1,2065 @@
+openapi: 3.0.3
+info:
+  title: API Develop Studio
+  version: 1.0.1
+  description: Studio management API. Existing business validation and error contracts
+    are retained.
+paths:
+  /api/projects:
+    get:
+      operationId: list_projects
+      tags:
+      - projects
+      summary: list projects
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceList'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.list_documents
+      x-studio-parts: '[''projects'']'
+      x-studio-route: /api/projects
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: project
+        in: query
+        required: false
+        schema: &id001
+          type: string
+  /api/projects/{reference}/revisions:
+    get:
+      operationId: list_projects_revisions
+      tags:
+      - projects
+      summary: list projects revisions
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionList'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.list_revisions
+      x-studio-parts: '[''projects'']'
+      x-studio-route: /api/projects/{reference:path}/revisions
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+  /api/projects/{reference}:
+    get:
+      operationId: get_projects
+      tags:
+      - projects
+      summary: get projects
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectView'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.get_document
+      x-studio-parts: '[''projects'']'
+      x-studio-route: /api/projects/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+    put:
+      operationId: save_projects
+      tags:
+      - projects
+      summary: save projects
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.save_document
+      x-studio-parts: '[''projects'']'
+      x-studio-route: /api/projects/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectInput'
+    delete:
+      operationId: delete_projects
+      tags:
+      - projects
+      summary: delete projects
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.delete_document
+      x-studio-parts: '[''projects'']'
+      x-studio-route: /api/projects/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+  /api/cases:
+    get:
+      operationId: list_cases
+      tags:
+      - cases
+      summary: list cases
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceList'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.list_documents
+      x-studio-parts: '[''cases'']'
+      x-studio-route: /api/cases
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: project
+        in: query
+        required: false
+        schema: *id001
+  /api/cases/{reference}/revisions:
+    get:
+      operationId: list_cases_revisions
+      tags:
+      - cases
+      summary: list cases revisions
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionList'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.list_revisions
+      x-studio-parts: '[''cases'']'
+      x-studio-route: /api/cases/{reference:path}/revisions
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+  /api/cases/{reference}:
+    get:
+      operationId: get_cases
+      tags:
+      - cases
+      summary: get cases
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseView'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.get_document
+      x-studio-parts: '[''cases'']'
+      x-studio-route: /api/cases/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+    put:
+      operationId: save_cases
+      tags:
+      - cases
+      summary: save cases
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.save_document
+      x-studio-parts: '[''cases'']'
+      x-studio-route: /api/cases/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseInput'
+    delete:
+      operationId: delete_cases
+      tags:
+      - cases
+      summary: delete cases
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.delete_document
+      x-studio-parts: '[''cases'']'
+      x-studio-route: /api/cases/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+  /api/pipelines:
+    get:
+      operationId: list_pipelines
+      tags:
+      - pipelines
+      summary: list pipelines
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferenceList'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.list_documents
+      x-studio-parts: '[''pipelines'']'
+      x-studio-route: /api/pipelines
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: project
+        in: query
+        required: false
+        schema: *id001
+  /api/pipelines/{reference}/revisions:
+    get:
+      operationId: list_pipelines_revisions
+      tags:
+      - pipelines
+      summary: list pipelines revisions
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionList'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.list_revisions
+      x-studio-parts: '[''pipelines'']'
+      x-studio-route: /api/pipelines/{reference:path}/revisions
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+  /api/pipelines/{reference}:
+    get:
+      operationId: get_pipelines
+      tags:
+      - pipelines
+      summary: get pipelines
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineDocument'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.get_document
+      x-studio-parts: '[''pipelines'']'
+      x-studio-route: /api/pipelines/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+    put:
+      operationId: save_pipelines
+      tags:
+      - pipelines
+      summary: save pipelines
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.save_document
+      x-studio-parts: '[''pipelines'']'
+      x-studio-route: /api/pipelines/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PipelineDocument'
+    delete:
+      operationId: delete_pipelines
+      tags:
+      - pipelines
+      summary: delete pipelines
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: documents.delete_document
+      x-studio-parts: '[''pipelines'']'
+      x-studio-route: /api/pipelines/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+  /api/projects/{reference}/openapi/operations:
+    post:
+      operationId: author_operation
+      tags:
+      - openapi
+      summary: author operation
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorOperationResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: openapi.author_operation
+      x-studio-parts: '[]'
+      x-studio-route: /api/projects/{reference:path}/openapi/operations
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorOperationRequest'
+  /api/docs:
+    post:
+      operationId: inspect_document
+      tags:
+      - openapi
+      summary: inspect document
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocsResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: openapi.inspect_document
+      x-studio-parts: '[]'
+      x-studio-route: /api/docs
+      x-studio-upload: false
+      x-studio-alias: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocsRequest'
+  /api/generate:
+    post:
+      operationId: generate_client
+      tags:
+      - openapi
+      summary: generate client
+      responses:
+        '200':
+          description: ZIP archive
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Execution timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: openapi.generate_client
+      x-studio-parts: '[]'
+      x-studio-route: /api/generate
+      x-studio-upload: false
+      x-studio-alias: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+  /api/request:
+    post:
+      operationId: send_request
+      tags:
+      - execution
+      summary: send request
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuickResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream connection failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Upstream timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: execution.send_request
+      x-studio-parts: '[]'
+      x-studio-route: /api/request
+      x-studio-upload: false
+      x-studio-alias: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuickRequest'
+  /api/run:
+    post:
+      operationId: run_tests
+      tags:
+      - execution
+      summary: run tests
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Execution timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: execution.run_tests
+      x-studio-parts: '[]'
+      x-studio-route: /api/run
+      x-studio-upload: false
+      x-studio-alias: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunRequest'
+  /api/dashboard:
+    get:
+      operationId: get_dashboard
+      tags:
+      - dashboard
+      summary: get dashboard
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: dashboard.get_dashboard
+      x-studio-parts: '[]'
+      x-studio-route: /api/dashboard
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: project
+        in: query
+        required: false
+        schema: *id001
+      - name: days
+        in: query
+        required: false
+        schema: *id001
+      - name: status
+        in: query
+        required: false
+        schema: *id001
+      - name: page
+        in: query
+        required: false
+        schema: *id001
+  /api/ownership:
+    get:
+      operationId: get_ownership
+      tags:
+      - ownership
+      summary: get ownership
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnershipResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: ownership.get_ownership
+      x-studio-parts: '[]'
+      x-studio-route: /api/ownership
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: project
+        in: query
+        required: false
+        schema: *id001
+    post:
+      operationId: ownership_action
+      tags:
+      - ownership
+      summary: ownership action
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnershipResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: ownership.perform_action
+      x-studio-parts: '[]'
+      x-studio-route: /api/ownership
+      x-studio-upload: false
+      x-studio-alias: true
+      parameters:
+      - name: project
+        in: query
+        required: false
+        schema: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnershipRequest'
+  /api/ownership/{action}:
+    post:
+      operationId: perform_ownership_action
+      tags:
+      - ownership
+      summary: perform ownership action
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnershipResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: ownership.perform_action
+      x-studio-parts: '[]'
+      x-studio-route: /api/ownership/{action:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: action
+        in: path
+        required: true
+        schema: *id001
+      - name: project
+        in: query
+        required: false
+        schema: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnershipRequest'
+  /api/uploads/{reference}:
+    post:
+      operationId: upload_attachment
+      tags:
+      - uploads
+      summary: upload attachment
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-studio-handler: uploads.upload_attachment
+      x-studio-parts: '[]'
+      x-studio-route: /api/uploads/{reference:path}
+      x-studio-upload: true
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+  /example-api:
+    get:
+      operationId: get_example
+      tags:
+      - example
+      summary: get example
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '201':
+          description: Example user created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '401':
+          description: Missing or invalid example API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '404':
+          description: Example endpoint not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+      x-studio-handler: example.handle_example
+      x-studio-parts: '[]'
+      x-studio-route: /example-api
+      x-studio-upload: false
+      x-studio-alias: true
+    post:
+      operationId: post_example
+      tags:
+      - example
+      summary: post example
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '201':
+          description: Example user created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '401':
+          description: Missing or invalid example API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '404':
+          description: Example endpoint not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+      x-studio-handler: example.handle_example
+      x-studio-parts: '[]'
+      x-studio-route: /example-api
+      x-studio-upload: false
+      x-studio-alias: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExampleInput'
+  /example-api/{reference}:
+    get:
+      operationId: get_example_resource
+      tags:
+      - example
+      summary: get example resource
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '201':
+          description: Example user created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '401':
+          description: Missing or invalid example API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '404':
+          description: Example endpoint not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+      x-studio-handler: example.handle_example
+      x-studio-parts: '[]'
+      x-studio-route: /example-api/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+    post:
+      operationId: post_example_resource
+      tags:
+      - example
+      summary: post example resource
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Policy denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Revision conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '201':
+          description: Example user created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '401':
+          description: Missing or invalid example API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '404':
+          description: Example endpoint not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+      x-studio-handler: example.handle_example
+      x-studio-parts: '[]'
+      x-studio-route: /example-api/{reference:path}
+      x-studio-upload: false
+      x-studio-alias: false
+      parameters:
+      - name: reference
+        in: path
+        required: true
+        schema: *id001
+        description: Slash-separated document or attachment reference.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExampleInput'
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error: *id001
+        code: *id001
+        currentRevision: &id002
+          type: integer
+        runId: *id001
+      required:
+      - error
+    StorageMetadata:
+      type: object
+      properties:
+        id:
+          type: string
+        revision: *id002
+        created_by: *id001
+        updated_by: *id001
+        created_at: *id001
+        updated_at: *id001
+        content_hash: *id001
+        projectionPending:
+          type: boolean
+    SecretInput:
+      type: object
+      properties:
+        value:
+          type: string
+          writeOnly: true
+        preserve: &id003
+          type: boolean
+    SecretState:
+      type: object
+      properties:
+        configured: *id003
+        value:
+          type: string
+          description: Only the explicitly public bundled Example fixture.
+      required:
+      - configured
+    VariablesInput:
+      type: object
+      properties:
+        plain:
+          type: object
+          additionalProperties: *id001
+        secret:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/SecretInput'
+    VariablesView:
+      type: object
+      properties:
+        plain:
+          type: object
+          additionalProperties: *id001
+        secret:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/SecretState'
+    AuthProfile:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - No Auth
+          - API Key
+          - Basic Auth
+          - Bearer Token
+        key: *id001
+        value: *id001
+        addTo: *id001
+        username: *id001
+        password: *id001
+        token: *id001
+      required:
+      - type
+    EnvironmentInput:
+      type: object
+      properties:
+        base_url: *id001
+        variables:
+          $ref: '#/components/schemas/VariablesInput'
+        auth_profiles:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/AuthProfile'
+      required:
+      - base_url
+    EnvironmentView:
+      type: object
+      properties:
+        base_url: *id001
+        variables:
+          $ref: '#/components/schemas/VariablesView'
+        auth_profiles:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/AuthProfile'
+      required:
+      - base_url
+    NamedBaseUrl:
+      type: object
+      properties:
+        name: *id001
+        url: *id001
+      required:
+      - name
+      - url
+    TransportSettings:
+      type: object
+      properties:
+        use_proxy: *id003
+        verify: *id003
+        proxy: *id001
+        http_proxy: *id001
+        https_proxy: *id001
+    DocumentBundle:
+      type: object
+      properties:
+        entrypoint: *id001
+        files:
+          type: object
+          additionalProperties: *id001
+      required:
+      - entrypoint
+      - files
+    DocumentFile:
+      type: object
+      properties:
+        name: *id001
+        document: &id010
+          type: object
+          additionalProperties: true
+      required:
+      - name
+      - document
+    ProjectInput:
+      type: object
+      properties:
+        name: *id001
+        base_url: *id001
+        base_urls: &id004
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedBaseUrl'
+        docs_url: *id001
+        docs_file: &id005
+          $ref: '#/components/schemas/DocumentFile'
+        docs_bundle: &id006
+          $ref: '#/components/schemas/DocumentBundle'
+        advanced: &id007
+          $ref: '#/components/schemas/TransportSettings'
+        default_environment: *id001
+        auth_profiles: &id008
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/AuthProfile'
+        _storage: &id009
+          $ref: '#/components/schemas/StorageMetadata'
+        variables:
+          $ref: '#/components/schemas/VariablesInput'
+        environments:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/EnvironmentInput'
+      required:
+      - name
+      - base_url
+    ProjectView:
+      type: object
+      properties:
+        name: *id001
+        base_url: *id001
+        base_urls: *id004
+        docs_url: *id001
+        docs_file: *id005
+        docs_bundle: *id006
+        advanced: *id007
+        default_environment: *id001
+        auth_profiles: *id008
+        _storage: *id009
+        variables:
+          $ref: '#/components/schemas/VariablesView'
+        environments:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/EnvironmentView'
+      required:
+      - name
+      - base_url
+    FormDataItem:
+      type: object
+      properties:
+        key: *id001
+        value: *id001
+        file: *id001
+        filename: *id001
+        content_type: *id001
+      required:
+      - key
+    CaseRequest:
+      type: object
+      properties:
+        method: *id001
+        url: *id001
+        headers:
+          type: object
+          additionalProperties: *id001
+        auth: *id010
+        auth_profile: *id001
+        body: {}
+        text: *id001
+        form_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormDataItem'
+      required:
+      - url
+    ExpectedResponse:
+      type: object
+      properties:
+        status: *id002
+        body: {}
+        strict: *id003
+        max_response_time_ms: &id011
+          type: number
+        assertions:
+          type: array
+          items: *id010
+        validation_modes:
+          type: object
+          additionalProperties: *id003
+    CaseInput:
+      type: object
+      properties:
+        name: *id001
+        project: *id001
+        base_url_name: *id001
+        timeout: *id011
+        request: &id012
+          $ref: '#/components/schemas/CaseRequest'
+        expected: &id013
+          $ref: '#/components/schemas/ExpectedResponse'
+        _storage: &id014
+          $ref: '#/components/schemas/StorageMetadata'
+        _expectedBodyRaw: *id001
+        variables:
+          $ref: '#/components/schemas/VariablesInput'
+      required:
+      - request
+      - expected
+    CaseView:
+      type: object
+      properties:
+        name: *id001
+        project: *id001
+        base_url_name: *id001
+        timeout: *id011
+        request: *id012
+        expected: *id013
+        _storage: *id014
+        _expectedBodyRaw: *id001
+        variables:
+          $ref: '#/components/schemas/VariablesView'
+      required:
+      - request
+      - expected
+    PipelineStep:
+      type: object
+      properties:
+        name: *id001
+        case: *id001
+        retry: *id002
+        retry_interval_seconds: *id011
+        external_once: *id003
+        continue_on_failure: *id003
+        input_mappings:
+          type: array
+          items: *id010
+      required:
+      - name
+      - case
+    PipelineDocument:
+      type: object
+      properties:
+        name: *id001
+        project: *id001
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/PipelineStep'
+        defaults: *id010
+        _storage:
+          $ref: '#/components/schemas/StorageMetadata'
+    ReferenceList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: *id001
+        details:
+          type: object
+          additionalProperties: *id010
+      required:
+      - items
+    RevisionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageMetadata'
+      required:
+      - items
+    SaveResponse:
+      type: object
+      properties:
+        path: *id001
+        _storage:
+          $ref: '#/components/schemas/StorageMetadata'
+      required:
+      - path
+      - _storage
+    DeleteResponse:
+      type: object
+      properties:
+        deleted: *id001
+        deleted_pipelines:
+          type: array
+          items: *id001
+      required:
+      - deleted
+    QuickRequest:
+      type: object
+      properties:
+        project: *id001
+        environment: *id001
+        method: *id001
+        url: *id001
+        params: {}
+        headers: {}
+        auth: *id010
+        auth_profile: *id001
+        body: {}
+        body_format: *id001
+        text: *id001
+        form_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormDataItem'
+        proxy_url: *id001
+        no_proxy: *id003
+        timeout: *id011
+      required:
+      - url
+    QuickResponse:
+      type: object
+      properties:
+        status: *id002
+        elapsedMs: *id011
+        sizeBytes: *id002
+        headers:
+          type: object
+          additionalProperties: *id001
+        body: {}
+        rawBody: *id001
+      required:
+      - status
+      - elapsedMs
+      - sizeBytes
+      - headers
+      - rawBody
+    RunRequest:
+      type: object
+      properties:
+        cases:
+          type: array
+          items: *id001
+        pipelines:
+          type: array
+          items: *id001
+        inlineCase:
+          $ref: '#/components/schemas/CaseInput'
+        inlinePipeline:
+          $ref: '#/components/schemas/PipelineDocument'
+        caseReference: *id001
+        environment: *id001
+    RunResponse:
+      type: object
+      properties:
+        runId: *id001
+        exitCode: *id002
+        output: *id001
+        historyWarning: *id001
+      required:
+      - runId
+    DocsRequest:
+      type: object
+      properties:
+        url: *id001
+        document: *id010
+        bundle:
+          $ref: '#/components/schemas/DocumentBundle'
+        no_proxy: *id003
+        for_case: *id003
+    DocsResponse:
+      type: object
+      properties:
+        operations:
+          type: array
+          items: *id010
+      required:
+      - operations
+    GenerateRequest:
+      type: object
+      properties:
+        project: *id001
+        language: *id001
+      required:
+      - project
+      - language
+    AuthorOperationRequest:
+      type: object
+      properties:
+        method:
+          type: string
+        path:
+          type: string
+        operation_id:
+          type: string
+        summary:
+          type: string
+        tag:
+          type: string
+        parameters:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        has_request_body:
+          type: boolean
+        request_body: {}
+        request_body_required:
+          type: boolean
+        response_status:
+          type: integer
+        response_description:
+          type: string
+        has_response_body:
+          type: boolean
+        response_body: {}
+        error_statuses:
+          type: array
+          items:
+            type: integer
+        _storage:
+          $ref: '#/components/schemas/StorageMetadata'
+    AuthorOperationResponse:
+      type: object
+      properties:
+        operation: *id010
+        _storage:
+          $ref: '#/components/schemas/StorageMetadata'
+    DashboardResponse:
+      type: object
+      properties:
+        summary:
+          type: object
+        trend:
+          type: array
+          items:
+            type: object
+        items:
+          type: array
+          items:
+            type: object
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+    OwnershipRequest:
+      type: object
+      properties:
+        url: *id001
+        method: *id001
+        verification_id: *id001
+    OwnershipResponse:
+      type: object
+      properties:
+        proofs:
+          type: array
+          items: *id010
+        grants:
+          type: array
+          items: *id010
+        local_server: *id003
+        skip_verification: *id003
+        verification_url: *id001
+        challenge: *id001
+        expires_at: *id011
+    UploadResponse:
+      type: object
+      properties:
+        path: *id001
+      required:
+      - path
+    ExampleInput:
+      type: object
+      properties:
+        name: *id001
+    ExampleResponse:
+      type: object
+      properties:
+        status: *id001
+        id: *id002
+        name: *id001
+        authorized: *id003
+        message: *id001
+        error: *id001
