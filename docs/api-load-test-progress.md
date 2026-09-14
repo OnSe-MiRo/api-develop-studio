@@ -96,3 +96,11 @@
 - 차단되면 `차단 사항`을 기록하고 관련 단계 상태를 `차단`으로 바꾼다.
 - 완료 보고 전 완료 기준을 다시 확인하고 상태, 최종 검증과 다음 작업을 갱신한다.
 - 코드 변경과 진행 기록 변경을 같은 작업 범위에 포함한다.
+
+## FND-3 공통 실행·대시보드 HTTP 전환 (2026-09-14)
+
+- 시작: FND-2 `develop` 병합 `df3ca9a` 이후 `feature/fnd-3-fastapi`에서 공통 HTTP 전환 진행.
+- 변경: `/api/run`·`/api/dashboard`를 FastAPI로 연결하고 기존 metadata 저장·15초 polling·필터 응답을 유지. 부하 생성기와 통계 schema 변경 없음.
+- 검증: macOS 및 Docker에서 각각 전체 Python 166개, frontend 8개, Vite build, TestClient timeout/이력 및 실제 pipeline 3단계 PASS. React 실행 후 대시보드 성공 이력 반영 확인. Docker 단일 worker와 동일 Compose healthcheck 통과.
+- 차단 및 해소: loopback/Docker sandbox 접근은 허용된 재실행으로 해소. 현재 차단 없음.
+- 완료: FND-3 로컬 구현·검증 완료, FND-3 커밋/병합/푸시 없음. 상세 상태는 `api-development-progress.md`, HTTP 계약은 `fnd-3-http-contract.md`와 동기화.

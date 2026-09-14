@@ -1,4 +1,4 @@
-"""Exercise the checked-in example documents against the actual example handler."""
+"""Exercise the checked-in example documents against the FastAPI example routes."""
 import io
 import json
 import os
@@ -6,12 +6,13 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from urllib.parse import urlsplit
 
 from api_test.cli import run_pipeline
 from api_test.ownership import OwnershipError
-from react_server import StudioHandler
+from react_server import app
+from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,15 +37,10 @@ class ExampleOwnershipTest(unittest.TestCase):
     def test_local_pipeline_keeps_api_authentication(self):
         statuses = []
         def dispatch(url, method='GET', headers=None, **kwargs):
-            handler = object.__new__(StudioHandler)
-            handler.command = method
-            handler.headers = headers or {}
-            handler.api_path = Mock(return_value=urlsplit(url).path.strip('/').split('/'))
-            handler.send_json = Mock()
-            self.assertTrue(handler.serve_example_api())
-            status, body = handler.send_json.call_args.args
-            statuses.append(status)
-            return status, {'Content-Type': 'application/json'}, json.dumps(body), 0
+            with TestClient(app, base_url="http://127.0.0.1:8765") as client:
+                response = client.request(method, urlsplit(url).path, headers=headers or {})
+            statuses.append(response.status_code)
+            return response.status_code, dict(response.headers), response.text, 0
         with patch('api_test.runner.execute_http_call', side_effect=dispatch) as transport:
             self.assertEqual(self.run_example(), 0)
             self.assertEqual(transport.call_count, 3)

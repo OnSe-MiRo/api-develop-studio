@@ -24,7 +24,8 @@ from datetime import date, datetime, timezone
 from time import perf_counter
 from tempfile import TemporaryDirectory
 from http import HTTPStatus
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from fastapi.responses import Response
+import uvicorn
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
@@ -32,6 +33,7 @@ from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 import yaml
 
+from api_test.asgi import create_app
 from api_test.execution_history import ExecutionHistory
 from api_test.runner import CaseConfigurationError, validate_response_time_limit
 from api_test.collaboration_store import (
@@ -51,10 +53,6 @@ from api_test.project_variables import (
 )
 from api_test.runner import execute_http_call, format_network_error
 from api_test.ownership import OwnershipStore, OwnershipError, local_policy, execution_guard, fingerprint
-from api_test.routes import dashboard as dashboard_routes
-from api_test.routes import documents as document_routes
-from api_test.routes import openapi as openapi_routes
-from api_test.routes import execution as execution_routes
 
 
 ROOT = Path(__file__).resolve().parent
@@ -1407,10 +1405,53 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-class StudioHandler(SimpleHTTPRequestHandler):
+class StudioRequest:
+    """Request-scoped policy and serialization shared by the ASGI routes."""
+
+    def __init__(self, request, body: bytes):
+        self.request = request
+        self.headers = request.headers
+        self.command = request.method
+        self.body = body
+        self.ownership_cookie = None
+
+    def json_response(self, status: int, payload: object):
+        headers = {"Cache-Control": "no-store"}
+        if self.ownership_cookie:
+            headers["Set-Cookie"] = self.ownership_cookie
+        return Response(json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                        status_code=status, media_type="application/json; charset=utf-8", headers=headers)
+
+    def attachment_response(self, content: bytes, filename: str):
+        return Response(content, media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+    def read_body(self) -> dict[str, object]:
+        try:
+            payload = json.loads(self.body.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise ApiError("Invalid request JSON") from exc
+        if not isinstance(payload, dict):
+            raise ApiError("Request body must be a JSON object")
+        return payload
+
+    def read_upload(self) -> bytes:
+        if not 0 < len(self.body) <= MAX_UPLOAD_BYTES:
+            raise ApiError("Upload size must be between 1 byte and 25 MB")
+        return self.body
+
+    def api_path(self) -> list[str]:
+        return [part for part in self.request.url.path.split("/") if part]
+
+    def query_value(self, name: str) -> str | None:
+        values = parse_qs(self.request.url.query).get(name)
+        return values[0] if values else None
+
+    def actor_id(self) -> str:
+        """Preserve the existing audit label until authentication is introduced."""
+        return self.headers.get("X-Studio-Actor", "local-user")
+
     def check_request_origin(self):
-        if not hasattr(self, "headers"):  # Unit-test handlers have no HTTP connection.
-            return
         host = self.headers.get("Host", "")
         if local_policy()["local_server"] and urlparse("http://" + host).hostname not in ("localhost", "127.0.0.1", "::1"):
             raise OwnershipError("로컬 서버 Host가 올바르지 않습니다.")
@@ -1461,183 +1502,47 @@ class StudioHandler(SimpleHTTPRequestHandler):
             result = {"saved": True}
         else:
             raise OwnershipError("지원하지 않는 소유권 요청입니다.")
-        self.send_json(200, result)
+        return self.json_response(200, result)
 
-    def log_message(self, format: str, *args: object) -> None:
-        print(f"[react-server] {format % args}")
-
-    def send_json(self, status: int, payload: object) -> None:
-        encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded)))
-        if getattr(self, "ownership_cookie", None):
-            self.send_header("Set-Cookie", self.ownership_cookie)
-            self.ownership_cookie = None
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(encoded)
-
-    def send_attachment(self, content: bytes, filename: str) -> None:
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "application/zip")
-        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
-        self.send_header("Content-Length", str(len(content)))
-        self.end_headers()
-        self.wfile.write(content)
-
-    def read_body(self) -> dict[str, object]:
-        length = int(self.headers.get("Content-Length", "0"))
-        try:
-            payload = json.loads(self.rfile.read(length).decode("utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ApiError("Invalid request JSON") from exc
-        if not isinstance(payload, dict):
-            raise ApiError("Request body must be a JSON object")
-        return payload
-
-    def read_upload(self) -> bytes:
-        length = int(self.headers.get("Content-Length", "0"))
-        if length <= 0 or length > MAX_UPLOAD_BYTES:
-            raise ApiError("Upload size must be between 1 byte and 25 MB")
-        return self.rfile.read(length)
-
-    def api_path(self) -> list[str]:
-        return [unquote(part) for part in urlparse(self.path).path.split("/") if part]
-
-    def query_value(self, name: str) -> str | None:
-        values = parse_qs(urlparse(self.path).query).get(name)
-        return values[0] if values else None
-
-    def actor_id(self) -> str:
-        """Identify the caller for revision and audit records until auth is added."""
-        return self.headers.get("X-Studio-Actor", "local-user")
-
-    def serve_example_api(self) -> bool:
+    def example_response(self):
         """Serve the optional deterministic API used by the bundled example tests."""
         parts = self.api_path()
         if not parts or parts[0] != "example-api":
             return False
         if not example_project_enabled():
-            self.send_json(HTTPStatus.NOT_FOUND, {"error": "Example API is disabled. Set EXAMPLE_PROJECT=true to enable it."})
-            return True
+            return self.json_response(HTTPStatus.NOT_FOUND, {"error": "Example API is disabled. Set EXAMPLE_PROJECT=true to enable it."})
 
         if self.command == "GET" and parts == ["example-api", "openapi.json"]:
-            self.send_json(200, example_openapi_document())
+            return self.json_response(200, example_openapi_document())
         elif self.command == "GET" and parts == ["example-api", "health"]:
-            self.send_json(200, {"status": "ok", "service": "example-api"})
+            return self.json_response(200, {"status": "ok", "service": "example-api"})
         elif self.command == "GET" and parts == ["example-api", "users", "1"]:
-            self.send_json(200, {"id": 1, "name": "Ada"})
+            return self.json_response(200, {"id": 1, "name": "Ada"})
         elif self.command == "GET" and parts == ["example-api", "secure-data"]:
             if self.headers.get("X-API-Key") != EXAMPLE_API_KEY:
-                self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "Invalid or missing API key"})
+                return self.json_response(HTTPStatus.UNAUTHORIZED, {"error": "Invalid or missing API key"})
             else:
-                self.send_json(200, {"authorized": True, "message": "API key accepted"})
+                return self.json_response(200, {"authorized": True, "message": "API key accepted"})
         elif self.command == "POST" and parts == ["example-api", "users"]:
             payload = self.read_body()
             name = payload.get("name")
             if not isinstance(name, str) or not name.strip():
                 raise ApiError("Example user name is required")
-            self.send_json(201, {"id": 1, "name": name})
+            return self.json_response(201, {"id": 1, "name": name})
         else:
-            self.send_json(HTTPStatus.NOT_FOUND, {"error": "Example API endpoint not found"})
-        return True
+            return self.json_response(HTTPStatus.NOT_FOUND, {"error": "Example API endpoint not found"})
 
-    def do_GET(self) -> None:  # noqa: N802
-        try:
-            self.check_request_origin()
-            if self.serve_example_api():
-                return
-            parts = self.api_path()
-            if dashboard_routes.handle_get(self, parts, sys.modules[__name__]):
-                return
-            store = collaboration_store()
-            if parts == ["api", "ownership"]:
-                self.ownership_session(create=True)
-                project = self.query_value("project")
-                stored = store.get("projects", project or "")
-                if not stored:
-                    raise OwnershipError("저장된 프로젝트를 선택하세요.")
-                self.send_json(200, OwnershipStore().status(project, stored.document))
-                return
-            if not document_routes.handle_get(self, parts, sys.modules[__name__]):
-                self.serve_frontend()
-        except (ApiError, OwnershipError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
-            self.send_json(400, {"error": str(exc)})
-
-    def do_PUT(self) -> None:  # noqa: N802
-        try:
-            self.check_request_origin()
-            parts = self.api_path()
-            if not document_routes.handle_put(self, parts, sys.modules[__name__]):
-                raise ApiError("Unknown save endpoint")
-        except RevisionConflictError as exc:
-            self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
-        except RevisionRequiredError as exc:
-            self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
-        except (ApiError, OwnershipError, CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
-            self.send_json(400, {"error": str(exc)})
-
-    def do_POST(self) -> None:  # noqa: N802
-        try:
-            self.check_request_origin()
-            if self.serve_example_api():
-                return
-            parts = self.api_path()
-            if parts[:2] == ["api", "ownership"]:
-                self.ownership_action(parts)
-                return
-            if len(parts) == 3 and parts[:2] == ["api", "uploads"]:
-                path = safe_attachment_file(CASE_ROOT, parts[2])
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(self.read_upload())
-                self.send_json(200, {"path": path.relative_to(CASE_ROOT).as_posix()})
-                return
-            if openapi_routes.handle_post(self, parts, sys.modules[__name__]):
-                return
-            if execution_routes.handle_post(self, parts, sys.modules[__name__]):
-                return
-            raise ApiError("Unknown run endpoint")
-        except subprocess.TimeoutExpired as exc:
-            message = "OpenAPI 클라이언트 생성 시간이 300초를 초과했습니다." if self.api_path() == ["api", "generate"] else "Test run timed out after 300 seconds"
-            payload = {"error": message}
-            if getattr(exc, "run_id", None):
-                payload["runId"] = exc.run_id
-            self.send_json(504, payload)
-        except RevisionConflictError as exc:
-            self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
-        except RevisionRequiredError as exc:
-            self.send_json(409, {"error": str(exc), "currentRevision": exc.current_revision})
-        except ApiError as exc:
-            self.send_json(getattr(exc, "status_code", 400), {"error": str(exc)})
-        except OwnershipError as exc:
-            self.send_json(403, {"error": str(exc), "code": "OWNERSHIP_POLICY_DENIED"})
-        except (CollaborationStoreError, OSError, json.JSONDecodeError) as exc:
-            self.send_json(400, {"error": str(exc)})
-
-    def do_DELETE(self) -> None:  # noqa: N802
-        try:
-            self.check_request_origin()
-            parts = self.api_path()
-            if not document_routes.handle_delete(self, parts, sys.modules[__name__]):
-                raise ApiError("Unknown delete endpoint")
-        except (ApiError, OwnershipError, CollaborationStoreError, OSError) as exc:
-            self.send_json(400, {"error": str(exc)})
-
-    def serve_frontend(self) -> None:
+    def frontend_response(self):
         if not WEB_DIST.exists():
-            self.send_json(HTTPStatus.NOT_FOUND, {"error": "React build not found. Run npm run build in web/."})
-            return
-        requested = urlparse(self.path).path.lstrip("/")
+            return self.json_response(404, {"error": "React build not found. Run npm run build in web/."})
+        requested = self.request.url.path.lstrip("/")
         path = (WEB_DIST / requested).resolve() if requested else WEB_DIST / "index.html"
         if WEB_DIST.resolve() not in path.parents or not path.is_file():
             path = WEB_DIST / "index.html"
-        content = path.read_bytes()
-        self.send_response(200)
-        self.send_header("Content-Type", mimetypes.guess_type(path.name)[0] or "application/octet-stream")
-        self.send_header("Content-Length", str(len(content)))
-        self.end_headers()
-        self.wfile.write(content)
+        return Response(path.read_bytes(), media_type=mimetypes.guess_type(path.name)[0] or "application/octet-stream")
+
+
+app = create_app(sys.modules[__name__])
 
 
 if __name__ == "__main__":
@@ -1646,6 +1551,4 @@ if __name__ == "__main__":
     if policy["local_server"] and host not in ("127.0.0.1", "::1", "localhost"):
         raise SystemExit("LOCAL_SERVER=true에서는 loopback 주소로만 실행할 수 있습니다.")
     port = int(os.environ.get("API_TEST_PORT", "8765"))
-    server = ThreadingHTTPServer((host, port), StudioHandler)
-    print(f"API Develop Studio server: http://{host}:{port}")
-    server.serve_forever()
+    uvicorn.run(app, host=host, port=port, workers=1, proxy_headers=False)

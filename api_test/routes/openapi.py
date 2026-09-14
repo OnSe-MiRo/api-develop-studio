@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 
-def handle_post(handler, parts: list[str], studio) -> bool:
+def handle_post(request, parts: list[str], studio):
     if parts == ["api", "docs"]:
-        body = handler.read_body()
+        body = request.read_body()
         document = body.get("document")
         bundle = body.get("bundle")
         url = body.get("url")
@@ -22,13 +22,12 @@ def handle_post(handler, parts: list[str], studio) -> bool:
             operations = studio.openapi_document_operations(document, for_case=for_case)
         else:
             operations = studio.load_openapi_document(url.strip(), no_proxy=no_proxy, for_case=for_case)
-        handler.send_json(200, {"operations": studio.normalize_openapi_value(operations)})
-        return True
+        return request.json_response(200, {"operations": studio.normalize_openapi_value(operations)})
 
     if len(parts) == 5 and parts[:2] == ["api", "projects"] and parts[3:] == ["openapi", "operations"]:
         studio.ensure_example_project_enabled(parts[2])
         studio.ensure_example_document_writable("projects", parts[2])
-        payload, expected_revision = studio.storage_request(handler.read_body())
+        payload, expected_revision = studio.storage_request(request.read_body())
         store = studio.collaboration_store()
         current = store.get("projects", parts[2])
         if current is None:
@@ -41,13 +40,12 @@ def handle_post(handler, parts: list[str], studio) -> bool:
         studio.validate_project_document(updated_project)
         stored = store.save(
             "projects", parts[2], updated_project, expected_revision=expected_revision,
-            actor_id=handler.actor_id(), action="author_openapi_operation",
+            actor_id=request.actor_id(), action="author_openapi_operation",
         )
-        handler.send_json(200, {"operation": operation, "_storage": stored.metadata()})
-        return True
+        return request.json_response(200, {"operation": operation, "_storage": stored.metadata()})
 
     if parts == ["api", "generate"]:
-        body = handler.read_body()
+        body = request.read_body()
         project_reference = body.get("project")
         language = body.get("language")
         if not isinstance(project_reference, str) or not project_reference:
@@ -65,6 +63,5 @@ def handle_post(handler, parts: list[str], studio) -> bool:
             document, language, project_name if isinstance(project_name, str) else project_reference,
             bundle if isinstance(bundle, dict) else None,
         )
-        handler.send_attachment(archive, filename)
-        return True
+        return request.attachment_response(archive, filename)
     return False
