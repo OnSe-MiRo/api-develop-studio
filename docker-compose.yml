@@ -2,11 +2,9 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: studio
-      POSTGRES_USER: studio
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    secrets:
-      - postgres_password
+      POSTGRES_DB: ${POSTGRES_DB:-studio}
+      POSTGRES_USER: ${POSTGRES_USER:-studio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -73,11 +71,9 @@ services:
       EXAMPLE_PROJECT: ${EXAMPLE_PROJECT:-true}
       API_TEST_ENCRYPTION_URL: http://encryption:8766
       STUDIO_DB_PATH: /app/data/studio.db
-      STUDIO_DATABASE_URL_FILE: /run/secrets/studio_database_url
+      STUDIO_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       STUDIO_REDIS_URL: redis://redis:6379/0
       STUDIO_ENV: ${STUDIO_ENV:-local}
-    secrets:
-      - studio_database_url
     ports:
       - "${API_PORT:-8765}:8765"
     volumes:
@@ -141,9 +137,3 @@ networks:
 
   storage_network:
     internal: true
-
-secrets:
-  postgres_password:
-    file: ${POSTGRES_PASSWORD_FILE:?Set path to PostgreSQL password secret outside the repository}
-  studio_database_url:
-    file: ${STUDIO_DATABASE_URL_FILE:?Set path to PostgreSQL connection URL secret outside the repository}

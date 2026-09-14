@@ -1,13 +1,17 @@
 {
+  "expected": {
+    "body": {
+      "error": "Invalid or missing API key"
+    },
+    "status": 401,
+    "strict": true
+  },
   "project": "example-api.json",
   "request": {
+    "auth": {
+      "type": "No Auth"
+    },
     "method": "GET",
-    "url": "/example-api/secure-data",
-    "auth": { "type": "No Auth" }
-  },
-  "expected": {
-    "status": 401,
-    "strict": true,
-    "body": { "error": "Invalid or missing API key" }
+    "url": "/example-api/secure-data"
   }
 }

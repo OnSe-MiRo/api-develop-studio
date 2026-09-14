@@ -43,7 +43,7 @@ docker compose exec api python -m api_test.repair_projections --root /app --all
 ## Docker 설정과 기존 SQLite 이관
 
 1. 기존 API와 CLI writer를 중지한다. SQLite DB뿐 아니라 기존 JSON, 업로드와 암호화 key를 백업한다.
-2. 저장소 밖의 비밀 파일에 PostgreSQL password와 `postgresql://studio:<password>@postgres:5432/studio`를 각각 제공한다. 비밀번호의 URL 예약 문자는 percent-encode한다. `.env`에는 내용 대신 `POSTGRES_PASSWORD_FILE`, `STUDIO_DATABASE_URL_FILE` 경로만 넣는다. production에서는 플랫폼 secret manager로 이 파일을 주입한다.
+2. `.env`에 `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`를 제공한다. Compose가 `postgresql://<user>:<password>@postgres:5432/<database>` 연결 URL을 API 컨테이너에 구성한다. URL 예약 문자는 피하거나 URL-encode한 비밀번호를 사용한다. production에서는 플랫폼 secret manager가 `POSTGRES_PASSWORD` 환경 변수를 주입한다.
 3. `docker compose up -d postgres redis encryption`으로 저장소를 먼저 시작하고 `docker compose build api`로 이미지를 준비한다. PostgreSQL·Redis에 host port를 열지 않는다.
 4. 기존 `data/studio.db`와 `data/ownership.db`를 같은 중지 시점 기준으로 준비한 뒤 다음 명령을 실행한다. ownership 파일이 없는 설치는 빈 ownership DB를 SQLite 호환 모드의 `OwnershipStore.db()`로 먼저 생성한다. 도구가 누락된 원본을 임의로 새 파일로 만들지는 않는다.
 
@@ -52,7 +52,7 @@ docker compose run --rm --no-deps api python -m api_test.migrate_postgres \
   --studio /app/data/studio.db --ownership /app/data/ownership.db
 ```
 
-이관 도구는 원본을 `mode=ro`로 열고 SQLite backup API로 메모리 snapshot을 만든다. schema 보정은 snapshot에만 적용한다. PostgreSQL schema 준비 후 모든 데이터 복사와 검증은 하나의 transaction이다. 테이블별 row 수와 전체 row digest, document ID·revision·hash·soft-delete를 비교하고 content hash를 다시 계산한다. 충돌/추가 row 또는 불일치가 있으면 데이터 전체를 rollback한다. 같은 snapshot을 그대로 재실행하면 같은 manifest가 나온다. API를 먼저 띄워 초기 데이터를 만든 대상과 기존 snapshot을 자동 병합하지 않는다. 이 경우 새 빈 대상 DB로 다시 이관한다.
+이관 도구는 원본을 `mode=ro`로 열고 SQLite backup API로 메모리 snapshot을 만든다. schema 보정은 snapshot에만 적용한다. PostgreSQL schema 준비 후 모든 데이터 복사와 검증은 하나의 transaction이다. 테이블별 row 수와 전체 row digest, document ID·revision·hash·soft-delete를 비교하고 content hash를 다시 계산한다. 충돌/추가 row 또는 불일치가 있으면 데이터 전체를 rollback한다. 같은 snapshot을 그대로 재실행하면 같은 manifest가 나온다. API를 먼저 띄워 생성된 빈 `default/local-user` bootstrap context만은 transaction 안에서 제거하고 snapshot으로 교체한다. 문서·실행·ownership·identity 또는 다른 context가 있으면 자동 병합하지 않고 중단한다.
 
 5. 출력 manifest를 검토하고 `docker compose up -d api web`을 실행한다. `/api/projects`, `/api/cases`, `/api/dashboard`와 대표 revision을 확인한다. 실패 시 writer를 계속 중지한 상태에서 기존 SQLite 설정으로 되돌릴 수 있다. PostgreSQL에서 신규 write를 시작한 뒤에는 자동 역이관을 제공하지 않는다.
 
