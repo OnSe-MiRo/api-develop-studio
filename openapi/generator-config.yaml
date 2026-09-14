@@ -1,0 +1,5 @@
+packageName: api_test.generated
+sourceFolder: .
+fastapiImplementationPackage: api_test.implementations
+hideGenerationTimestamp: true
+disallowAdditionalPropertiesIfNotPresent: true

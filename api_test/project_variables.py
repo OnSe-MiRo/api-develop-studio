@@ -191,7 +191,12 @@ def normalize_case_variables(payload: object, existing: object | None = None) ->
         if not isinstance(value, str) or not value:
             raise ProjectVariableError(f"Case secret variable {name} needs a non-empty value")
         secret[name] = encrypt_secret(value)
-    return {"secret": secret}
+    result = {"secret": secret}
+    if "plain" in payload:
+        result["plain"] = normalize_project_variables({"plain": payload["plain"]})["plain"]
+        if set(result["plain"]) & set(secret):
+            raise ProjectVariableError("Case variable names cannot be both plain and encrypted")
+    return result
 
 
 def case_variables_for_client(case: dict[str, Any]) -> dict[str, Any]:
@@ -206,6 +211,8 @@ def case_variables_for_client(case: dict[str, Any]) -> dict[str, Any]:
             if isinstance(name, str)
         } if isinstance(secret, dict) else {},
     }
+    if isinstance(variables, dict) and "plain" in variables:
+        result["variables"]["plain"] = dict(variables["plain"])
     return result
 
 

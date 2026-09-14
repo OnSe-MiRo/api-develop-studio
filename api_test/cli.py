@@ -227,7 +227,7 @@ def _run_case_with_project_settings(
     external_setup: bool = False,
 ) -> CaseResult:
     """Run a case with its project's shared request settings applied."""
-    project_settings = project_request_settings(case_document, project_root)
+    project_settings = project_request_settings(case_document, project_root, getattr(runner, "environment", None))
     if external_setup or not local_policy()["skip_verification"]:
         runner.request_guard = execution_guard(case_document.get("project"), project_root, external_setup)
     else:
@@ -238,6 +238,7 @@ def _run_case_with_project_settings(
         context=context,
         retry=retry,
         retry_interval_seconds=retry_interval_seconds,
+        auth_profiles=project_settings.auth_profiles if project_settings else None,
         base_url=project_settings.base_url if project_settings else None,
         proxy_url=project_settings.proxy_url if project_settings else None,
         verify_ssl=project_settings.verify_ssl if project_settings else True,
@@ -250,7 +251,7 @@ def _run_case_with_project_settings(
 
 
 def run_pipeline(
-    pipeline_path: Path, case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None,
+    pipeline_path: Path, case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None, environment: str | None = None,
 ) -> int:
     logger, log_path = create_run_logger(log_dir)
 
@@ -268,6 +269,7 @@ def run_pipeline(
     if not isinstance(defaults, dict):
         raise CaseConfigurationError("pipeline.defaults must be an object")
     runner = ApiTestRunner(timeout)
+    runner.environment = environment
     results: dict[str, CaseResult] = {}
     failures = 0
     test_started = False
@@ -330,7 +332,7 @@ def run_pipeline(
 
 
 def run_case_files(
-    case_references: list[str], case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None,
+    case_references: list[str], case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None, environment: str | None = None,
 ) -> int:
     """Run independent case files directly, without requiring a pipeline JSON file."""
     logger, log_path = create_run_logger(log_dir)
@@ -341,6 +343,7 @@ def run_case_files(
 
     logger.info("Direct case run started: case_count=%s case_root=%s timeout=%s", len(case_references), case_root, timeout)
     runner = ApiTestRunner(timeout)
+    runner.environment = environment
     results: dict[str, CaseResult] = {}
     steps: list[dict[str, str]] = []
     for index, case_reference in enumerate(case_references, start=1):
@@ -378,6 +381,7 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=10.0, help="HTTP timeout in seconds")
     parser.add_argument("--log-dir", type=Path, default=Path("logs"), help="Directory for per-run log files")
     parser.add_argument("--case", dest="case_references", nargs="+", help="Run one or more case files relative to --case-root")
+    parser.add_argument("--environment", help="Project environment to use for this run")
     args = parser.parse_args()
     if not args.case_references and not args.pipelines:
         args.pipelines = [path for path in sorted(Path("pipelines").rglob("*.json")) if not is_disabled_example_pipeline(path)]
@@ -388,14 +392,14 @@ def main() -> int:
     exit_code = 0
     for pipeline_path in args.pipelines:
         try:
-            exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root))
+            exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root, args.environment))
         except (CaseConfigurationError, OwnershipError) as exc:
             print(f"Configuration error in {pipeline_path}: {exc}")
             exit_code = 2
 
     if args.case_references:
         try:
-            exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root))
+            exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root, args.environment))
         except (CaseConfigurationError, OwnershipError) as exc:
             print(f"Configuration error in direct cases: {exc}")
             exit_code = 2

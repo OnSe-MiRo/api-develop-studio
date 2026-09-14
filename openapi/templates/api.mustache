@@ -1,0 +1,32 @@
+"""Generated from openapi/studio.yaml. Regenerate with scripts/generate_server.py."""
+from fastapi import APIRouter, Depends, Response
+from api_test.dependencies import request_context
+from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard
+{{#imports}}
+{{import}}
+{{/imports}}
+
+router = APIRouter()
+
+{{#operations}}
+{{#operation}}
+{{#vendorExtensions.x-studio-alias}}
+@router.{{#lambda.lowercase}}{{httpMethod}}{{/lambda.lowercase}}("{{{vendorExtensions.x-studio-route}}}/", include_in_schema=False)
+{{/vendorExtensions.x-studio-alias}}
+@router.{{#lambda.lowercase}}{{httpMethod}}{{/lambda.lowercase}}(
+    "{{{vendorExtensions.x-studio-route}}}",
+    operation_id="{{operationId}}",
+    tags=[{{#tags}}"{{name}}",{{/tags}}],
+    responses={
+        {{#responses}}{{^isDefault}}{{code}}: {"description": "{{message}}"{{#dataType}}, "model": {{dataType}}{{/dataType}}},{{/isDefault}}{{/responses}}
+    },
+)
+async def {{operationId}}(context=Depends(request_context)) -> Response:
+    return await context.call(
+        {{{vendorExtensions.x-studio-handler}}}, {{{vendorExtensions.x-studio-parts}}},
+        upload={{#vendorExtensions.x-studio-upload}}True{{/vendorExtensions.x-studio-upload}}{{^vendorExtensions.x-studio-upload}}False{{/vendorExtensions.x-studio-upload}},
+
+    )
+
+{{/operation}}
+{{/operations}}

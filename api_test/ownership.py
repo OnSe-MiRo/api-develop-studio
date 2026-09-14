@@ -55,7 +55,7 @@ def endpoint(url):
 
 
 def fingerprint(project):
-    urls = [project.get("base_url", "")] + [x.get("url", "") for x in project.get("base_urls", [])]
+    urls = [project.get("base_url", "")] + [x.get("url", "") for x in project.get("base_urls", [])] + [x.get("base_url", "") for x in project.get("environments", {}).values()]
     return hashlib.sha256(json.dumps(sorted({origin(x) for x in urls if x})).encode()).hexdigest()
 
 
@@ -135,7 +135,7 @@ class OwnershipStore:
 
     def issue(self, project, document, url, session):
         target = origin(url)
-        allowed = {origin(x) for x in [document.get("base_url", "")] + [x["url"] for x in document.get("base_urls", [])] if x}
+        allowed = {origin(x) for x in [document.get("base_url", "")] + [x["url"] for x in document.get("base_urls", [])] + [x.get("base_url", "") for x in document.get("environments", {}).values()] if x}
         if target not in allowed or not target.startswith("https://"):
             raise OwnershipError("저장된 프로젝트의 HTTPS Base URL을 선택하세요.")
         token, vid, now = secrets.token_urlsafe(32), secrets.token_urlsafe(18), time.time()

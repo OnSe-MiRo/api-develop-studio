@@ -42,4 +42,4 @@ COPY . ./
 EXPOSE 8765
 
 # The entry point enforces loopback policy and starts one Uvicorn worker.
-CMD ["python", "-m", "react_server"]
+CMD ["python", "-m", "api_test.main"]

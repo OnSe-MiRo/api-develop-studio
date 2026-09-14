@@ -775,7 +775,7 @@ class ReactServerDirectRequestTest(unittest.TestCase):
             "https://api.example.com/users", method="GET", headers={}, data=None,
             timeout_seconds=10.0, verify_ssl=True,
         )
-        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 200, 'elapsedMs': 45.2, 'headers': {'content-type': 'application/json'}, 'body': {'id': 1, 'name': 'Ada'}, 'rawBody': '{"id": 1, "name": "Ada"}'}))
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 200, 'elapsedMs': 45.2, 'sizeBytes': 24, 'headers': {'content-type': 'application/json'}, 'body': {'id': 1, 'name': 'Ada'}, 'rawBody': '{"id": 1, "name": "Ada"}'}))
 
     def test_direct_request_with_params_headers_auth_body(self) -> None:
         payload = {
@@ -804,7 +804,7 @@ class ReactServerDirectRequestTest(unittest.TestCase):
             timeout_seconds=10.0,
             verify_ssl=True,
         )
-        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 201, 'elapsedMs': 120.0, 'headers': {'content-type': 'application/json'}, 'body': {'created': True}, 'rawBody': '{"created": true}'}))
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 201, 'elapsedMs': 120.0, 'sizeBytes': 17, 'headers': {'content-type': 'application/json'}, 'body': {'created': True}, 'rawBody': '{"created": true}'}))
 
     def test_direct_request_uses_configured_proxy_or_bypasses_all_proxies(self) -> None:
         with self.subTest("configured proxy"):
@@ -843,7 +843,7 @@ class ReactServerDirectRequestTest(unittest.TestCase):
             mock_call.return_value = (404, {"content-type": "application/json"}, '{"error": "User not found"}', 30.5)
             request.send('POST')
 
-        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 404, 'elapsedMs': 30.5, 'headers': {'content-type': 'application/json'}, 'body': {'error': 'User not found'}, 'rawBody': '{"error": "User not found"}'}))
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 404, 'elapsedMs': 30.5, 'sizeBytes': 27, 'headers': {'content-type': 'application/json'}, 'body': {'error': 'User not found'}, 'rawBody': '{"error": "User not found"}'}))
 
     def test_direct_request_rejects_relative_url_and_template_variables(self) -> None:
         request = self.request_for({"method": "GET", "url": "/relative/path"})

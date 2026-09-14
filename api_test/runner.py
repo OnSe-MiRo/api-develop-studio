@@ -20,7 +20,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
-from .authorization import AuthorizationError, apply_authorization, authorization_sensitive_values
+from .request_profiles import select_environment, resolve_auth_profile
+from .authorization import AuthorizationError, apply_authorization, authorization_sensitive_values, sensitive_value_variants
 from .comparison import Difference, compare_json
 from .project_variables import (
     ProjectVariableError,
@@ -60,6 +61,7 @@ class ProjectRequestSettings:
     verify_ssl: bool = True
     variables: dict[str, str] = field(default_factory=dict)
     encrypted_variables: dict[str, str] = field(default_factory=dict)
+    auth_profiles: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -163,7 +165,7 @@ def encode_multipart_form_data(items: Any, file_root: Path | None) -> tuple[byte
     return b"".join(chunks), f"multipart/form-data; boundary={boundary}"
 
 
-def project_request_settings(case: dict[str, Any], project_root: Path) -> ProjectRequestSettings | None:
+def project_request_settings(case: dict[str, Any], project_root: Path, environment: str | None = None) -> ProjectRequestSettings | None:
     """Read a project's Base URL and optional transport settings."""
     project_reference = case.get("project")
     if project_reference is None:
@@ -171,8 +173,11 @@ def project_request_settings(case: dict[str, Any], project_root: Path) -> Projec
     if not isinstance(project_reference, str) or not project_reference:
         raise CaseConfigurationError("case.project must be a non-empty project JSON reference")
     project_path = resolve_case_path(project_root, project_reference)
-    project = read_json(project_path)
-    base_url_name = case.get("base_url_name")
+    try:
+        project = select_environment(read_json(project_path), environment)
+    except ProjectVariableError as exc:
+        raise CaseConfigurationError(str(exc)) from exc
+    base_url_name = None if environment or project.get("default_environment") else case.get("base_url_name")
     if base_url_name is not None and (not isinstance(base_url_name, str) or not base_url_name.strip()):
         raise CaseConfigurationError("case.base_url_name must be a non-empty string")
     base_url = project.get("base_url")
@@ -243,6 +248,7 @@ def project_request_settings(case: dict[str, Any], project_root: Path) -> Projec
         raise CaseConfigurationError(str(exc)) from exc
     no_proxy = not use_proxy
     return ProjectRequestSettings(
+        auth_profiles=project.get("auth_profiles", {}),
         base_url=urlunparse(parsed._replace(path=parsed.path.rstrip("/"))),
         proxy_url=None if no_proxy else legacy_proxy.strip() if isinstance(legacy_proxy, str) and legacy_proxy.strip() else None,
         proxy_urls={} if no_proxy else normalized_proxies,
@@ -786,6 +792,7 @@ class ApiTestRunner:
         no_proxy: bool = False,
         project_variables: dict[str, str] | None = None,
         encrypted_project_variables: dict[str, str] | None = None,
+        auth_profiles: dict[str, Any] | None = None,
     ) -> CaseResult:
         request_definition = case.get("request")
         expected = case.get("expected")
@@ -806,10 +813,18 @@ class ApiTestRunner:
 
         resolved_request = resolve_references(copy.deepcopy(request_definition), context or {})
         try:
+            resolved_request = resolve_auth_profile(resolved_request, auth_profiles or {})
+            case_plain, case_secret = stored_project_variables(case, case_id)
+            plain = {**(project_variables or {}), **case_plain}
+            encrypted = {**(encrypted_project_variables or {}), **case_secret}
+            for name in case_plain:
+                encrypted.pop(name, None)
+            for name in case_secret:
+                plain.pop(name, None)
             resolved_request, sensitive_values = resolve_project_references(
                 resolved_request,
-                project_variables or {},
-                encrypted_project_variables or {},
+                plain,
+                encrypted,
             )
             resolved_request, case_sensitive_values = resolve_case_references(
                 resolved_request,
@@ -848,6 +863,11 @@ class ApiTestRunner:
         if form_data is not None:
             data, content_type = encode_multipart_form_data(form_data, file_root)
             headers["Content-Type"] = content_type
+        elif "text" in request_definition:
+            if not isinstance(request_definition["text"], str):
+                raise CaseConfigurationError("request.text must be a string")
+            data = request_definition["text"].encode("utf-8")
+            headers.setdefault("Content-Type", "text/plain")
         elif payload is not None:
             data = json.dumps(payload).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
@@ -859,7 +879,7 @@ class ApiTestRunner:
                 case_id, "error", attempt, error=str(exc), request_definition=request_definition,
                 expected_definition=expected, sensitive_values=set(sensitive_values or ()) | authorization_sensitive_values(auth),
             )
-        sensitive_values = set(sensitive_values or ()) | authorization_sensitive_values(auth)
+        sensitive_values = sensitive_value_variants(set(sensitive_values or ())) | authorization_sensitive_values(auth)
         request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
         started_at = time.perf_counter()
         transport_options = {}
