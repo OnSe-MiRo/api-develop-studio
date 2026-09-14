@@ -1,4 +1,5 @@
 from __future__ import annotations
+from http_client import HttpRequest
 
 import json
 import tempfile
@@ -7,7 +8,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from api_test.collaboration_store import CollaborationStore, RevisionConflictError, RevisionRequiredError
-from react_server import StudioHandler, storage_request
+from react_server import storage_request
 
 
 class CollaborationStoreTest(unittest.TestCase):
@@ -154,24 +155,23 @@ class CollaborationStoreTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             store = self.store(Path(directory))
 
-            def handler_for(payload: dict[str, object]) -> tuple[StudioHandler, Mock]:
-                handler = object.__new__(StudioHandler)
-                handler.api_path = Mock(return_value=["api", "projects", "member.json"])
-                handler.read_body = Mock(return_value=payload)
-                handler.headers = {"X-Studio-Actor": "alice"}
-                handler.send_json = Mock()
-                return handler, handler.send_json
+            def request_for(payload: dict[str, object]) -> HttpRequest:
+                request = HttpRequest()
+                request.path = "/" + "/".join(['api', 'projects', 'member.json'])
+                request.payload = payload
+                request.headers = {"X-Studio-Actor": "alice"}
+                return request
 
-            first_handler, first_response = handler_for(
+            first_handler = request_for(
                 {"name": "Member", "base_url": "https://one.test", "advanced": {"verify": True}}
             )
             with patch("react_server.collaboration_store", return_value=store):
-                first_handler.do_PUT()
-            first_payload = first_response.call_args.args[1]
-            self.assertEqual(first_response.call_args.args[0], 200)
+                first_handler.send('PUT')
+            first_payload = first_handler.response.json()
+            self.assertEqual(first_handler.response.status_code, 200)
             self.assertEqual(first_payload["_storage"]["revision"], 1)
 
-            update_handler, update_response = handler_for(
+            update_handler = request_for(
                 {
                     "name": "Member",
                     "base_url": "https://two.test",
@@ -180,10 +180,10 @@ class CollaborationStoreTest(unittest.TestCase):
                 }
             )
             with patch("react_server.collaboration_store", return_value=store):
-                update_handler.do_PUT()
-            self.assertEqual(update_response.call_args.args[1]["_storage"]["revision"], 2)
+                update_handler.send('PUT')
+            self.assertEqual(update_handler.response.json()["_storage"]["revision"], 2)
 
-            stale_handler, stale_response = handler_for(
+            stale_handler = request_for(
                 {
                     "name": "Member",
                     "base_url": "https://stale.test",
@@ -192,9 +192,9 @@ class CollaborationStoreTest(unittest.TestCase):
                 }
             )
             with patch("react_server.collaboration_store", return_value=store):
-                stale_handler.do_PUT()
-            self.assertEqual(stale_response.call_args.args[0], 409)
-            self.assertEqual(stale_response.call_args.args[1]["currentRevision"], 2)
+                stale_handler.send('PUT')
+            self.assertEqual(stale_handler.response.status_code, 409)
+            self.assertEqual(stale_handler.response.json()["currentRevision"], 2)
             self.assertEqual(store.get("projects", "member.json").document["base_url"], "https://two.test")
 
 

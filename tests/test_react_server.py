@@ -16,10 +16,10 @@ import yaml
 
 from api_test.collaboration_store import CollaborationStore
 from api_test.project_variables import case_variables_for_client, decrypt_secret, project_variables_for_client
+from http_client import HttpRequest
 from react_server import (
     EXAMPLE_API_KEY,
     EXAMPLE_PROJECT_REFERENCE,
-    StudioHandler,
     case_summaries,
     ensure_example_project_security_key,
     ensure_example_document_writable,
@@ -64,13 +64,11 @@ class ReactServerRunTest(unittest.TestCase):
             with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "expected.max_response_time_ms"):
                 normalize_case_document({"expected": {"status": 200, "max_response_time_ms": limit}})
 
-    def handler_for(self, payload: dict[str, object]) -> tuple[StudioHandler, Mock]:
-        handler = object.__new__(StudioHandler)
-        handler.api_path = Mock(return_value=["api", "run"])
-        handler.read_body = Mock(return_value=payload)
-        send_json = Mock()
-        handler.send_json = send_json
-        return handler, send_json
+    def request_for(self, payload: dict[str, object]) -> HttpRequest:
+        request = HttpRequest()
+        request.path = "/" + "/".join(['api', 'run'])
+        request.payload = payload
+        return request
 
     def test_runs_inline_case_from_temporary_file(self) -> None:
         payload = {
@@ -86,7 +84,7 @@ class ReactServerRunTest(unittest.TestCase):
                 "_expectedBodyRaw": '{"score": 9.0}',
             },
         }
-        handler, send_json = self.handler_for(payload)
+        request = self.request_for(payload)
         temporary_path: Path | None = None
 
         def execute(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -104,11 +102,11 @@ class ReactServerRunTest(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, "inline case passed", "")
 
         with patch("react_server.subprocess.run", side_effect=execute):
-            handler.do_POST()
+            request.send('POST')
 
         self.assertIsNotNone(temporary_path)
         self.assertFalse(temporary_path.exists())
-        response = send_json.call_args.args[1]
+        response = request.response.json()
         self.assertEqual(response["exitCode"], 0)
         self.assertEqual(response["output"], "inline case passed")
         uuid.UUID(response["runId"])
@@ -118,7 +116,7 @@ class ReactServerRunTest(unittest.TestCase):
             "defaults": {"retry": 1, "retry_interval_seconds": 0.2},
             "steps": [{"name": "users", "case": "sample/users/get.json"}],
         }
-        handler, send_json = self.handler_for({"inlinePipeline": pipeline})
+        request = self.request_for({"inlinePipeline": pipeline})
         temporary_path: Path | None = None
 
         def execute(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -128,11 +126,11 @@ class ReactServerRunTest(unittest.TestCase):
             return subprocess.CompletedProcess(command, 1, "inline pipeline failed", "")
 
         with patch("react_server.subprocess.run", side_effect=execute):
-            handler.do_POST()
+            request.send('POST')
 
         self.assertIsNotNone(temporary_path)
         self.assertFalse(temporary_path.exists())
-        response = send_json.call_args.args[1]
+        response = request.response.json()
         self.assertEqual(response["exitCode"], 1)
         self.assertEqual(response["output"], "inline pipeline failed")
         uuid.UUID(response["runId"])
@@ -174,16 +172,15 @@ class ReactServerRunTest(unittest.TestCase):
         ensure_example_document_writable("cases", "member/users/get.json", {"project": "member.json"})
 
     def test_example_project_put_is_rejected_before_storage(self) -> None:
-        handler = object.__new__(StudioHandler)
-        handler.api_path = Mock(return_value=["api", "projects", EXAMPLE_PROJECT_REFERENCE])
-        handler.read_body = Mock(return_value={"name": "Changed", "base_url": "https://changed.test"})
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.path = "/" + "/".join(['api', 'projects', EXAMPLE_PROJECT_REFERENCE])
+        request.payload = {'name': 'Changed', 'base_url': 'https://changed.test'}
         store = Mock()
 
         with patch("react_server.collaboration_store", return_value=store):
-            handler.do_PUT()
+            request.send('PUT')
 
-        handler.send_json.assert_called_once_with(400, {"error": "내장 Example 프로젝트와 예제 파일은 변경할 수 없습니다."})
+        self.assertEqual((request.response.status_code, request.response.json()), (400, {'error': '내장 Example 프로젝트와 예제 파일은 변경할 수 없습니다.'}))
         store.save.assert_not_called()
 
     def test_project_summaries_return_name_and_base_url_only(self) -> None:
@@ -200,52 +197,48 @@ class ReactServerRunTest(unittest.TestCase):
             })
 
     def test_example_api_returns_404_when_disabled(self) -> None:
-        handler = object.__new__(StudioHandler)
-        handler.command = "GET"
-        handler.api_path = Mock(return_value=["example-api", "health"])
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.command = "GET"
+        request.path = "/" + "/".join(['example-api', 'health'])
 
         with patch.dict(os.environ, {"EXAMPLE_PROJECT": "false"}, clear=False):
-            self.assertTrue(handler.serve_example_api())
+            self.assertTrue(request.send())
 
-        handler.send_json.assert_called_once_with(404, {"error": "Example API is disabled. Set EXAMPLE_PROJECT=true to enable it."})
+        self.assertEqual((request.response.status_code, request.response.json()), (404, {'error': 'Example API is disabled. Set EXAMPLE_PROJECT=true to enable it.'}))
 
     def test_example_api_serves_user_when_enabled(self) -> None:
-        handler = object.__new__(StudioHandler)
-        handler.command = "GET"
-        handler.api_path = Mock(return_value=["example-api", "users", "1"])
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.command = "GET"
+        request.path = "/" + "/".join(['example-api', 'users', '1'])
 
         with patch.dict(os.environ, {"EXAMPLE_PROJECT": "true"}, clear=False):
-            self.assertTrue(handler.serve_example_api())
+            self.assertTrue(request.send())
 
-        handler.send_json.assert_called_once_with(200, {"id": 1, "name": "Ada"})
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'id': 1, 'name': 'Ada'}))
 
     def test_example_api_accepts_demo_api_key(self) -> None:
-        handler = object.__new__(StudioHandler)
-        handler.command = "GET"
-        handler.headers = {"X-API-Key": EXAMPLE_API_KEY}
-        handler.api_path = Mock(return_value=["example-api", "secure-data"])
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.command = "GET"
+        request.headers = {"X-API-Key": EXAMPLE_API_KEY}
+        request.path = "/" + "/".join(['example-api', 'secure-data'])
 
         with patch.dict(os.environ, {"EXAMPLE_PROJECT": "true"}, clear=False):
-            self.assertTrue(handler.serve_example_api())
+            self.assertTrue(request.send())
 
-        handler.send_json.assert_called_once_with(200, {"authorized": True, "message": "API key accepted"})
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'authorized': True, 'message': 'API key accepted'}))
 
     def test_example_api_rejects_missing_or_wrong_api_key(self) -> None:
         for headers in ({}, {"X-API-Key": "wrong-api-key"}):
             with self.subTest(headers=headers):
-                handler = object.__new__(StudioHandler)
-                handler.command = "GET"
-                handler.headers = headers
-                handler.api_path = Mock(return_value=["example-api", "secure-data"])
-                handler.send_json = Mock()
+                request = HttpRequest()
+                request.command = "GET"
+                request.headers = headers
+                request.path = "/" + "/".join(['example-api', 'secure-data'])
 
                 with patch.dict(os.environ, {"EXAMPLE_PROJECT": "true"}, clear=False):
-                    self.assertTrue(handler.serve_example_api())
+                    self.assertTrue(request.send())
 
-                handler.send_json.assert_called_once_with(401, {"error": "Invalid or missing API key"})
+                self.assertEqual((request.response.status_code, request.response.json()), (401, {'error': 'Invalid or missing API key'}))
 
     def test_example_openapi_documents_api_key_security(self) -> None:
         document = example_openapi_document()
@@ -356,30 +349,23 @@ paths:
         json.dumps(operation)
 
     def test_docs_endpoint_accepts_uploaded_json_document(self) -> None:
-        handler = object.__new__(StudioHandler)
-        handler.api_path = Mock(return_value=["api", "docs"])
-        handler.read_body = Mock(return_value={
-            "document": {
-                "openapi": "3.0.3",
-                "paths": {"/health": {"get": {"responses": {"200": {"description": "OK"}}}}},
-            },
-        })
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.path = "/" + "/".join(['api', 'docs'])
+        request.payload = {'document': {'openapi': '3.0.3', 'paths': {'/health': {'get': {'responses': {'200': {'description': 'OK'}}}}}}}
 
-        handler.do_POST()
+        request.send('POST')
 
-        response = handler.send_json.call_args.args
+        response = (request.response.status_code, request.response.json())
         self.assertEqual(response[0], 200)
         self.assertEqual(response[1]["operations"][0]["id"], "GET /health")
 
     def test_docs_endpoint_can_bypass_proxies(self) -> None:
-        handler = object.__new__(StudioHandler)
-        handler.api_path = Mock(return_value=["api", "docs"])
-        handler.read_body = Mock(return_value={"url": "https://api.example.test/openapi.json", "no_proxy": True, "for_case": True})
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.path = "/" + "/".join(['api', 'docs'])
+        request.payload = {'url': 'https://api.example.test/openapi.json', 'no_proxy': True, 'for_case': True}
 
         with patch("react_server.load_openapi_document", return_value=[]) as load_document:
-            handler.do_POST()
+            request.send('POST')
 
         load_document.assert_called_once_with("https://api.example.test/openapi.json", no_proxy=True, for_case=True)
 
@@ -388,14 +374,13 @@ paths:
             "method": "GET", "path": "/members", "operation_id": "listMembers",
             "response_status": 200, "response_description": "OK", "error_statuses": [400],
         })
-        handler = object.__new__(StudioHandler)
-        handler.api_path = Mock(return_value=["api", "docs"])
-        handler.read_body = Mock(return_value={"bundle": split_openapi_bundle(document)})
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.path = "/" + "/".join(['api', 'docs'])
+        request.payload = {'bundle': split_openapi_bundle(document)}
 
-        handler.do_POST()
+        request.send('POST')
 
-        response = handler.send_json.call_args.args
+        response = (request.response.status_code, request.response.json())
         self.assertEqual(response[0], 200)
         self.assertEqual(response[1]["operations"][0]["responses"][1]["status"], 400)
 
@@ -421,15 +406,10 @@ paths:
         self.assertEqual(case_value, "2026-08-31T12:34:56")
 
     def test_openapi_authoring_endpoint_saves_a_project_revision(self) -> None:
-        handler = object.__new__(StudioHandler)
-        handler.api_path = Mock(return_value=["api", "projects", "member.json", "openapi", "operations"])
-        handler.read_body = Mock(return_value={
-            "method": "GET", "path": "/members", "operation_id": "listMembers",
-            "summary": "회원 목록", "response_status": 200, "response_description": "OK",
-            "_storage": {"revision": 3},
-        })
-        handler.actor_id = Mock(return_value="author")
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.path = "/" + "/".join(['api', 'projects', 'member.json', 'openapi', 'operations'])
+        request.payload = {'method': 'GET', 'path': '/members', 'operation_id': 'listMembers', 'summary': '회원 목록', 'response_status': 200, 'response_description': 'OK', '_storage': {'revision': 3}}
+        request.headers["X-Studio-Actor"] = 'author'
         current = Mock(document={
             "name": "Member API", "base_url": "https://api.example.test", "docs_url": "",
             "docs_file": {"name": "openapi.json", "document": {
@@ -444,7 +424,7 @@ paths:
         store.save.return_value = saved
 
         with patch("react_server.collaboration_store", return_value=store):
-            handler.do_POST()
+            request.send('POST')
 
         saved_project = store.save.call_args.args[2]
         self.assertEqual(store.save.call_args.kwargs["expected_revision"], 3)
@@ -453,10 +433,7 @@ paths:
         self.assertNotIn("docs_file", saved_project)
         resolved = resolve_openapi_bundle(saved_project["docs_bundle"])
         self.assertEqual(resolved["paths"]["/members"]["get"]["operationId"], "listMembers")
-        handler.send_json.assert_called_once_with(200, {
-            "operation": resolved["paths"]["/members"]["get"],
-            "_storage": {"revision": 4},
-        })
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'operation': resolved['paths']['/members']['get'], '_storage': {'revision': 4}}))
 
     def test_openapi_url_errors_include_http_cause(self) -> None:
         from urllib.error import HTTPError
@@ -777,36 +754,28 @@ class ReactServerDirectRequestTest(unittest.TestCase):
     def setUp(self):
         self.enterContext(patch.dict(os.environ, {"LOCAL_SERVER": "true", "SKIP_OWNERSHIP_VERIFICATION": "true"}))
 
-    def handler_for(self, payload: dict[str, object]) -> tuple[StudioHandler, Mock]:
-        handler = object.__new__(StudioHandler)
-        handler.api_path = Mock(return_value=["api", "request"])
-        handler.read_body = Mock(return_value=payload)
-        send_json = Mock()
-        handler.send_json = send_json
-        return handler, send_json
+    def request_for(self, payload: dict[str, object]) -> HttpRequest:
+        request = HttpRequest()
+        request.path = "/" + "/".join(['api', 'request'])
+        request.payload = payload
+        return request
 
     def test_direct_request_success_with_json_response(self) -> None:
         payload = {
             "method": "GET",
             "url": "https://api.example.com/users",
         }
-        handler, send_json = self.handler_for(payload)
+        request = self.request_for(payload)
 
         with patch("react_server.execute_http_call") as mock_call:
             mock_call.return_value = (200, {"content-type": "application/json"}, '{"id": 1, "name": "Ada"}', 45.2)
-            handler.do_POST()
+            request.send('POST')
 
         mock_call.assert_called_once_with(
             "https://api.example.com/users", method="GET", headers={}, data=None,
             timeout_seconds=10.0, verify_ssl=True,
         )
-        send_json.assert_called_once_with(200, {
-            "status": 200,
-            "elapsedMs": 45.2,
-            "headers": {"content-type": "application/json"},
-            "body": {"id": 1, "name": "Ada"},
-            "rawBody": '{"id": 1, "name": "Ada"}',
-        })
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 200, 'elapsedMs': 45.2, 'headers': {'content-type': 'application/json'}, 'body': {'id': 1, 'name': 'Ada'}, 'rawBody': '{"id": 1, "name": "Ada"}'}))
 
     def test_direct_request_with_params_headers_auth_body(self) -> None:
         payload = {
@@ -817,11 +786,11 @@ class ReactServerDirectRequestTest(unittest.TestCase):
             "auth": {"type": "Bearer Token", "token": "secret-token-xyz"},
             "body": '{"title": "Item"}',
         }
-        handler, send_json = self.handler_for(payload)
+        request = self.request_for(payload)
 
         with patch("react_server.execute_http_call") as mock_call:
             mock_call.return_value = (201, {"content-type": "application/json"}, '{"created": true}', 120.0)
-            handler.do_POST()
+            request.send('POST')
 
         mock_call.assert_called_once_with(
             "https://api.example.com/items?tag=test",
@@ -835,87 +804,75 @@ class ReactServerDirectRequestTest(unittest.TestCase):
             timeout_seconds=10.0,
             verify_ssl=True,
         )
-        send_json.assert_called_once_with(200, {
-            "status": 201,
-            "elapsedMs": 120.0,
-            "headers": {"content-type": "application/json"},
-            "body": {"created": True},
-            "rawBody": '{"created": true}',
-        })
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 201, 'elapsedMs': 120.0, 'headers': {'content-type': 'application/json'}, 'body': {'created': True}, 'rawBody': '{"created": true}'}))
 
     def test_direct_request_uses_configured_proxy_or_bypasses_all_proxies(self) -> None:
         with self.subTest("configured proxy"):
-            handler, _send_json = self.handler_for({
+            request = self.request_for({
                 "method": "GET", "url": "https://api.example.com/users", "proxy_url": "http://proxy.example.com:8080",
             })
             with patch("react_server.execute_http_call", return_value=(200, {}, "{}", 1.0)) as mock_call:
-                handler.do_POST()
+                request.send('POST')
             self.assertEqual(mock_call.call_args.kwargs["proxy_url"], "http://proxy.example.com:8080")
 
         with self.subTest("no proxy"):
-            handler, _send_json = self.handler_for({
+            request = self.request_for({
                 "method": "GET", "url": "https://api.example.com/users", "no_proxy": True,
             })
             with patch("react_server.execute_http_call", return_value=(200, {}, "{}", 1.0)) as mock_call:
-                handler.do_POST()
+                request.send('POST')
             self.assertTrue(mock_call.call_args.kwargs["no_proxy"])
 
     def test_direct_request_rejects_invalid_proxy_url(self) -> None:
-        handler, send_json = self.handler_for({
+        request = self.request_for({
             "method": "GET", "url": "https://api.example.com/users", "proxy_url": "socks5://proxy.example.com:1080",
         })
-        handler.do_POST()
-        send_json.assert_called_once()
-        self.assertEqual(send_json.call_args[0][0], 400)
-        self.assertIn("Proxy URL", send_json.call_args[0][1]["error"])
+        request.send('POST')
+        self.assertIsNotNone(request.response)
+        self.assertEqual(request.response.status_code, 400)
+        self.assertIn("Proxy URL", request.response.json()["error"])
 
     def test_direct_request_preserves_4xx_5xx_status_and_body(self) -> None:
         payload = {
             "method": "GET",
             "url": "https://api.example.com/not-found",
         }
-        handler, send_json = self.handler_for(payload)
+        request = self.request_for(payload)
 
         with patch("react_server.execute_http_call") as mock_call:
             mock_call.return_value = (404, {"content-type": "application/json"}, '{"error": "User not found"}', 30.5)
-            handler.do_POST()
+            request.send('POST')
 
-        send_json.assert_called_once_with(200, {
-            "status": 404,
-            "elapsedMs": 30.5,
-            "headers": {"content-type": "application/json"},
-            "body": {"error": "User not found"},
-            "rawBody": '{"error": "User not found"}',
-        })
+        self.assertEqual((request.response.status_code, request.response.json()), (200, {'status': 404, 'elapsedMs': 30.5, 'headers': {'content-type': 'application/json'}, 'body': {'error': 'User not found'}, 'rawBody': '{"error": "User not found"}'}))
 
     def test_direct_request_rejects_relative_url_and_template_variables(self) -> None:
-        handler, send_json = self.handler_for({"method": "GET", "url": "/relative/path"})
-        handler.do_POST()
-        send_json.assert_called_once()
-        self.assertEqual(send_json.call_args[0][0], 400)
-        self.assertIn("절대 URL", send_json.call_args[0][1]["error"])
+        request = self.request_for({"method": "GET", "url": "/relative/path"})
+        request.send('POST')
+        self.assertIsNotNone(request.response)
+        self.assertEqual(request.response.status_code, 400)
+        self.assertIn("절대 URL", request.response.json()["error"])
 
-        handler2, send_json2 = self.handler_for({"method": "GET", "url": "https://api.test/{{project.id}}"})
-        handler2.do_POST()
-        send_json2.assert_called_once()
-        self.assertEqual(send_json2.call_args[0][0], 400)
-        self.assertIn("프로젝트 변수 참조식", send_json2.call_args[0][1]["error"])
+        handler2 = self.request_for({"method": "GET", "url": "https://api.test/{{project.id}}"})
+        handler2.send('POST')
+        self.assertIsNotNone(handler2.response)
+        self.assertEqual(handler2.response.status_code, 400)
+        self.assertIn("프로젝트 변수 참조식", handler2.response.json()["error"])
 
     def test_direct_request_rejects_malformed_header_lines(self) -> None:
         for headers in ("BrokenHeader", ": value"):
             with self.subTest(headers=headers):
-                handler, send_json = self.handler_for({
+                request = self.request_for({
                     "method": "GET",
                     "url": "https://api.example.com/users",
                     "headers": headers,
                 })
 
                 with patch("react_server.execute_http_call") as mock_call:
-                    handler.do_POST()
+                    request.send('POST')
 
                 mock_call.assert_not_called()
-                send_json.assert_called_once()
-                status_code, response_payload = send_json.call_args[0]
+                self.assertIsNotNone(request.response)
+                status_code, response_payload = (request.response.status_code, request.response.json())
                 self.assertEqual(status_code, 400)
                 self.assertIn("Headers 1번째 줄", response_payload["error"])
 
@@ -926,15 +883,15 @@ class ReactServerDirectRequestTest(unittest.TestCase):
             "url": "https://unreachable.test/data",
             "auth": {"type": "Bearer Token", "token": token},
         }
-        handler, send_json = self.handler_for(payload)
+        request = self.request_for(payload)
 
         with patch("react_server.execute_http_call") as mock_call:
             import urllib.error
             mock_call.side_effect = urllib.error.URLError(f"Connection refused with token {token}")
-            handler.do_POST()
+            request.send('POST')
 
-        send_json.assert_called_once()
-        status_code, response_payload = send_json.call_args[0]
+        self.assertIsNotNone(request.response)
+        status_code, response_payload = (request.response.status_code, request.response.json())
         self.assertEqual(status_code, 502)
         self.assertNotIn(token, response_payload["error"])
         self.assertIn("연결할 수 없습니다", response_payload["error"])

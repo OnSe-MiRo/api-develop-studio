@@ -9,3 +9,10 @@ cryptography>=43,<50
 
 # NTLM authentication support for API requests.
 requests-ntlm>=1.2,<2
+
+# ASGI API server (single worker while SQLite/subprocess execution is in use).
+fastapi==0.137.0
+uvicorn==0.49.0
+
+# FastAPI HTTP contract tests.
+httpx==0.28.1

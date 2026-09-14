@@ -6,14 +6,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 
-def handle_post(handler, parts: list[str], studio) -> bool:
+def handle_post(request, parts: list[str], studio):
     if parts == ["api", "request"]:
-        handler.send_json(200, studio.handle_api_request(handler.read_body()))
-        return True
+        return request.json_response(200, studio.handle_api_request(request.read_body()))
     if parts != ["api", "run"]:
         return False
 
-    body = handler.read_body()
+    body = request.read_body()
     pipelines = body.get("pipelines", [])
     cases = body.get("cases", [])
     inline_case = body.get("inlineCase")
@@ -53,5 +52,4 @@ def handle_post(handler, parts: list[str], studio) -> bool:
             if cases:
                 command.extend(["--case", *cases])
         response = studio.execute_studio_run(command, body)
-    handler.send_json(200, response)
-    return True
+    return request.json_response(200, response)

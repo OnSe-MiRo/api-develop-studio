@@ -1,1 +1,1 @@
-"""HTTP route groups used by the legacy Studio HTTP handler."""
+"""Business route groups called by the FastAPI application."""

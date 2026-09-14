@@ -33,11 +33,11 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-12
-- 현재 단계: FND-2 완료
+- 최종 갱신일: 2026-09-14
+- 현재 단계: FND-3 완료
 - 전체 상태: 진행
-- 반영 브랜치: `feature/fnd-2-testing-migrations` (커밋 `ce5e614`, 원격 푸시 완료; 병합 없음)
-- 다음 작업: FND-3 기존 HTTP 계약 matrix 작성 및 FastAPI `TestClient` 전환 착수
+- 반영 브랜치: FND-2는 `develop`에 `df3ca9a`로 로컬 병합. FND-3는 `feature/fnd-3-fastapi`에 로컬 구현, 커밋·병합·푸시 없음.
+- 다음 작업: FND-4 PostgreSQL 저장소·Redis 캐시 설계 및 구현
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -47,7 +47,7 @@
 | --- | --- | --- | --- | --- |
 | FND-1 | 빠른 호출·실행 대시보드 branch 안전 통합 | P0 | 완료 | 빠른 호출과 실행 대시보드 최신 `develop` 통합 |
 | FND-2 | frontend test·DB migration·모듈 분리 기반 | P0 | 완료 | Python 150개·frontend 8개·실제 HTTP 검증 통과 |
-| FND-3 | FastAPI 백엔드 전환 | P0 | 대기 | 기존 HTTP 계약 matrix와 `TestClient` 전환 범위 확정 |
+| FND-3 | FastAPI 백엔드 전환 | P0 | 완료 | Python 166개·frontend 8개·build·실제 HTTP/React·Docker healthcheck·SDK ZIP 통과 |
 | FND-4 | PostgreSQL 영구 저장소·Redis 캐시 | P0 | 대기 | SQLite 이관, 사용자·workspace 저장 계약, cache 대상과 장애 fallback 확정 |
 | API-1 | 빠른 API 호출 | P0 | 대기 | 공통 request model |
 | API-2 | 환경 프로필 | P0 | 대기 | 기존 `base_url` 호환 방식 |
@@ -73,12 +73,12 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 ## 현재 작업
 
-- 작업 ID: FND-2
-- 목표: 기존 HTTP·URL 계약을 유지하며 route와 React shell을 분리하고 versioned SQLite migration 및 frontend 회귀 테스트 기반을 추가
-- 변경 파일: DB migration runner와 관련 저장소, `react_server.py` route 모듈, React shell·상태 컴포넌트, frontend/Python 테스트, 이 진행 기록
-- 시작 시각: 2026-09-12 KST
-- 상태: 완료 — `feature/fnd-2-testing-migrations`에서 구현·검증·커밋·원격 푸시 완료, 병합 없음
-- 확인이 필요한 사항: FND-3에서 현재 method·path·status·body·cookie·attachment·SPA fallback 계약을 `TestClient` matrix로 고정
+- 작업 ID: FND-3
+- 목표: React/CLI HTTP 계약을 유지하며 FastAPI와 Uvicorn 단일 worker로 전환
+- 변경 파일: `react_server.py`, `api_test/asgi.py`, route 모듈, requirements, Docker entry point, TestClient 테스트, README와 HTTP 계약/진행 문서
+- 시작 시각: 2026-09-14 KST
+- 상태: 완료 — `feature/fnd-3-fastapi` 로컬 구현·검증. FND-3 커밋·병합·원격 푸시는 수행하지 않음.
+- 계약 및 검증 범위: [FND-3 HTTP 계약](fnd-3-http-contract.md)
 
 ## 검증 기록
 
@@ -194,3 +194,13 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 충돌 해결: route 분리와 Example 공개 fixture 표시·읽기 전용 차단을 함께 보존.
 - 검증: Python 152개, frontend 8개, Vite build, diff check와 충돌 마커 검사 통과.
 - 다음: FND-3 전용 브랜치에서 HTTP 계약 및 FastAPI 전환.
+
+## FND-3 FastAPI 전환 (2026-09-14)
+
+- 시작: `feature/fnd-3-fastapi`, FND-2 통합 커밋 `df3ca9a` 기준.
+- 상태: 완료. 기존 HTTP 계약을 유지하며 FastAPI route, 요청별 정책/응답, Uvicorn 단일 worker로 전환.
+- 변경: handler 직접 테스트를 TestClient로 이전, 중첩 reference/revision, 오류·cookie·upload·ZIP·SPA 계약 고정. API 서버의 StudioHandler 제거.
+- 검증: macOS Python 3.13 및 Docker Python 3.12에서 각각 166개, frontend 8개, Vite build, 실제 HTTP 비교 13개, 실제 예제 pipeline 3개 PASS, React 호출/케이스/대시보드, Docker build·동일 healthcheck healthy·실제 SDK ZIP 통과.
+- 차단 해소: Git metadata/Docker socket/loopback sandbox 제한은 승인된 재실행으로 해소. 이미지 조회 지연 후 빌드 완료. 테스트 fixture 경로 및 no-op revision 기대값 오류 수정 후 통과.
+- 운영 제한: 1 worker 유지. 기존 서비스 교체·원격 푸시 없음. 분리된 encryption 서버의 HTTP 구현은 유지.
+- 다음: FND-4. 상세 계약과 검증 범위는 `docs/fnd-3-http-contract.md` 참조.

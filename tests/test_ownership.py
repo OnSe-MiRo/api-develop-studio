@@ -12,7 +12,8 @@ from unittest.mock import Mock, patch
 from api_test.ownership import OwnershipStore, OwnershipError, local_policy, origin, fetch_challenge
 from api_test.cli import run_pipeline, run_case_file
 from api_test.runner import CaseConfigurationError, execute_http_call
-from react_server import handle_api_request, StudioHandler
+from react_server import handle_api_request, app
+from fastapi.testclient import TestClient
 
 
 class OwnershipTest(unittest.TestCase):
@@ -154,12 +155,13 @@ class OwnershipTest(unittest.TestCase):
             self.assertEqual(sum(executor.map(attempt, range(2))), 1)
 
     def test_cross_origin_browser_requests_denied(self):
-        handler = object.__new__(StudioHandler)
-        handler.headers = {'Host': '127.0.0.1:8765', 'Origin': 'https://evil.example'}
-        with self.assertRaises(OwnershipError): handler.check_request_origin()
-        with patch.dict(os.environ, {'LOCAL_SERVER': 'true'}):
-            handler.headers = {'Host': 'rebind.example:8765'}
-            with self.assertRaises(OwnershipError): handler.check_request_origin()
+        client = TestClient(app, base_url="http://127.0.0.1:8765")
+        response = client.post("/api/request", headers={"Origin": "https://evil.example"}, json={})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "OWNERSHIP_POLICY_DENIED")
+        with patch.dict(os.environ, {"LOCAL_SERVER": "true"}):
+            response = client.get("/api/projects", headers={"Host": "rebind.example:8765"})
+            self.assertEqual(response.status_code, 400)
 
     def fixture(self, steps):
         projects, cases = self.root / "projects", self.root / "case"
@@ -214,17 +216,17 @@ class OwnershipTest(unittest.TestCase):
             call.assert_not_called()
 
     def test_server_external_approval_key_required(self):
-        handler = object.__new__(StudioHandler)
-        handler.headers = {"Origin": "https://studio.example.com", "Host": "studio.example.com"}
-        handler.ownership_session = Mock(return_value="session-a")
-        handler.query_value = Mock(return_value="p.json")
-        handler.read_body = Mock(return_value={"url": "https://auth.example.com/token", "method": "POST"})
-        handler.send_json = Mock()
-        with patch("react_server.collaboration_store") as store, patch.dict(os.environ, {"STUDIO_APPROVER_KEY": "k"*32}):
+        client = TestClient(app, base_url="https://studio.example.com")
+        client.cookies.set("studio_ownership", "a" * 43)
+        headers = {"Origin": "https://studio.example.com"}
+        payload = {"url": "https://auth.example.com/token", "method": "POST"}
+        with patch("react_server.collaboration_store") as store, patch.dict(os.environ, {"STUDIO_APPROVER_KEY": "k" * 32, "LOCAL_SERVER": "false"}):
             store.return_value.get.return_value.document = self.doc
-            with self.assertRaises(OwnershipError): handler.ownership_action(["api", "ownership", "grant"])
-            handler.headers["X-Studio-Approver-Key"] = "k"*32
-            handler.ownership_action(["api", "ownership", "grant"])
+            response = client.post("/api/ownership/grant?project=p.json", json=payload, headers=headers)
+            self.assertEqual(response.status_code, 403)
+            headers["X-Studio-Approver-Key"] = "k" * 32
+            response = client.post("/api/ownership/grant?project=p.json", json=payload, headers=headers)
+            self.assertEqual(response.status_code, 200)
             self.assertEqual(len(self.store.status("p.json", self.doc)["grants"]), 1)
 
 

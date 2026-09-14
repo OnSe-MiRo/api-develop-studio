@@ -1,4 +1,5 @@
 from __future__ import annotations
+from http_client import HttpRequest
 
 import json
 import sqlite3
@@ -12,7 +13,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from api_test.execution_history import ExecutionHistory
-from react_server import StudioHandler, execute_studio_run, execution_metadata
+from react_server import execute_studio_run, execution_metadata
 
 
 class ExecutionHistoryTest(unittest.TestCase):
@@ -130,18 +131,16 @@ class ExecutionHistoryTest(unittest.TestCase):
         self.assertIn("historyWarning", response)
 
     def test_dashboard_http_defaults_and_validation(self) -> None:
-        handler = object.__new__(StudioHandler)
-        handler.serve_example_api = Mock(return_value=False)
-        handler.path = "/api/dashboard"
-        handler.send_json = Mock()
+        request = HttpRequest()
+        request.path = "/api/dashboard"
         with patch("react_server.execution_history", return_value=self.history):
-            handler.do_GET()
-            self.assertEqual(handler.send_json.call_args.args[0], 200)
-            self.assertEqual(handler.send_json.call_args.args[1]["summary"]["total"], 0)
+            request.send('GET')
+            self.assertEqual(request.response.status_code, 200)
+            self.assertEqual(request.response.json()["summary"]["total"], 0)
             for query in ("days=foo", "days=1", "status=running", "page=-1", "page=" + "9" * 100):
-                handler.path = "/api/dashboard?" + query
-                handler.do_GET()
-                self.assertEqual(handler.send_json.call_args.args[0], 400)
+                request.path = "/api/dashboard?" + query
+                request.send('GET')
+                self.assertEqual(request.response.status_code, 400)
 
 
 if __name__ == "__main__":
