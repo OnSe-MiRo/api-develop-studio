@@ -1,15 +1,15 @@
 {
+  "expected": {
+    "body": {
+      "id": 1,
+      "name": "Ada"
+    },
+    "status": 200,
+    "strict": true
+  },
   "project": "example-api.json",
   "request": {
     "method": "GET",
     "url": "/example-api/users/1"
-  },
-  "expected": {
-    "status": 200,
-    "strict": true,
-    "body": {
-      "id": 1,
-      "name": "Ada"
-    }
   }
 }

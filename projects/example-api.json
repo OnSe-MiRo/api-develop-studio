@@ -1,12 +1,12 @@
 {
-  "name": "Example API",
-  "base_url": "http://127.0.0.1:8765",
-  "docs_url": "http://127.0.0.1:8765/example-api/openapi.json",
   "advanced": {
     "http_proxy": "",
     "https_proxy": "",
     "verify": true
   },
+  "base_url": "http://127.0.0.1:8765",
+  "docs_url": "http://127.0.0.1:8765/example-api/openapi.json",
+  "name": "Example API",
   "variables": {
     "plain": {},
     "secret": {

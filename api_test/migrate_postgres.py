@@ -18,6 +18,11 @@ from api_test.migrations import migrate_studio_database, migrate_ownership_datab
 STUDIO_TABLES = ("workspaces", "users", "memberships", "user_identities", "documents",
                  "document_revisions", "audit_events", "executions")
 OWNERSHIP_TABLES = ("proofs", "grants")
+BOOTSTRAP_CONTEXT = {
+    "workspaces": [("default", "Local workspace")],
+    "users": [("local-user", "Local system user")],
+    "memberships": [("default", "local-user", "owner")],
+}
 
 
 def snapshot(path, migrate):
@@ -38,6 +43,26 @@ def _digest(rows):
     return hashlib.sha256("\n".join(encoded).encode()).hexdigest()
 
 
+def clear_bootstrap_context(target) -> None:
+    """Remove only the empty local context created by a first API startup.
+
+    A target with documents, executions, ownership records, identities, or any
+    context different from the fixed local bootstrap is a real destination and
+    must retain the strict conflict check below.
+    """
+    for table in ("user_identities", "documents", "document_revisions", "audit_events", "executions", *OWNERSHIP_TABLES):
+        if target.execute(f'SELECT 1 FROM "{table}" LIMIT 1').fetchone() is not None:
+            return
+    workspaces = [(row["id"], row["name"]) for row in target.execute("SELECT id, name FROM workspaces ORDER BY id")]
+    users = [(row["id"], row["display_name"]) for row in target.execute("SELECT id, display_name FROM users ORDER BY id")]
+    memberships = [(row["workspace_id"], row["user_id"], row["role"]) for row in target.execute("SELECT workspace_id, user_id, role FROM memberships ORDER BY workspace_id, user_id")]
+    if {"workspaces": workspaces, "users": users, "memberships": memberships} != BOOTSTRAP_CONTEXT:
+        return
+    target.execute("DELETE FROM memberships")
+    target.execute("DELETE FROM users")
+    target.execute("DELETE FROM workspaces")
+
+
 def migrate(studio_path, ownership_path, *, url=None):
     url = url or database_url()
     if not url:
@@ -50,6 +75,7 @@ def migrate(studio_path, ownership_path, *, url=None):
         manifest = {}
         with target:
             target.execute("BEGIN IMMEDIATE")
+            clear_bootstrap_context(target)
             for source, tables in ((studio, STUDIO_TABLES), (ownership, OWNERSHIP_TABLES)):
                 for table in tables:
                     rows = source.execute(f'SELECT * FROM "{table}"').fetchall()

@@ -210,6 +210,13 @@ class PostgresStorageTest(unittest.TestCase):
         self.assertEqual(len(store.revisions('projects', 'a.json')), 2)
         self.assertEqual(len(OwnershipStore().status('a.json', {'base_url':'https://example.com'})['proofs']), 1)
 
+    def test_snapshot_import_replaces_only_empty_bootstrap_context(self):
+        self.source()
+        self.store()  # Simulate the API starting before the offline migration.
+        manifest = migrate(self.root/'source.db', self.root/'ownership.db')
+        self.assertGreater(manifest['documents']['rows'], 0)
+        self.assertIsNotNone(self.store().get('projects', 'a.json', include_deleted=True))
+
     def test_migration_bad_hash_rolls_back_all_data(self):
         self.source()
         with closing(sqlite3.connect(self.root/'source.db')) as db, db:

@@ -99,7 +99,7 @@ Docker Compose는 Python API 서버(`api`)와 React 개발 서버(`web`)를 함�
 
 ```bash
 cp .env.example .env
-# .env에 POSTGRES_PASSWORD_FILE과 STUDIO_DATABASE_URL_FILE의 외부 secret 파일 경로를 설정합니다.
+# .env에 POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD를 설정합니다.
 # 기존 SQLite 사용자는 아래 FND-4 이관 가이드를 먼저 수행합니다.
 docker compose up --build
 ```
@@ -332,7 +332,7 @@ projects/
 
 리비전 목록은 `GET /api/cases/{reference}/revisions`, `GET /api/pipelines/{reference}/revisions`, `GET /api/projects/{reference}/revisions`로 조회할 수 있습니다. 삭제는 DB에서 소프트 삭제로 기록하고 CLI용 JSON 투영본만 제거합니다.
 
-Docker는 `STUDIO_DATABASE_URL_FILE`로 PostgreSQL에 연결하고 `STUDIO_REDIS_URL`로 revision metadata를 캐시합니다. PostgreSQL·Redis에는 host port가 없습니다. SQLite 이관, secret 파일 설정, DB 백업·복원과 JSON 투영 복구는 [FND-4 저장소 운영 계약](docs/fnd-4-storage.md)을 따릅니다. 업로드·artifact·암호화 key는 DB와 별도로 백업해야 합니다.
+Docker는 `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`로 구성한 PostgreSQL URL로 연결하고 `STUDIO_REDIS_URL`로 revision metadata를 캐시합니다. PostgreSQL·Redis에는 host port가 없습니다. SQLite 이관, 환경 변수 설정, DB 백업·복원과 JSON 투영 복구는 [FND-4 저장소 운영 계약](docs/fnd-4-storage.md)을 따릅니다. 업로드·artifact·암호화 key는 DB와 별도로 백업해야 합니다.
 
 `X-Studio-Actor`와 저장 body의 사용자·workspace 필드는 작성자 결정에 사용하지 않습니다. 현재 HTTP는 서버가 정한 로컬 시스템 `RequestContext`를 사용합니다. 로그인·세션 및 request별 인증 문맥 연결은 COL-2/COL-1에서 진행합니다.
 

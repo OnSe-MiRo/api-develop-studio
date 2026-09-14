@@ -247,3 +247,11 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 재생성: /tmp/fnd4-venv/bin/python scripts/generate_server.py --check 통과. 모든 operation의 생성 route/implementation 연결과 DTO read/write 계약 검사 추가. CI는 requirements.txt의 동일 고정 버전으로 검사.
 - 실제 HTTP: 임시 SQLite·임의 loopback 포트 Uvicorn에서 schema, 프로젝트/케이스 CRUD, revision suffix와 실제 빠른 HTTP 전송 통과. 최초 bind 차단은 검증 명령에 한정된 권한 확장으로 해소. 검증 fixture의 macOS /var→/private/var 경로 차이는 fixture resolve로 해소.
 - 완료: feature/openapi-generated-server 로컬 변경. 기존 API-1·2·3 작업 포함 보존. 커밋·병합·푸시·배포·실제 PostgreSQL/Redis 재검증은 수행하지 않음.
+
+### Docker PostgreSQL 기동·SQLite 이관 복구 (2026-09-15)
+
+- 시작: Docker Compose 기동 시 기존 SQLite 이력 보호가 `/api/cases` healthcheck를 400으로 반환해 API가 healthy 상태에 도달하지 못함.
+- 변경: PostgreSQL DB·ID·PW를 `.env`의 `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`로 관리하고 API 연결 URL을 Compose가 구성하도록 변경. 기존 secret-file mount를 제거.
+- 변경: SQLite 이관이 API 첫 기동으로 생긴 빈 `default/local-user` bootstrap context만 transaction 안에서 제거한 뒤 snapshot으로 대체하도록 수정. 문서·실행·ownership·identity 또는 다른 context가 하나라도 있으면 기존대로 rollback한다.
+- 검증: Python 223개 중 181개 통과·외부 서비스 설정 의존 42개 skip, Compose build·config 통과. 실제 Compose에서 PostgreSQL·Redis·encryption healthy, SQLite snapshot의 workspaces 1·users 2·memberships 2·documents 10·revisions 19·audit 20 digest 이관 통과, API healthcheck `/api/cases` 200 및 web 기동 확인.
+- 상태: 완료 — Docker 서비스는 실행 상태로 유지. 커밋·병합·푸시는 수행하지 않음.

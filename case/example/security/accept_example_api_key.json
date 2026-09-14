@@ -1,13 +1,18 @@
 {
+  "expected": {
+    "body": {
+      "authorized": true,
+      "message": "API key accepted"
+    },
+    "status": 200,
+    "strict": true
+  },
   "project": "example-api.json",
   "request": {
+    "headers": {
+      "X-API-Key": "example-api-key"
+    },
     "method": "GET",
-    "url": "/example-api/secure-data",
-    "headers": { "X-API-Key": "example-api-key" }
-  },
-  "expected": {
-    "status": 200,
-    "strict": true,
-    "body": { "authorized": true, "message": "API key accepted" }
+    "url": "/example-api/secure-data"
   }
 }

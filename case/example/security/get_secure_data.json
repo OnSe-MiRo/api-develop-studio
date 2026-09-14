@@ -1,36 +1,36 @@
 {
-  "project": "example-api.json",
-  "request": {
-    "method": "GET",
-    "url": "/example-api/secure-data",
-    "headers": {
-      "X-API-Key": "{{project.api_key}}"
-    }
-  },
   "expected": {
-    "status": 200,
-    "strict": true,
-    "validation_modes": {
-      "exact_body": true,
-      "conditions": true
-    },
+    "assertions": [
+      {
+        "operator": "type",
+        "path": "body.authorized",
+        "value": "boolean"
+      },
+      {
+        "format": "time",
+        "operator": "type",
+        "path": "body.message",
+        "value": "string"
+      }
+    ],
     "body": {
       "authorized": true,
       "message": "API key accepted"
     },
-    "assertions": [
-      {
-        "path": "body.authorized",
-        "operator": "type",
-        "value": "boolean"
-      },
-      {
-        "path": "body.message",
-        "operator": "type",
-        "value": "string",
-        "format": "time"
-      }
-    ]
+    "status": 200,
+    "strict": true,
+    "validation_modes": {
+      "conditions": true,
+      "exact_body": true
+    }
+  },
+  "project": "example-api.json",
+  "request": {
+    "headers": {
+      "X-API-Key": "{{project.api_key}}"
+    },
+    "method": "GET",
+    "url": "/example-api/secure-data"
   },
   "variables": {
     "secret": {}
