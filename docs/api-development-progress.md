@@ -34,10 +34,10 @@
 ## 현재 요약
 
 - 최종 갱신일: 2026-09-14
-- 현재 단계: FND-3 완료
+- 현재 단계: FND-4 완료
 - 전체 상태: 진행
-- 반영 브랜치: FND-2는 `develop`에 `df3ca9a`로 로컬 병합. FND-3는 `feature/fnd-3-fastapi`에 로컬 구현, 커밋·병합·푸시 없음.
-- 다음 작업: FND-4 PostgreSQL 저장소·Redis 캐시 설계 및 구현
+- 반영 브랜치: `develop`에서 분기한 `feature/fnd-4-postgres-redis`에 로컬 구현. 이번 작업의 커밋·병합·푸시는 수행하지 않음.
+- 다음 작업: COL-2 request별 인증 문맥·workspace·실행/artifact 격리
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -48,7 +48,7 @@
 | FND-1 | 빠른 호출·실행 대시보드 branch 안전 통합 | P0 | 완료 | 빠른 호출과 실행 대시보드 최신 `develop` 통합 |
 | FND-2 | frontend test·DB migration·모듈 분리 기반 | P0 | 완료 | Python 150개·frontend 8개·실제 HTTP 검증 통과 |
 | FND-3 | FastAPI 백엔드 전환 | P0 | 완료 | Python 166개·frontend 8개·build·실제 HTTP/React·Docker healthcheck·SDK ZIP 통과 |
-| FND-4 | PostgreSQL 영구 저장소·Redis 캐시 | P0 | 대기 | SQLite 이관, 사용자·workspace 저장 계약, cache 대상과 장애 fallback 확정 |
+| FND-4 | PostgreSQL 영구 저장소·Redis 캐시 | P0 | 완료 | 전체 Python 206개·frontend 8개·build·실제 Compose HTTP·장애 복구·백업 복원 통과 |
 | API-1 | 빠른 API 호출 | P0 | 대기 | 공통 request model |
 | API-2 | 환경 프로필 | P0 | 대기 | 기존 `base_url` 호환 방식 |
 | API-3 | 공통 인증 모델 | P0 | 대기 | 1차 지원 방식 확정 |
@@ -73,12 +73,13 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 ## 현재 작업
 
-- 작업 ID: FND-3
-- 목표: React/CLI HTTP 계약을 유지하며 FastAPI와 Uvicorn 단일 worker로 전환
-- 변경 파일: `react_server.py`, `api_test/asgi.py`, route 모듈, requirements, Docker entry point, TestClient 테스트, README와 HTTP 계약/진행 문서
+- 작업 ID: FND-4
+- 목표: PostgreSQL 영구 저장소와 SQLite 이관, Redis revision cache-aside, 서버 문맥 및 투영 복구 경계 구현
 - 시작 시각: 2026-09-14 KST
-- 상태: 완료 — `feature/fnd-3-fastapi` 로컬 구현·검증. FND-3 커밋·병합·원격 푸시는 수행하지 않음.
-- 계약 및 검증 범위: [FND-3 HTTP 계약](fnd-3-http-contract.md)
+- 상태: 완료 — `feature/fnd-4-postgres-redis` 로컬 구현·검증
+- 검증: 전체 Python 206개(외부 서비스 통합 포함), frontend 8개와 build, 실제 Compose HTTP 및 장애/복원 검증 통과
+- 운영 이관·배포: 수행하지 않음. 기존 SQLite와 기존 실행 서비스는 보존하고 임시 데이터/컨테이너로만 검증
+- 계약 및 운영 절차: [FND-4 저장소 운영 계약](fnd-4-storage.md)
 
 ## 검증 기록
 
@@ -204,3 +205,16 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 차단 해소: Git metadata/Docker socket/loopback sandbox 제한은 승인된 재실행으로 해소. 이미지 조회 지연 후 빌드 완료. 테스트 fixture 경로 및 no-op revision 기대값 오류 수정 후 통과.
 - 운영 제한: 1 worker 유지. 기존 서비스 교체·원격 푸시 없음. 분리된 encryption 서버의 HTTP 구현은 유지.
 - 다음: FND-4. 상세 계약과 검증 범위는 `docs/fnd-3-http-contract.md` 참조.
+
+## FND-4 저장소 전환 (2026-09-14)
+
+- 상태: 완료 — `feature/fnd-4-postgres-redis` 로컬 구현·검증
+- 시작: PostgreSQL 영구 저장소, SQLite 읽기 전용 이관, Redis metadata 캐시와 장애 fallback 구현. 실행 이력 저장소도 같은 전환 범위로 검증한다.
+- 기준: 기존 HTTP/revision 계약 보존, DB commit 이후 JSON 투영, 이관 검증 실패 시 rollback.
+
+- 변경: DB connection/pool 경계, Studio schema v3와 ownership v2, workspace·사용자·membership·identity 계약, SQLite 읽기 전용 snapshot 이관/전체 row 검증, commit 이후 투영 및 복구 명령, Redis revision metadata cache, Docker 내부 저장소와 secret 파일 설정.
+- 결정: 기존 local workspace ID `default`와 시스템 ID `local-user`, `memberships` 테이블명을 보존. 저장소 인스턴스에 불변 RequestContext를 바인딩하고 HTTP 주체는 고정 서버 문맥으로 유지. 일반 문서/OpenAPI에 민감정보가 포함될 수 있어 Redis는 revision metadata만 캐시. HTTP 사용자 선택과 완전한 실행·artifact RBAC는 COL-2/COL-1에서 연결.
+- 검증: `/tmp/fnd4-venv/bin/python -m unittest discover -s tests -q`에 FND4 테스트 서비스 URL을 제공하여 206개 모두 통과(skip 없음). 빈/이관 PostgreSQL에 기존 HTTP matrix 각각 14개, PostgreSQL·Redis·복구 테스트 12개 포함. frontend 8개·Vite build·Python compile·diff check 통과.
+- 실제 검증: 분리된 `fnd4-validation` Compose 이미지 build와 API/PostgreSQL/Redis/encryption healthcheck 통과. 실제 CRUD·revision 409·body/actor 신뢰 경계·soft-delete·정책 차단 subprocess의 Run ID/대시보드 저장 통과. Redis 중단 중 HTTP fallback 200, PostgreSQL 중단 중 503, DB 재시작 뒤 API 재시작 없는 pool 복구 확인. `pg_dump` → 새 DB `pg_restore` 후 문서 수와 ID/revision/hash/삭제 상태 digest 일치. 최종 이미지의 `repair_projections --all` 통과.
+- 환경 차단 및 해소: 최초 Git ref 쓰기, Docker socket·로컬 PostgreSQL TCP가 sandbox에 차단되어 해당 작업에 한정한 권한 확장 후 검증 완료. 처음 추가한 SQLite WAL 설정의 동시 접속 lock 오류는 중복 설정을 제거해 해소.
+- 완료 범위: 개발·검증과 두 진행 문서 갱신. 원본 데이터 실제 이관, 기존 환경 배포, 커밋·병합·푸시는 수행하지 않음.

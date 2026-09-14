@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
 
 from api_test.routes import dashboard, documents, execution, openapi
+from api_test.database import DATABASE_ERRORS
 
 
 def create_app(studio) -> FastAPI:
@@ -33,10 +34,12 @@ def create_app(studio) -> FastAPI:
             status, payload = 403, {"error": str(exc), "code": "OWNERSHIP_POLICY_DENIED"}
         elif isinstance(exc, studio.ApiError) and request.method == "POST":
             status = exc.status_code
+        if isinstance(exc, DATABASE_ERRORS):
+            status, payload = 503, {"error": "저장소에 연결할 수 없습니다. 잠시 후 다시 시도하세요."}
         return context.json_response(status, payload)
 
     for error in (studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
-                  OSError, json.JSONDecodeError, subprocess.TimeoutExpired, RequestValidationError):
+                  OSError, json.JSONDecodeError, subprocess.TimeoutExpired, RequestValidationError, *DATABASE_ERRORS):
         app.add_exception_handler(error, error_response)
 
     def register(path, method, operation, parts=None, *, upload=False, schema=True):

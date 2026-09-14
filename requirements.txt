@@ -16,3 +16,7 @@ uvicorn==0.49.0
 
 # FastAPI HTTP contract tests.
 httpx==0.28.1
+
+# FND-4 permanent storage and disposable revision metadata cache.
+psycopg[binary,pool]>=3.2,<4
+redis>=5,<7

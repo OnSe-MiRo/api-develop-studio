@@ -7,29 +7,31 @@ headers, credentials, and runner output deliberately stay outside this store.
 from __future__ import annotations
 
 import json
-import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from api_test.migrations import migrate_studio_database
+from api_test.database import connect, LOCAL_CONTEXT, RequestContext, postgres_enabled, require_membership, initialize_local_context
 
 
 ALLOWED_STATUSES = ("passed", "failed", "error", "timeout")
 
 
 class ExecutionHistory:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, context: RequestContext = LOCAL_CONTEXT):
         self.path = path
+        self.context = context
 
     @contextmanager
     def connect(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(self.path, timeout=10)
-        connection.row_factory = sqlite3.Row
+        connection = connect(self.path)
         try:
             migrate_studio_database(connection)
             with connection:
+                if postgres_enabled():
+                    initialize_local_context(connection)
+                    require_membership(connection, self.context)
                 yield connection
         finally:
             connection.close()
@@ -51,8 +53,8 @@ class ExecutionHistory:
         with self.connect() as connection:
             connection.execute(
                 """INSERT INTO executions
-                   (run_id, started_at, finished_at, duration_ms, status, exit_code, projects, targets)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (run_id, started_at, finished_at, duration_ms, status, exit_code, projects, targets, workspace_id, requested_by)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     run_id,
                     started_at,
@@ -62,6 +64,7 @@ class ExecutionHistory:
                     exit_code,
                     json.dumps(sorted(set(projects))),
                     json.dumps(targets, ensure_ascii=False),
+                    self.context.workspace_id, self.context.user_id,
                 ),
             )
 
@@ -78,21 +81,23 @@ class ExecutionHistory:
             raise ValueError("대시보드 조회 조건이 올바르지 않습니다.")
         now = now or datetime.now(timezone.utc)
         start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
-        where = "started_at >= ? AND started_at <= ?"
-        parameters: list[object] = [start.isoformat(), now.isoformat()]
+        where = "workspace_id = ? AND started_at >= ? AND started_at <= ?"
+        parameters: list[object] = [self.context.workspace_id, start.isoformat(), now.isoformat()]
         if project:
             where += " AND EXISTS (SELECT 1 FROM json_each(executions.projects) WHERE value = ?)"
             parameters.append(project)
 
         with self.connect() as connection:
+            if getattr(connection, "dialect", "") == "postgresql":
+                where = where.replace("json_each(executions.projects)", "jsonb_array_elements_text(executions.projects::jsonb)")
             summary = dict(
                 connection.execute(
                     f"""SELECT COUNT(*) AS total,
-                        COALESCE(SUM(status = 'passed'), 0) AS passed,
-                        COALESCE(SUM(status = 'failed'), 0) AS failed,
-                        COALESCE(SUM(status = 'error'), 0) AS error,
-                        COALESCE(SUM(status = 'timeout'), 0) AS timeout,
-                        AVG(duration_ms) AS averageDurationMs
+                        COALESCE(SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END), 0) AS passed,
+                        COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed,
+                        COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS error,
+                        COALESCE(SUM(CASE WHEN status = 'timeout' THEN 1 ELSE 0 END), 0) AS timeout,
+                        AVG(duration_ms) AS "averageDurationMs"
                         FROM executions WHERE {where}""",
                     parameters,
                 ).fetchone()
@@ -104,8 +109,8 @@ class ExecutionHistory:
                 row["date"]: dict(row)
                 for row in connection.execute(
                     f"""SELECT substr(started_at, 1, 10) AS date,
-                        COUNT(*) AS total, SUM(status = 'passed') AS passed,
-                        SUM(status != 'passed') AS failed
+                        COUNT(*) AS total, SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) AS passed,
+                        SUM(CASE WHEN status != 'passed' THEN 1 ELSE 0 END) AS failed
                         FROM executions WHERE {where} GROUP BY date""",
                     parameters,
                 )

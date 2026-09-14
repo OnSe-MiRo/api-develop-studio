@@ -12,12 +12,12 @@ import os
 import posixpath
 import re
 import shutil
-import sqlite3
 import subprocess
 import sys
 import zipfile
 import secrets
 import hmac
+import threading
 import uuid
 from http.cookies import SimpleCookie
 from datetime import date, datetime, timezone
@@ -35,6 +35,7 @@ import yaml
 
 from api_test.asgi import create_app
 from api_test.execution_history import ExecutionHistory
+from api_test.database import LOCAL_CONTEXT, postgres_enabled, DATABASE_ERRORS
 from api_test.runner import CaseConfigurationError, validate_response_time_limit
 from api_test.collaboration_store import (
     CollaborationStore,
@@ -86,6 +87,7 @@ EXAMPLE_PROJECT_TRUE_VALUES = {"1", "true", "yes", "on"}
 EXAMPLE_API_KEY = "example-api-key"
 MISSING = object()
 _COLLABORATION_STORE: CollaborationStore | None = None
+_COLLABORATION_STORE_LOCK = threading.Lock()
 
 
 class ApiError(ValueError):
@@ -96,7 +98,7 @@ class ApiError(ValueError):
 
 def execution_history() -> ExecutionHistory:
     database_path = Path(os.environ.get("STUDIO_DB_PATH", ROOT / "data" / "studio.db"))
-    return ExecutionHistory(database_path)
+    return ExecutionHistory(database_path, context=LOCAL_CONTEXT)
 
 
 def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[str, object]]]:
@@ -107,7 +109,7 @@ def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[st
         if document is None:
             try:
                 root = CASE_ROOT if kind == "case" else PIPELINE_ROOT
-                document = json.loads(safe_file(root, reference).read_text(encoding="utf-8"))
+                document = read_studio_document(root, reference)
             except (ApiError, OSError, json.JSONDecodeError):
                 document = {}
         project = document.get("project") if isinstance(document, dict) else None
@@ -136,6 +138,13 @@ def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[st
 
 
 def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str, object]:
+    if postgres_enabled():
+        store = collaboration_store()
+        store.repair_projections()
+        from contextlib import closing
+        with closing(store.connect()) as connection, connection:
+            if connection.execute("SELECT 1 FROM projection_jobs p JOIN documents d ON d.id=p.document_id WHERE d.workspace_id=? LIMIT 1", (store.context.workspace_id,)).fetchone():
+                raise ApiError("JSON 투영 복구가 필요합니다. 저장소 상태를 확인한 후 다시 실행하세요.")
     projects, targets = execution_metadata(body)
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
@@ -164,7 +173,7 @@ def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str,
                 projects=projects,
                 targets=targets,
             )
-        except (OSError, sqlite3.Error, ValueError):
+        except (OSError, ValueError, *DATABASE_ERRORS):
             response["historyWarning"] = "실행 이력을 저장하지 못했습니다. 저장소 상태를 확인하세요."
             logging.warning(response["historyWarning"])
 
@@ -172,20 +181,25 @@ def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str,
 def collaboration_store() -> CollaborationStore:
     """Return the lazily initialized versioned document store."""
     global _COLLABORATION_STORE
-    if _COLLABORATION_STORE is None:
-        database_path = Path(os.environ.get("STUDIO_DB_PATH", ROOT / "data" / "studio.db"))
-        _COLLABORATION_STORE = CollaborationStore(
-            database_path,
-            {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT},
-        )
-        _COLLABORATION_STORE.initialize(import_existing=True)
-        ensure_example_project_security_key(_COLLABORATION_STORE)
+    with _COLLABORATION_STORE_LOCK:
+        if _COLLABORATION_STORE is None:
+            database_path = Path(os.environ.get("STUDIO_DB_PATH", ROOT / "data" / "studio.db"))
+            store = CollaborationStore(
+                database_path,
+                {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT},
+                context=LOCAL_CONTEXT,
+            )
+            store.initialize(import_existing=True)
+            ensure_example_project_security_key(store)
+            _COLLABORATION_STORE = store
     return _COLLABORATION_STORE
 
 
 def storage_request(payload: dict[str, object]) -> tuple[dict[str, object], int | None]:
     """Remove editor storage metadata and return its optimistic-lock revision."""
     document = dict(payload)
+    for field in ("user_id", "workspace_id", "created_by", "updated_by", "deleted_by"):
+        document.pop(field, None)
     metadata = document.pop("_storage", None)
     if metadata is None:
         return document, None
@@ -975,11 +989,26 @@ def safe_attachment_file(root: Path, reference: str) -> Path:
 
 
 def json_files(root: Path) -> list[str]:
+    if postgres_enabled():
+        kind = next((kind for kind, path in {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT}.items() if path == root), None)
+        if kind:
+            return collaboration_store().list_references(kind)
     if not root.exists():
         return []
     # API references are persisted and consumed by the browser, so keep their separator
     # stable even when the server runs on Windows.
     return [path.relative_to(root).as_posix() for path in sorted(root.rglob("*.json"))]
+
+
+def read_studio_document(root: Path, reference: str) -> dict:
+    if postgres_enabled():
+        kind = next((kind for kind, path in {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT}.items() if path == root), None)
+        if kind is not None:
+            stored = collaboration_store().get(kind, reference)
+            if stored is None:
+                raise DocumentNotFoundError("JSON file not found")
+            return stored.document
+    return json.loads(safe_file(root, reference).read_text(encoding="utf-8"))
 
 
 def project_json_files(root: Path, project_reference: str | None) -> list[str]:
@@ -988,7 +1017,7 @@ def project_json_files(root: Path, project_reference: str | None) -> list[str]:
         return json_files(root)
     items: list[str] = []
     for reference in json_files(root):
-        document = json.loads(safe_file(root, reference).read_text(encoding="utf-8"))
+        document = read_studio_document(root, reference)
         if document.get("project") == project_reference:
             items.append(reference)
     return items
@@ -1067,7 +1096,7 @@ def case_summaries(root: Path, references: list[str]) -> dict[str, dict[str, str
     """Return the request details needed to identify saved cases in the UI."""
     summaries: dict[str, dict[str, str]] = {}
     for reference in references:
-        document = json.loads(safe_file(root, reference).read_text(encoding="utf-8"))
+        document = read_studio_document(root, reference)
         request = document.get("request", {})
         if not isinstance(request, dict):
             request = {}
@@ -1080,7 +1109,7 @@ def project_summaries(root: Path, references: list[str]) -> dict[str, dict[str, 
     """Return the public project details displayed on project cards."""
     summaries: dict[str, dict[str, str]] = {}
     for reference in references:
-        document = json.loads(safe_file(root, reference).read_text(encoding="utf-8"))
+        document = read_studio_document(root, reference)
         name = document.get("name", "")
         base_url = document.get("base_url", "")
         summaries[reference] = {
@@ -1182,14 +1211,15 @@ def validate_project_reference(payload: dict[str, object]) -> None:
     if not isinstance(project_reference, str) or not project_reference:
         raise ApiError("A project must be selected")
     project_path = safe_file(PROJECT_ROOT, project_reference)
-    if not project_path.is_file():
+    project_exists = collaboration_store().get("projects", project_reference) is not None if postgres_enabled() else project_path.is_file()
+    if not project_exists:
         raise ApiError("Selected project does not exist")
     base_url_name = payload.get("base_url_name")
     if base_url_name is None:
         return
     if not isinstance(base_url_name, str) or not base_url_name.strip():
         raise ApiError("Case base_url_name must be a non-empty string")
-    project = json.loads(project_path.read_text(encoding="utf-8"))
+    project = read_studio_document(PROJECT_ROOT, project_reference)
     base_urls = project.get("base_urls", [])
     available_names = {
         item.get("name", "").strip()
@@ -1203,7 +1233,7 @@ def validate_project_reference(payload: dict[str, object]) -> None:
 def project_document_references(root: Path, project_reference: str) -> list[str]:
     return [
         reference for reference in json_files(root)
-        if json.loads(safe_file(root, reference).read_text(encoding="utf-8")).get("project") == project_reference
+        if read_studio_document(root, reference).get("project") == project_reference
     ]
 
 
@@ -1448,8 +1478,8 @@ class StudioRequest:
         return values[0] if values else None
 
     def actor_id(self) -> str:
-        """Preserve the existing audit label until authentication is introduced."""
-        return self.headers.get("X-Studio-Actor", "local-user")
+        """Only the server supplies identity until verified authentication is added."""
+        return LOCAL_CONTEXT.user_id
 
     def check_request_origin(self):
         host = self.headers.get("Host", "")

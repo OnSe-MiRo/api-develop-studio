@@ -9,14 +9,14 @@ import json
 import os
 import secrets
 import socket
-import sqlite3
+from api_test.database import connect, postgres_enabled, LOCAL_CONTEXT, require_membership, initialize_local_context
 import ssl
 import time
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from api_test.migrations import migrate_ownership_database
+from api_test.migrations import migrate_ownership_database, migrate_studio_database
 
 
 class OwnershipError(ValueError):
@@ -96,17 +96,21 @@ def fetch_challenge(target, verification_id):
 
 
 class OwnershipStore:
-    def __init__(self, path=None):
+    def __init__(self, path=None, *, context=LOCAL_CONTEXT):
+        self.context = context
         self.path = Path(path or os.environ.get("STUDIO_OWNERSHIP_DB_PATH", Path(__file__).resolve().parents[1] / "data" / "ownership.db"))
 
     @contextmanager
     def db(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.path, timeout=10)
-        conn.row_factory = sqlite3.Row
+        conn = connect(self.path)
         try:
+            if postgres_enabled():
+                migrate_studio_database(conn)
             migrate_ownership_database(conn)
             conn.execute("BEGIN IMMEDIATE")
+            if postgres_enabled():
+                initialize_local_context(conn)
+                require_membership(conn, self.context)
             yield conn
             conn.commit()
         except BaseException:
@@ -119,11 +123,11 @@ class OwnershipStore:
         now = time.time()
         with self.db() as db:
             db.execute("UPDATE proofs SET state='expired' WHERE project=? AND "
-                       "(fingerprint<>? OR (state='pending' AND issued<=?) OR "
+                       "workspace_id=? AND (fingerprint<>? OR (state='pending' AND issued<=?) OR "
                        "(state='verified' AND (verified<=? OR last_used<=?)))",
-                       (project, fingerprint(document), now-1800, now-90*86400, now-30*86400))
-            proofs = [dict(x) for x in db.execute("SELECT origin,id,state,issued,verified,last_used FROM proofs WHERE project=?", (project,))]
-            grants = [dict(x) for x in db.execute("SELECT url,method,last_used FROM grants WHERE project=?", (project,))]
+                       (project, self.context.workspace_id, fingerprint(document), now-1800, now-90*86400, now-30*86400))
+            proofs = [dict(x) for x in db.execute("SELECT origin,id,state,issued,verified,last_used FROM proofs WHERE project=? AND workspace_id=?", (project, self.context.workspace_id))]
+            grants = [dict(x) for x in db.execute("SELECT url,method,last_used FROM grants WHERE project=? AND workspace_id=?", (project, self.context.workspace_id))]
         for proof in proofs:
             proof["expires_at"] = (min(proof["verified"]+90*86400, proof["last_used"]+30*86400)
                                    if proof["verified"] else proof["issued"]+1800)
@@ -136,11 +140,11 @@ class OwnershipStore:
             raise OwnershipError("저장된 프로젝트의 HTTPS Base URL을 선택하세요.")
         token, vid, now = secrets.token_urlsafe(32), secrets.token_urlsafe(18), time.time()
         with self.db() as db:
-            previous = db.execute("SELECT issued FROM proofs WHERE project=? AND origin=?", (project, target)).fetchone()
+            previous = db.execute("SELECT issued FROM proofs WHERE project=? AND origin=? AND workspace_id=?", (project, target, self.context.workspace_id)).fetchone()
             if previous and now-previous[0] < 10:
                 raise OwnershipError("토큰 재발급은 10초 후 가능합니다.")
-            db.execute("INSERT OR REPLACE INTO proofs VALUES (?,?,?,?,?,?,'pending',?,NULL,NULL,0)",
-                       (project, target, fingerprint(document), vid, digest(session), digest(token), now))
+            db.execute("INSERT INTO proofs(project,origin,fingerprint,id,session_hash,token_hash,state,issued,verified,last_used,attempts,workspace_id) VALUES (?,?,?,?,?,?,'pending',?,NULL,NULL,0,?) ON CONFLICT(workspace_id,project,origin) DO UPDATE SET fingerprint=excluded.fingerprint,id=excluded.id,session_hash=excluded.session_hash,token_hash=excluded.token_hash,state='pending',issued=excluded.issued,verified=NULL,last_used=NULL,attempts=0",
+                       (project, target, fingerprint(document), vid, digest(session), digest(token), now, self.context.workspace_id))
         return {"verification_id": vid, "challenge": token, "expires_at": now+1800,
                 "verification_url": f"{target}/.well-known/api-develop-studio-verification/{vid}"}
 
@@ -149,12 +153,12 @@ class OwnershipStore:
             raise OwnershipError("verification_id 문자열이 필요합니다.")
         self.status(project, document)
         with self.db() as db:
-            row = db.execute("SELECT * FROM proofs WHERE project=? AND id=?", (project, vid)).fetchone()
+            row = db.execute("SELECT * FROM proofs WHERE project=? AND id=? AND workspace_id=?", (project, vid, self.context.workspace_id)).fetchone()
             if not row or row["state"] != "pending" or not hmac.compare_digest(row["session_hash"], digest(session)):
                 raise OwnershipError("유효한 검증 요청과 발급한 브라우저 세션이 필요합니다.")
             if row["attempts"] >= 10:
                 raise OwnershipError("검증 시도 한도를 초과했습니다. 토큰을 재발급하세요.")
-            db.execute("UPDATE proofs SET attempts=attempts+1 WHERE id=?", (vid,))
+            db.execute("UPDATE proofs SET attempts=attempts+1 WHERE id=? AND workspace_id=?", (vid, self.context.workspace_id))
         try:
             value = fetch_challenge(row["origin"], vid)
         except (OSError, ValueError, http.client.HTTPException) as exc:
@@ -164,8 +168,8 @@ class OwnershipStore:
         now = time.time()
         with self.db() as db:
             changed = db.execute("UPDATE proofs SET state='verified',verified=?,last_used=? "
-                                 "WHERE id=? AND state='pending' AND issued>? AND fingerprint=?",
-                                 (now, now, vid, now-1800, fingerprint(document))).rowcount
+                                 "WHERE id=? AND state='pending' AND issued>? AND fingerprint=? AND workspace_id=?",
+                                 (now, now, vid, now-1800, fingerprint(document), self.context.workspace_id)).rowcount
             if not changed:
                 raise OwnershipError("만료되거나 교체된 검증 요청입니다.")
         return {"state": "verified"}
@@ -176,20 +180,20 @@ class OwnershipStore:
             raise OwnershipError("외부 예외는 HTTPS URL과 유효한 HTTP 메서드가 필요합니다.")
         with self.db() as db:
             if remove:
-                db.execute("DELETE FROM grants WHERE project=? AND url=? AND method=?", (project, url, method))
+                db.execute("DELETE FROM grants WHERE project=? AND url=? AND method=? AND workspace_id=?", (project, url, method, self.context.workspace_id))
             else:
-                db.execute("INSERT OR IGNORE INTO grants(project,url,method) VALUES(?,?,?)", (project, url, method))
+                db.execute("INSERT OR IGNORE INTO grants(project,url,method,workspace_id) VALUES(?,?,?,?)", (project, url, method, self.context.workspace_id))
 
     def revoke(self, project, remove=False):
         # Do not create a database just because an unrelated project is saved.
-        if not self.path.exists():
+        if not postgres_enabled() and not self.path.exists():
             return
         with self.db() as db:
             if remove:
-                db.execute("DELETE FROM proofs WHERE project=?", (project,))
-                db.execute("DELETE FROM grants WHERE project=?", (project,))
+                db.execute("DELETE FROM proofs WHERE project=? AND workspace_id=?", (project, self.context.workspace_id))
+                db.execute("DELETE FROM grants WHERE project=? AND workspace_id=?", (project, self.context.workspace_id))
             else:
-                db.execute("UPDATE proofs SET state='revoked' WHERE project=?", (project,))
+                db.execute("UPDATE proofs SET state='revoked' WHERE project=? AND workspace_id=?", (project, self.context.workspace_id))
 
     def authorize(self, project, document, url, method, *, external=False):
         policy = local_policy()
@@ -197,22 +201,22 @@ class OwnershipStore:
             url = endpoint(url)
             now = time.time()
             with self.db() as db:
-                row = db.execute("SELECT last_used FROM grants WHERE project=? AND url=? AND method=?", (project, url, method)).fetchone()
+                row = db.execute("SELECT last_used FROM grants WHERE project=? AND url=? AND method=? AND workspace_id=?", (project, url, method, self.context.workspace_id)).fetchone()
                 if not row:
                     raise OwnershipError("승인된 외부 Setup URL과 메서드가 필요합니다.")
                 if now-row[0] < 60:
                     raise OwnershipError("외부 Setup 호출은 같은 대상에 60초에 한 번만 허용됩니다.")
-                db.execute("UPDATE grants SET last_used=? WHERE project=? AND url=? AND method=?", (now, project, url, method))
+                db.execute("UPDATE grants SET last_used=? WHERE project=? AND url=? AND method=? AND workspace_id=?", (now, project, url, method, self.context.workspace_id))
             return
         if policy["skip_verification"]:
             return
         target = origin(url)
         self.status(project, document)
         with self.db() as db:
-            row = db.execute("SELECT state FROM proofs WHERE project=? AND origin=?", (project, target)).fetchone()
+            row = db.execute("SELECT state FROM proofs WHERE project=? AND origin=? AND workspace_id=?", (project, target, self.context.workspace_id)).fetchone()
             if not row or row[0] != "verified":
                 raise OwnershipError("대상 API 소유권 확인이 필요하거나 만료되었습니다. 프로젝트 설정에서 인증하세요.")
-            db.execute("UPDATE proofs SET last_used=? WHERE project=? AND origin=?", (time.time(), project, target))
+            db.execute("UPDATE proofs SET last_used=? WHERE project=? AND origin=? AND workspace_id=?", (time.time(), project, target, self.context.workspace_id))
 
 
 def execution_guard(project, project_root, external=False):
@@ -224,6 +228,20 @@ def execution_guard(project, project_root, external=False):
         path = (project_root / project).resolve()
         if project_root.resolve() not in path.parents:
             raise OwnershipError("프로젝트 경로가 올바르지 않습니다.")
-        document = json.loads(path.read_text(encoding="utf-8"))
+        if postgres_enabled():
+            from contextlib import closing
+            with closing(connect(path)) as db, db:
+                require_membership(db, LOCAL_CONTEXT)
+                row = db.execute(
+                    "SELECT r.content FROM documents d JOIN document_revisions r "
+                    "ON r.document_id=d.id AND r.revision=d.current_revision "
+                    "WHERE d.workspace_id=? AND d.kind='projects' AND d.reference=? AND d.deleted_at IS NULL",
+                    (LOCAL_CONTEXT.workspace_id, project),
+                ).fetchone()
+                if row is None:
+                    raise OwnershipError("소유권 확인을 위한 저장된 프로젝트가 필요합니다.")
+                document = json.loads(row["content"])
+        else:
+            document = json.loads(path.read_text(encoding="utf-8"))
         OwnershipStore().authorize(project, document, url, method, external=external)
     return check

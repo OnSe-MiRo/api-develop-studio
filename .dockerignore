@@ -7,3 +7,6 @@ logs/
 test-logs/
 web/node_modules/
 web/dist/
+
+# Runtime SQLite/ownership data must never be baked into a PostgreSQL image.
+data/

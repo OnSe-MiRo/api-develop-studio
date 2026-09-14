@@ -18,7 +18,7 @@ API 케이스와 파이프라인의 `실행만` 버튼은 현재 화면의 값�
 - 웹의 `POST /api/run` 요청 한 번을 하나의 공통 Run ID로 기록합니다. 여러 케이스나 파이프라인을 함께 실행해도 실행 횟수는 한 번입니다.
 - 최근 7일·30일·90일의 실행 횟수, 성공률, 실패·오류·시간 초과, 평균 소요 시간과 UTC 기준 일별 추이를 제공합니다.
 - 이력 목록은 결과별 필터와 20건 단위 페이지 이동을 지원하며 15초마다 갱신됩니다.
-- 실행 metadata는 `STUDIO_DB_PATH`가 가리키는 Studio SQLite DB의 `executions` 테이블에 저장됩니다. 기존 Docker `data` 볼륨으로 함께 보존됩니다.
+- 실행 metadata는 Docker에서는 PostgreSQL의 `executions` 테이블과 `postgres_data` 볼륨에 저장됩니다. PostgreSQL 연결 설정이 없는 native 실행은 `STUDIO_DB_PATH`의 SQLite를 계속 사용합니다.
 - Run ID, 실행 대상·프로젝트, 시작·종료 시각, 소요 시간, 결과와 종료 코드만 저장합니다. 요청·응답 본문, header, 인증정보와 runner 출력은 저장하지 않습니다.
 - CLI에서 직접 실행한 과거·신규 이력은 아직 집계하지 않습니다. 현재 대시보드는 웹 실행만 기록합니다.
 
@@ -99,6 +99,8 @@ Docker Compose는 Python API 서버(`api`)와 React 개발 서버(`web`)를 함�
 
 ```bash
 cp .env.example .env
+# .env에 POSTGRES_PASSWORD_FILE과 STUDIO_DATABASE_URL_FILE의 외부 secret 파일 경로를 설정합니다.
+# 기존 SQLite 사용자는 아래 FND-4 이관 가이드를 먼저 수행합니다.
 docker compose up --build
 ```
 
@@ -303,17 +305,17 @@ projects/
 
 ## 협업 영구 저장소
 
-웹 스튜디오에서 저장하는 프로젝트·API 케이스·파이프라인은 기본적으로 `data/studio.db` SQLite 데이터베이스에 저장됩니다. 각 문서는 변경되지 않는 ID와 증가하는 리비전을 가지며, 수정할 때마다 전체 JSON 스냅샷과 변경 사용자·시각이 새 리비전으로 기록됩니다.
+웹 스튜디오의 프로젝트·API 케이스·파이프라인은 Docker에서 PostgreSQL에 저장됩니다. 연결 설정이 없는 native 실행은 `data/studio.db` SQLite 호환 모드를 사용합니다. 각 문서는 변경되지 않는 ID와 증가하는 리비전을 가지며, 수정할 때마다 전체 JSON 스냅샷과 변경 사용자·시각이 새 리비전으로 기록됩니다.
 
 서버와 실행 이력 저장소는 연결 시 `schema_migrations`를 확인하고 아직 적용되지 않은 migration을 버전 순서대로 한 transaction에서 실행합니다. 기존 무버전 DB의 테이블과 데이터는 유지하며, migration 하나라도 실패하면 해당 실행에서 발생한 schema 변경과 version 기록을 모두 rollback합니다. 소유권 DB도 같은 방식으로 별도 version을 관리합니다.
 
-기존 CLI 호환성을 위해 현재 리비전은 동시에 다음 JSON 파일로 반영됩니다.
+기존 CLI 호환성을 위해 DB commit 이후 현재 리비전을 다음 JSON 파일로 투영합니다. 파일 쓰기 실패는 DB 성공과 분리해 기록하고 복구할 수 있습니다.
 
 - 프로젝트: `projects/{project_file}.json`
 - API 케이스: `case/{tag}/{api_name}/{case_file}.json`
 - 파이프라인: `pipelines/{pipeline_file}.json`
 
-서버를 처음 실행하면 기존 JSON 파일을 리비전 1로 자동 가져옵니다. 서버가 중지된 동안 Git 등에서 JSON 파일이 변경된 경우 다음 시작 시 새 리비전으로 가져옵니다. 따라서 웹 협업 데이터의 기준은 SQLite이고, JSON은 CLI 실행과 Git 내보내기를 위한 현재 버전 투영본입니다.
+빈 PostgreSQL은 JSON을 처음 가져올 수 있지만, 기존 SQLite 이력이 있다면 이관 명령을 먼저 실행해야 합니다. PostgreSQL에 문서가 있으면 재시작 시 JSON을 다시 가져오지 않으므로 파일이 DB 이력을 덮어쓰지 않습니다. 기존 native SQLite 모드의 파일 가져오기 동작은 유지됩니다.
 
 문서 조회 API는 다음 저장 메타데이터를 반환합니다. 편집 화면은 이 값을 저장 요청에 다시 보내며, 그 사이 다른 사용자가 문서를 저장했다면 서버가 `409 Conflict`를 반환해 조용한 덮어쓰기를 방지합니다. `_storage`는 실행용 JSON 파일에는 기록되지 않습니다.
 
@@ -330,9 +332,9 @@ projects/
 
 리비전 목록은 `GET /api/cases/{reference}/revisions`, `GET /api/pipelines/{reference}/revisions`, `GET /api/projects/{reference}/revisions`로 조회할 수 있습니다. 삭제는 DB에서 소프트 삭제로 기록하고 CLI용 JSON 투영본만 제거합니다.
 
-로컬 실행에서 DB 위치를 바꾸려면 `STUDIO_DB_PATH` 환경 변수를 사용합니다. Docker에서는 `/app/data/studio.db`로 고정되고 `DATA_VOLUME_PATH`가 해당 디렉터리를 보존합니다. 백업할 때는 `data/`, `case/`, `projects/`, `pipelines/`와 `API_TEST_ENCRYPTION_KEY`를 함께 관리해야 합니다.
+Docker는 `STUDIO_DATABASE_URL_FILE`로 PostgreSQL에 연결하고 `STUDIO_REDIS_URL`로 revision metadata를 캐시합니다. PostgreSQL·Redis에는 host port가 없습니다. SQLite 이관, secret 파일 설정, DB 백업·복원과 JSON 투영 복구는 [FND-4 저장소 운영 계약](docs/fnd-4-storage.md)을 따릅니다. 업로드·artifact·암호화 key는 DB와 별도로 백업해야 합니다.
 
-현재 `X-Studio-Actor` 요청 헤더는 리비전 작성자를 구분하기 위한 감사 식별자이며 인증 수단이 아닙니다. 실제 다중 사용자 배포 전에는 로그인·세션과 프로젝트 역할 검증을 연결해야 합니다.
+`X-Studio-Actor`와 저장 body의 사용자·workspace 필드는 작성자 결정에 사용하지 않습니다. 현재 HTTP는 서버가 정한 로컬 시스템 `RequestContext`를 사용합니다. 로그인·세션 및 request별 인증 문맥 연결은 COL-2/COL-1에서 진행합니다.
 
 ## 프로젝트 JSON
 

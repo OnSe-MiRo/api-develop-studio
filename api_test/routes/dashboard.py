@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sqlite3
+from api_test.database import DATABASE_ERRORS
 
 
 def handle_get(request, parts: list[str], studio):
@@ -15,6 +15,6 @@ def handle_get(request, parts: list[str], studio):
         )
     except (TypeError, ValueError) as exc:
         raise studio.ApiError("대시보드 조회 조건이 올바르지 않습니다.") from exc
-    except sqlite3.Error as exc:
+    except DATABASE_ERRORS as exc:
         raise studio.ApiError("실행 이력을 불러오지 못했습니다.") from exc
     return request.json_response(200, data)

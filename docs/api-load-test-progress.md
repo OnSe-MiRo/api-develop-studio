@@ -104,3 +104,15 @@
 - 검증: macOS 및 Docker에서 각각 전체 Python 166개, frontend 8개, Vite build, TestClient timeout/이력 및 실제 pipeline 3단계 PASS. React 실행 후 대시보드 성공 이력 반영 확인. Docker 단일 worker와 동일 Compose healthcheck 통과.
 - 차단 및 해소: loopback/Docker sandbox 접근은 허용된 재실행으로 해소. 현재 차단 없음.
 - 완료: FND-3 로컬 구현·검증 완료, FND-3 커밋/병합/푸시 없음. 상세 상태는 `api-development-progress.md`, HTTP 계약은 `fnd-3-http-contract.md`와 동기화.
+
+## FND-4 저장소 전환 (2026-09-14)
+
+- 상태: 완료 — `feature/fnd-4-postgres-redis` 로컬 구현·검증
+- 시작: PostgreSQL 영구 저장소, SQLite 읽기 전용 이관, Redis metadata 캐시와 장애 fallback 구현. 실행 이력 저장소도 같은 전환 범위로 검증한다.
+- 기준: 기존 HTTP/revision 계약 보존, DB commit 이후 JSON 투영, 이관 검증 실패 시 rollback.
+
+- 변경: 실행 metadata를 PostgreSQL 저장소에 연결하고 workspace/requested_by/보존기한 schema와 workspace·시각 index 추가. 기존 dashboard JSON/filter/page 계약과 실행 성공 후 historyWarning 경계를 보존. 부하 생성기는 추가하지 않음.
+- 검증: FND4 전용 PostgreSQL·Redis URL을 제공한 전체 Python 206개(skip 없음), frontend 8개와 Vite build 통과. 빈/이관 PostgreSQL HTTP matrix, 실행 이력 project 필터·페이지, 실제 subprocess 정책 차단 결과의 Run ID/대시보드 연결 확인.
+- 장애·복구: 실제 Redis 중단 fallback 200, PostgreSQL 중단 API 503 및 재시작 후 pool 복구, Compose healthcheck, PostgreSQL dump/restore의 문서 수·ID/revision/hash/삭제 상태 일치, 전체 JSON 투영 복구 명령 통과.
+- 환경 차단 및 해소: sandbox의 Git/Docker/TCP 제한은 작업별 권한 확장으로 해소. SQLite 초기 WAL 설정의 동시성 오류는 수정 후 전체 회귀 통과.
+- 범위: 기존 15초 dashboard polling 유지. 운영 데이터 이관·배포·커밋·병합·푸시 없음. 운영 절차와 나머지 COL-2/COL-1 범위는 [FND-4 저장소 운영 계약](fnd-4-storage.md) 참조.
