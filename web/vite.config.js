@@ -6,6 +6,11 @@ const apiProxyTarget = process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:87
 
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+    restoreMocks: true,
+  },
   server: {
     host,
     port: 5173,

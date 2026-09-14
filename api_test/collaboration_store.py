@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
 
+from api_test.migrations import migrate_studio_database
+
 
 DOCUMENT_KINDS = ("projects", "cases", "pipelines")
 DEFAULT_WORKSPACE_ID = "default"
@@ -106,63 +108,7 @@ class CollaborationStore:
         with self._schema_lock:
             if not self._initialized:
                 with closing(self.connect()) as connection, connection:
-                    connection.executescript(
-                        """
-                        CREATE TABLE IF NOT EXISTS workspaces (
-                            id TEXT PRIMARY KEY,
-                            name TEXT NOT NULL,
-                            created_at TEXT NOT NULL
-                        );
-                        CREATE TABLE IF NOT EXISTS users (
-                            id TEXT PRIMARY KEY,
-                            display_name TEXT NOT NULL,
-                            created_at TEXT NOT NULL
-                        );
-                        CREATE TABLE IF NOT EXISTS memberships (
-                            workspace_id TEXT NOT NULL REFERENCES workspaces(id),
-                            user_id TEXT NOT NULL REFERENCES users(id),
-                            role TEXT NOT NULL CHECK(role IN ('owner', 'admin', 'editor', 'runner', 'viewer')),
-                            created_at TEXT NOT NULL,
-                            PRIMARY KEY (workspace_id, user_id)
-                        );
-                        CREATE TABLE IF NOT EXISTS documents (
-                            id TEXT PRIMARY KEY,
-                            workspace_id TEXT NOT NULL REFERENCES workspaces(id),
-                            kind TEXT NOT NULL CHECK(kind IN ('projects', 'cases', 'pipelines')),
-                            reference TEXT NOT NULL,
-                            project_reference TEXT,
-                            current_revision INTEGER NOT NULL,
-                            content_hash TEXT NOT NULL,
-                            created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL,
-                            deleted_at TEXT,
-                            UNIQUE (workspace_id, kind, reference)
-                        );
-                        CREATE TABLE IF NOT EXISTS document_revisions (
-                            document_id TEXT NOT NULL REFERENCES documents(id),
-                            revision INTEGER NOT NULL,
-                            content TEXT NOT NULL,
-                            content_hash TEXT NOT NULL,
-                            created_by TEXT NOT NULL REFERENCES users(id),
-                            created_at TEXT NOT NULL,
-                            PRIMARY KEY (document_id, revision)
-                        );
-                        CREATE TABLE IF NOT EXISTS audit_events (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            workspace_id TEXT NOT NULL REFERENCES workspaces(id),
-                            document_id TEXT NOT NULL REFERENCES documents(id),
-                            action TEXT NOT NULL,
-                            revision INTEGER,
-                            actor_id TEXT NOT NULL REFERENCES users(id),
-                            detail TEXT,
-                            created_at TEXT NOT NULL
-                        );
-                        CREATE INDEX IF NOT EXISTS documents_project_idx
-                            ON documents(workspace_id, kind, project_reference, deleted_at);
-                        CREATE INDEX IF NOT EXISTS revisions_document_idx
-                            ON document_revisions(document_id, revision DESC);
-                        """
-                    )
+                    migrate_studio_database(connection)
                     now = utc_now()
                     connection.execute(
                         "INSERT OR IGNORE INTO workspaces(id, name, created_at) VALUES (?, ?, ?)",
