@@ -17,11 +17,38 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class GeneratedServerTest(unittest.TestCase):
+    def test_openapi_source_is_split_by_components_and_tag(self):
+        source = yaml.safe_load((ROOT / 'openapi/studio.yaml').read_text())
+        self.assertEqual(set(source['components']), {'headers', 'schemas'})
+        self.assertTrue(all('$ref' in value and value['$ref'].startswith('./components/schemas/') for value in source['components']['schemas'].values()))
+        self.assertTrue(all('$ref' in value and value['$ref'].startswith('./components/headers.yaml#/') for value in source['components']['headers'].values()))
+        path_files = {path.name for path in (ROOT / 'openapi/paths').glob('*.yaml')}
+        self.assertEqual(path_files, {
+            'projects.yaml', 'cases.yaml', 'pipelines.yaml', 'openapi.yaml',
+            'execution.yaml', 'dashboard.yaml', 'ownership.yaml',
+            'uploads.yaml', 'example.yaml',
+        })
+        schema_files = {path.name for path in (ROOT / 'openapi/components/schemas').glob('*.yaml')}
+        self.assertEqual(schema_files, {
+            'common.yaml', 'projects.yaml', 'cases.yaml', 'pipelines.yaml',
+            'execution.yaml', 'openapi.yaml', 'dashboard.yaml', 'ownership.yaml',
+            'uploads.yaml', 'example.yaml',
+        })
+        for path, value in source['paths'].items():
+            self.assertEqual(len(value), 1)
+            target = value['$ref']
+            self.assertTrue(target.startswith('./paths/'))
+            self.assertTrue((ROOT / 'openapi' / target.split('#', 1)[0][2:]).is_file())
+
     def test_every_spec_operation_has_a_generated_route_and_implementation(self):
         spec = yaml.safe_load((ROOT / 'openapi/studio.yaml').read_text())
         routes = {route.operation_id: route for router in routers for route in router.routes if route.include_in_schema}
         expected_ids = set()
-        for path, operations in spec['paths'].items():
+        for path, path_ref in spec['paths'].items():
+            ref = path_ref['$ref']
+            ref_file, _, pointer = ref.partition('#')
+            fragment = yaml.safe_load((ROOT / 'openapi' / ref_file[2:]).read_text())
+            operations = fragment[pointer[1:].replace('~1', '/').replace('~0', '~')]
             for method, operation in operations.items():
                 operation_id = operation['operationId']
                 expected_ids.add(operation_id)
@@ -38,7 +65,9 @@ class GeneratedServerTest(unittest.TestCase):
             result = client.get('/api/schema.json')
         self.assertEqual(result.status_code, 200)
         spec = result.json()
-        self.assertEqual(spec['paths']['/api/projects/{reference}']['put']['requestBody']['content']['application/json']['schema'], {'$ref': '#/components/schemas/ProjectInput'})
+        request_schema = spec['paths']['/api/projects/{reference}']['put']['requestBody']['content']['application/json']['schema']
+        self.assertIn('properties', request_schema)
+        self.assertIn('name', request_schema['properties'])
         self.assertNotIn('x-studio-handler', result.text)
         self.assertIn('environments', spec['components']['schemas']['ProjectInput']['properties'])
         self.assertIn('configured', spec['components']['schemas']['SecretState']['properties'])

@@ -1,0 +1,19 @@
+DashboardResponse:
+  type: object
+  properties:
+    summary:
+      type: object
+    trend:
+      type: array
+      items:
+        type: object
+    items:
+      type: array
+      items:
+        type: object
+    total:
+      type: integer
+    page:
+      type: integer
+    pageSize:
+      type: integer

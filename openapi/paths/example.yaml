@@ -1,0 +1,264 @@
+/example-api:
+  get:
+    operationId: get_example
+    tags:
+    - example
+    summary: get example
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '201':
+        description: Example user created
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '401':
+        description: Missing or invalid example API key
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '404':
+        description: Example endpoint not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+    x-studio-handler: example.handle_example
+    x-studio-parts: '[]'
+    x-studio-route: /example-api
+    x-studio-upload: false
+    x-studio-alias: true
+  post:
+    operationId: post_example
+    tags:
+    - example
+    summary: post example
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '201':
+        description: Example user created
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '401':
+        description: Missing or invalid example API key
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '404':
+        description: Example endpoint not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+    x-studio-handler: example.handle_example
+    x-studio-parts: '[]'
+    x-studio-route: /example-api
+    x-studio-upload: false
+    x-studio-alias: true
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/example.yaml#/ExampleInput
+/example-api/{reference}:
+  get:
+    operationId: get_example_resource
+    tags:
+    - example
+    summary: get example resource
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '201':
+        description: Example user created
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '401':
+        description: Missing or invalid example API key
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '404':
+        description: Example endpoint not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+    x-studio-handler: example.handle_example
+    x-studio-parts: '[]'
+    x-studio-route: /example-api/{reference:path}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Slash-separated document or attachment reference.
+  post:
+    operationId: post_example_resource
+    tags:
+    - example
+    summary: post example resource
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '201':
+        description: Example user created
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '401':
+        description: Missing or invalid example API key
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+      '404':
+        description: Example endpoint not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/example.yaml#/ExampleResponse
+    x-studio-handler: example.handle_example
+    x-studio-parts: '[]'
+    x-studio-route: /example-api/{reference:path}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Slash-separated document or attachment reference.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/example.yaml#/ExampleInput

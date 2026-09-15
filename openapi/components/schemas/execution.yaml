@@ -1,0 +1,89 @@
+QuickRequest:
+  type: object
+  properties:
+    project:
+      type: string
+    environment:
+      type: string
+    method:
+      type: string
+    url:
+      type: string
+    params: {}
+    headers: {}
+    auth:
+      type: object
+      additionalProperties: true
+    auth_profile:
+      type: string
+    body: {}
+    body_format:
+      type: string
+    text:
+      type: string
+    form_data:
+      type: array
+      items:
+        $ref: ./cases.yaml#/FormDataItem
+    proxy_url:
+      type: string
+    no_proxy:
+      type: boolean
+    timeout:
+      type: number
+  required:
+  - url
+QuickResponse:
+  type: object
+  properties:
+    status:
+      type: integer
+    elapsedMs:
+      type: number
+    sizeBytes:
+      type: integer
+    headers:
+      type: object
+      additionalProperties:
+        type: string
+    body: {}
+    rawBody:
+      type: string
+  required:
+  - status
+  - elapsedMs
+  - sizeBytes
+  - headers
+  - rawBody
+RunRequest:
+  type: object
+  properties:
+    cases:
+      type: array
+      items:
+        type: string
+    pipelines:
+      type: array
+      items:
+        type: string
+    inlineCase:
+      $ref: ./cases.yaml#/CaseInput
+    inlinePipeline:
+      $ref: ./pipelines.yaml#/PipelineDocument
+    caseReference:
+      type: string
+    environment:
+      type: string
+RunResponse:
+  type: object
+  properties:
+    runId:
+      type: string
+    exitCode:
+      type: integer
+    output:
+      type: string
+    historyWarning:
+      type: string
+  required:
+  - runId

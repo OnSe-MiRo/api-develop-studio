@@ -1,0 +1,248 @@
+/api/pipelines:
+  get:
+    operationId: list_pipelines
+    tags:
+    - pipelines
+    summary: list pipelines
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ReferenceList
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: documents.list_documents
+    x-studio-parts: '[''pipelines'']'
+    x-studio-route: /api/pipelines
+    x-studio-upload: false
+    x-studio-alias: true
+    parameters:
+    - name: project
+      in: query
+      required: false
+      schema:
+        type: string
+/api/pipelines/{reference}/revisions:
+  get:
+    operationId: list_pipelines_revisions
+    tags:
+    - pipelines
+    summary: list pipelines revisions
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/RevisionList
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: documents.list_revisions
+    x-studio-parts: '[''pipelines'']'
+    x-studio-route: /api/pipelines/{reference:path}/revisions
+    x-studio-upload: false
+    x-studio-alias: true
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Slash-separated document or attachment reference.
+/api/pipelines/{reference}:
+  get:
+    operationId: get_pipelines
+    tags:
+    - pipelines
+    summary: get pipelines
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/pipelines.yaml#/PipelineDocument
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: documents.get_document
+    x-studio-parts: '[''pipelines'']'
+    x-studio-route: /api/pipelines/{reference:path}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Slash-separated document or attachment reference.
+  put:
+    operationId: save_pipelines
+    tags:
+    - pipelines
+    summary: save pipelines
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/SaveResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: documents.save_document
+    x-studio-parts: '[''pipelines'']'
+    x-studio-route: /api/pipelines/{reference:path}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Slash-separated document or attachment reference.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/pipelines.yaml#/PipelineDocument
+  delete:
+    operationId: delete_pipelines
+    tags:
+    - pipelines
+    summary: delete pipelines
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/DeleteResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: documents.delete_document
+    x-studio-parts: '[''pipelines'']'
+    x-studio-route: /api/pipelines/{reference:path}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Slash-separated document or attachment reference.

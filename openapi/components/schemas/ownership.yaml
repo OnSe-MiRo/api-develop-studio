@@ -1,0 +1,32 @@
+OwnershipRequest:
+  type: object
+  properties:
+    url:
+      type: string
+    method:
+      type: string
+    verification_id:
+      type: string
+OwnershipResponse:
+  type: object
+  properties:
+    proofs:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    grants:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    local_server:
+      type: boolean
+    skip_verification:
+      type: boolean
+    verification_url:
+      type: string
+    challenge:
+      type: string
+    expires_at:
+      type: number

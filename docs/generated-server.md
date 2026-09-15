@@ -1,6 +1,6 @@
 # OpenAPI Generator 기반 Studio 서버
 
-Studio 자체 API 명세는 `openapi/studio.yaml`에서 관리한다. 테스트 대상 API를 가져오거나 클라이언트 SDK ZIP을 만드는 기존 기능과 별개다. Generator 7.24.0의 `python-fastapi`와 저장소의 Mustache 템플릿으로 라우터·Pydantic 모델·라우터 목록을 생성한다.
+Studio 자체 API 명세는 `openapi/studio.yaml`에서 관리한다. 루트 파일은 계약 메타데이터와 외부 참조만 포함하며, `openapi/paths/{tag}.yaml`과 `openapi/components/schemas/{tag}.yaml`에 tag별 path·schema를, `openapi/components/headers.yaml`에 header components를 분리한다. 여러 tag가 공유하는 schema는 `schemas/common.yaml`에 둔다. 테스트 대상 API를 가져오거나 클라이언트 SDK ZIP을 만드는 기존 기능과 별개다. Generator 7.24.0의 `python-fastapi`와 저장소의 Mustache 템플릿으로 라우터·Pydantic 모델·라우터 목록을 생성한다.
 
 ## 구조와 요청 흐름
 
@@ -8,6 +8,9 @@ Studio 자체 API 명세는 `openapi/studio.yaml`에서 관리한다. 테스트 
 openapi/studio.yaml                 Studio 계약, 29 operations / 41 named schemas
 openapi/generator-config.yaml       고정 생성 옵션
 openapi/templates/                  라우터·모델·등록 목록 템플릿
+openapi/components/headers.yaml     공통 응답 header components
+openapi/components/schemas/{tag}.yaml tag별 schema components, common.yaml은 공유 모델
+openapi/paths/{tag}.yaml            tag별 path items
 scripts/generate_server.py           생성 및 --check
 api_test/generated/apis/            생성 APIRouter, 직접 수정 금지
 api_test/generated/models/          생성 Pydantic DTO, 직접 수정 금지
@@ -41,7 +44,7 @@ python -m api_test.main
 
 `python react_server.py`, `python -m react_server`, `react_server:app`도 호환된다. Docker 기본 진입점은 `python -m api_test.main`이다. `API_TEST_HOST`, `API_TEST_PORT`, loopback 제한과 단일 worker 정책을 유지한다.
 
-생성은 임시 디렉터리에서 진행한 뒤 `api_test/generated/`의 Python 파일만 동기화한다. Generator가 기본으로 만드는 Dockerfile, requirements, 테스트 스텁과 구현 스텁은 애플리케이션에 복사하지 않는다. `--check`는 작업 트리를 쓰지 않고 실제 재생성 결과와 비교한다. 구현 파일은 생성 폴더 밖에 둔다.
+생성은 임시 디렉터리에서 진행한 뒤 `api_test/generated/`의 Python 파일만 동기화한다. Generator가 기본으로 만드는 Dockerfile, requirements, 테스트 스텁과 구현 스텁은 애플리케이션에 복사하지 않는다. 외부 `$ref`는 path 파일 기준의 `../components/schemas/{tag}.yaml`와 schema 파일 기준의 `./{other-tag}.yaml#/SchemaName` 또는 `#/SchemaName`을 사용한다. `--check`는 작업 트리를 쓰지 않고 실제 재생성 결과와 비교한다. 구현 파일은 생성 폴더 밖에 둔다.
 
 ## 계약과 호환성
 

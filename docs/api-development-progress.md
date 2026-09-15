@@ -255,3 +255,10 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 변경: SQLite 이관이 API 첫 기동으로 생긴 빈 `default/local-user` bootstrap context만 transaction 안에서 제거한 뒤 snapshot으로 대체하도록 수정. 문서·실행·ownership·identity 또는 다른 context가 하나라도 있으면 기존대로 rollback한다.
 - 검증: Python 223개 중 181개 통과·외부 서비스 설정 의존 42개 skip, Compose build·config 통과. 실제 Compose에서 PostgreSQL·Redis·encryption healthy, SQLite snapshot의 workspaces 1·users 2·memberships 2·documents 10·revisions 19·audit 20 digest 이관 통과, API healthcheck `/api/cases` 200 및 web 기동 확인.
 - 상태: 완료 — Docker 서비스는 실행 상태로 유지. 커밋·병합·푸시는 수행하지 않음.
+
+### OpenAPI 명세 components·tag별 분리 (2026-09-15)
+
+- 변경: `openapi/studio.yaml`은 메타데이터와 외부 `$ref` 조합만 유지하고 `components/headers.yaml`, `components/schemas/{tag}.yaml`, `paths/{tag}.yaml`로 명세를 분리. 여러 tag 공유 모델은 `schemas/common.yaml`에 유지.
+- 변경: API 앱은 외부 참조를 해석한 self-contained `/api/schema.json`을 반환하고 내부 `x-studio-*` binding 정보는 제거.
+- 검증: OpenAPI Generator 7.24.0 `--check`, Python 224개 중 182개 통과·42개 외부 서비스 설정 의존 skip, frontend 14개·build·diff check 통과. 실제 API 컨테이너에서 20개 path·41개 schema·2개 header 반환 확인.
+- 상태: 완료 — 생성 라우터 결과와 기존 HTTP 계약 유지.

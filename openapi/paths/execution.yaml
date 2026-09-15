@@ -1,0 +1,114 @@
+/api/request:
+  post:
+    operationId: send_request
+    tags:
+    - execution
+    summary: send request
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/QuickResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '502':
+        description: Upstream connection failure
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '504':
+        description: Upstream timeout
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: execution.send_request
+    x-studio-parts: '[]'
+    x-studio-route: /api/request
+    x-studio-upload: false
+    x-studio-alias: true
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/execution.yaml#/QuickRequest
+/api/run:
+  post:
+    operationId: run_tests
+    tags:
+    - execution
+    summary: run tests
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '504':
+        description: Execution timeout
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: execution.run_tests
+    x-studio-parts: '[]'
+    x-studio-route: /api/run
+    x-studio-upload: false
+    x-studio-alias: true
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/execution.yaml#/RunRequest

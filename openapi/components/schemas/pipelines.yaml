@@ -1,0 +1,39 @@
+PipelineStep:
+  type: object
+  properties:
+    name:
+      type: string
+    case:
+      type: string
+    retry:
+      type: integer
+    retry_interval_seconds:
+      type: number
+    external_once:
+      type: boolean
+    continue_on_failure:
+      type: boolean
+    input_mappings:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+  required:
+  - name
+  - case
+PipelineDocument:
+  type: object
+  properties:
+    name:
+      type: string
+    project:
+      type: string
+    steps:
+      type: array
+      items:
+        $ref: '#/PipelineStep'
+    defaults:
+      type: object
+      additionalProperties: true
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata

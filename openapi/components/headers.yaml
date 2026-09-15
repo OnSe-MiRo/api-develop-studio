@@ -1,0 +1,8 @@
+XRequestId:
+  description: Request correlation identifier.
+  schema:
+    type: string
+ETag:
+  description: Current document revision validator.
+  schema:
+    type: string

@@ -1,0 +1,212 @@
+ErrorResponse:
+  type: object
+  properties:
+    error:
+      type: string
+    code:
+      type: string
+    currentRevision:
+      type: integer
+    runId:
+      type: string
+  required:
+  - error
+StorageMetadata:
+  type: object
+  properties:
+    id:
+      type: string
+    revision:
+      type: integer
+    created_by:
+      type: string
+    updated_by:
+      type: string
+    created_at:
+      type: string
+    updated_at:
+      type: string
+    content_hash:
+      type: string
+    projectionPending:
+      type: boolean
+SecretInput:
+  type: object
+  properties:
+    value:
+      type: string
+      writeOnly: true
+    preserve:
+      type: boolean
+SecretState:
+  type: object
+  properties:
+    configured:
+      type: boolean
+    value:
+      type: string
+      description: Only the explicitly public bundled Example fixture.
+  required:
+  - configured
+VariablesInput:
+  type: object
+  properties:
+    plain:
+      type: object
+      additionalProperties:
+        type: string
+    secret:
+      type: object
+      additionalProperties:
+        $ref: '#/SecretInput'
+VariablesView:
+  type: object
+  properties:
+    plain:
+      type: object
+      additionalProperties:
+        type: string
+    secret:
+      type: object
+      additionalProperties:
+        $ref: '#/SecretState'
+DocumentBundle:
+  type: object
+  properties:
+    entrypoint:
+      type: string
+    files:
+      type: object
+      additionalProperties:
+        type: string
+  required:
+  - entrypoint
+  - files
+ReferenceList:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        type: string
+    details:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties: true
+  required:
+  - items
+RevisionList:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/StorageMetadata'
+  required:
+  - items
+SaveResponse:
+  type: object
+  properties:
+    path:
+      type: string
+    _storage:
+      $ref: '#/StorageMetadata'
+  required:
+  - path
+  - _storage
+DeleteResponse:
+  type: object
+  properties:
+    deleted:
+      type: string
+    deleted_pipelines:
+      type: array
+      items:
+        type: string
+  required:
+  - deleted
+AuthProfile:
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+      - No Auth
+      - API Key
+      - Basic Auth
+      - Bearer Token
+    key:
+      type: string
+    value:
+      type: string
+    addTo:
+      type: string
+    username:
+      type: string
+    password:
+      type: string
+    token:
+      type: string
+  required:
+  - type
+EnvironmentInput:
+  type: object
+  properties:
+    base_url:
+      type: string
+    variables:
+      $ref: '#/VariablesInput'
+    auth_profiles:
+      type: object
+      additionalProperties:
+        $ref: '#/AuthProfile'
+  required:
+  - base_url
+EnvironmentView:
+  type: object
+  properties:
+    base_url:
+      type: string
+    variables:
+      $ref: '#/VariablesView'
+    auth_profiles:
+      type: object
+      additionalProperties:
+        $ref: '#/AuthProfile'
+  required:
+  - base_url
+NamedBaseUrl:
+  type: object
+  properties:
+    name:
+      type: string
+    url:
+      type: string
+  required:
+  - name
+  - url
+TransportSettings:
+  type: object
+  properties:
+    use_proxy:
+      type: boolean
+    verify:
+      type: boolean
+    proxy:
+      type: string
+    http_proxy:
+      type: string
+    https_proxy:
+      type: string
+DocumentFile:
+  type: object
+  properties:
+    name:
+      type: string
+    document:
+      type: object
+      additionalProperties: true
+  required:
+  - name
+  - document

@@ -1,0 +1,72 @@
+ProjectInput:
+  type: object
+  properties:
+    name:
+      type: string
+    base_url:
+      type: string
+    base_urls:
+      type: array
+      items:
+        $ref: ./common.yaml#/NamedBaseUrl
+    docs_url:
+      type: string
+    docs_file:
+      $ref: ./common.yaml#/DocumentFile
+    docs_bundle:
+      $ref: ./common.yaml#/DocumentBundle
+    advanced:
+      $ref: ./common.yaml#/TransportSettings
+    default_environment:
+      type: string
+    auth_profiles:
+      type: object
+      additionalProperties:
+        $ref: ./common.yaml#/AuthProfile
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata
+    variables:
+      $ref: ./common.yaml#/VariablesInput
+    environments:
+      type: object
+      additionalProperties:
+        $ref: ./common.yaml#/EnvironmentInput
+  required:
+  - name
+  - base_url
+ProjectView:
+  type: object
+  properties:
+    name:
+      type: string
+    base_url:
+      type: string
+    base_urls:
+      type: array
+      items:
+        $ref: ./common.yaml#/NamedBaseUrl
+    docs_url:
+      type: string
+    docs_file:
+      $ref: ./common.yaml#/DocumentFile
+    docs_bundle:
+      $ref: ./common.yaml#/DocumentBundle
+    advanced:
+      $ref: ./common.yaml#/TransportSettings
+    default_environment:
+      type: string
+    auth_profiles:
+      type: object
+      additionalProperties:
+        $ref: ./common.yaml#/AuthProfile
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata
+    variables:
+      $ref: ./common.yaml#/VariablesView
+    environments:
+      type: object
+      additionalProperties:
+        $ref: ./common.yaml#/EnvironmentView
+  required:
+  - name
+  - base_url

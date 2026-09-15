@@ -1,0 +1,107 @@
+FormDataItem:
+  type: object
+  properties:
+    key:
+      type: string
+    value:
+      type: string
+    file:
+      type: string
+    filename:
+      type: string
+    content_type:
+      type: string
+  required:
+  - key
+CaseRequest:
+  type: object
+  properties:
+    method:
+      type: string
+    url:
+      type: string
+    headers:
+      type: object
+      additionalProperties:
+        type: string
+    auth:
+      type: object
+      additionalProperties: true
+    auth_profile:
+      type: string
+    body: {}
+    text:
+      type: string
+    form_data:
+      type: array
+      items:
+        $ref: '#/FormDataItem'
+  required:
+  - url
+ExpectedResponse:
+  type: object
+  properties:
+    status:
+      type: integer
+    body: {}
+    strict:
+      type: boolean
+    max_response_time_ms:
+      type: number
+    assertions:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    validation_modes:
+      type: object
+      additionalProperties:
+        type: boolean
+CaseInput:
+  type: object
+  properties:
+    name:
+      type: string
+    project:
+      type: string
+    base_url_name:
+      type: string
+    timeout:
+      type: number
+    request:
+      $ref: '#/CaseRequest'
+    expected:
+      $ref: '#/ExpectedResponse'
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata
+    _expectedBodyRaw:
+      type: string
+    variables:
+      $ref: ./common.yaml#/VariablesInput
+  required:
+  - request
+  - expected
+CaseView:
+  type: object
+  properties:
+    name:
+      type: string
+    project:
+      type: string
+    base_url_name:
+      type: string
+    timeout:
+      type: number
+    request:
+      $ref: '#/CaseRequest'
+    expected:
+      $ref: '#/ExpectedResponse'
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata
+    _expectedBodyRaw:
+      type: string
+    variables:
+      $ref: ./common.yaml#/VariablesView
+  required:
+  - request
+  - expected

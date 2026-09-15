@@ -1,0 +1,56 @@
+/api/uploads/{reference}:
+  post:
+    operationId: upload_attachment
+    tags:
+    - uploads
+    summary: upload attachment
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/uploads.yaml#/UploadResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: uploads.upload_attachment
+    x-studio-parts: '[]'
+    x-studio-route: /api/uploads/{reference:path}
+    x-studio-upload: true
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Slash-separated document or attachment reference.
+    requestBody:
+      required: true
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary

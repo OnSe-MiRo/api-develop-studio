@@ -1,0 +1,78 @@
+DocsRequest:
+  type: object
+  properties:
+    url:
+      type: string
+    document:
+      type: object
+      additionalProperties: true
+    bundle:
+      $ref: ./common.yaml#/DocumentBundle
+    no_proxy:
+      type: boolean
+    for_case:
+      type: boolean
+DocsResponse:
+  type: object
+  properties:
+    operations:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+  required:
+  - operations
+GenerateRequest:
+  type: object
+  properties:
+    project:
+      type: string
+    language:
+      type: string
+  required:
+  - project
+  - language
+AuthorOperationRequest:
+  type: object
+  properties:
+    method:
+      type: string
+    path:
+      type: string
+    operation_id:
+      type: string
+    summary:
+      type: string
+    tag:
+      type: string
+    parameters:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    has_request_body:
+      type: boolean
+    request_body: {}
+    request_body_required:
+      type: boolean
+    response_status:
+      type: integer
+    response_description:
+      type: string
+    has_response_body:
+      type: boolean
+    response_body: {}
+    error_statuses:
+      type: array
+      items:
+        type: integer
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata
+AuthorOperationResponse:
+  type: object
+  properties:
+    operation:
+      type: object
+      additionalProperties: true
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata

@@ -1,0 +1,158 @@
+/api/projects/{reference}/openapi/operations:
+  post:
+    operationId: author_operation
+    tags:
+    - openapi
+    summary: author operation
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/openapi.yaml#/AuthorOperationResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: openapi.author_operation
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/openapi/operations
+    x-studio-upload: false
+    x-studio-alias: true
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Slash-separated document or attachment reference.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/openapi.yaml#/AuthorOperationRequest
+/api/docs:
+  post:
+    operationId: inspect_document
+    tags:
+    - openapi
+    summary: inspect document
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/openapi.yaml#/DocsResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: openapi.inspect_document
+    x-studio-parts: '[]'
+    x-studio-route: /api/docs
+    x-studio-upload: false
+    x-studio-alias: true
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/openapi.yaml#/DocsRequest
+/api/generate:
+  post:
+    operationId: generate_client
+    tags:
+    - openapi
+    summary: generate client
+    responses:
+      '200':
+        description: ZIP archive
+        content:
+          application/zip:
+            schema:
+              type: string
+              format: binary
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '504':
+        description: Execution timeout
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: openapi.generate_client
+    x-studio-parts: '[]'
+    x-studio-route: /api/generate
+    x-studio-upload: false
+    x-studio-alias: true
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/openapi.yaml#/GenerateRequest

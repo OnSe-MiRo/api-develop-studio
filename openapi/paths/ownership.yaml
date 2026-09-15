@@ -1,0 +1,160 @@
+/api/ownership:
+  get:
+    operationId: get_ownership
+    tags:
+    - ownership
+    summary: get ownership
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ownership.yaml#/OwnershipResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: ownership.get_ownership
+    x-studio-parts: '[]'
+    x-studio-route: /api/ownership
+    x-studio-upload: false
+    x-studio-alias: true
+    parameters:
+    - name: project
+      in: query
+      required: false
+      schema:
+        type: string
+  post:
+    operationId: ownership_action
+    tags:
+    - ownership
+    summary: ownership action
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ownership.yaml#/OwnershipResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: ownership.perform_action
+    x-studio-parts: '[]'
+    x-studio-route: /api/ownership
+    x-studio-upload: false
+    x-studio-alias: true
+    parameters:
+    - name: project
+      in: query
+      required: false
+      schema:
+        type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ownership.yaml#/OwnershipRequest
+/api/ownership/{action}:
+  post:
+    operationId: perform_ownership_action
+    tags:
+    - ownership
+    summary: perform ownership action
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ownership.yaml#/OwnershipResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: ownership.perform_action
+    x-studio-parts: '[]'
+    x-studio-route: /api/ownership/{action:path}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: action
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project
+      in: query
+      required: false
+      schema:
+        type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ownership.yaml#/OwnershipRequest

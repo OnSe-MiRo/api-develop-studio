@@ -13,6 +13,43 @@ from api_test.database import DATABASE_ERRORS
 from api_test.dependencies import request_context
 
 
+def resolve_openapi_refs(value, source_path: Path, cache=None):
+    """Resolve local external refs so the published contract is self-contained."""
+    cache = {} if cache is None else cache
+    if isinstance(value, list):
+        return [resolve_openapi_refs(item, source_path, cache) for item in value]
+    if not isinstance(value, dict):
+        return value
+    reference = value.get('$ref')
+    if isinstance(reference, str):
+        file_part, _, fragment = reference.partition('#')
+        target_path = (source_path.parent / file_part).resolve() if file_part else source_path
+        if target_path not in cache:
+            cache[target_path] = yaml.safe_load(target_path.read_text(encoding='utf-8'))
+        target = cache[target_path]
+        for segment in (fragment[1:].split('/') if fragment.startswith('/') else []):
+            segment = segment.replace('~1', '/').replace('~0', '~')
+            target = target[segment]
+        resolved = resolve_openapi_refs(target, target_path, cache)
+        siblings = {key: item for key, item in value.items() if key != '$ref'}
+        if siblings and isinstance(resolved, dict):
+            resolved = {**resolved, **resolve_openapi_refs(siblings, source_path, cache)}
+        return resolved
+    return {key: resolve_openapi_refs(item, source_path, cache) for key, item in value.items()}
+
+
+def public_openapi_spec(path: Path) -> dict:
+    specification = yaml.safe_load(path.read_text(encoding='utf-8'))
+    resolved = resolve_openapi_refs(specification, path)
+    for path_item in resolved.get('paths', {}).values():
+        for operation in path_item.values():
+            if isinstance(operation, dict):
+                for key in list(operation):
+                    if key.startswith('x-studio-'):
+                        del operation[key]
+    return resolved
+
+
 def create_app(studio) -> FastAPI:
     app = FastAPI(title="API Develop Studio", docs_url=None, redoc_url=None,
                   openapi_url="/api/schema.json", redirect_slashes=False)
@@ -65,13 +102,8 @@ def create_app(studio) -> FastAPI:
         return await context.call(unknown)
 
     # Publish the canonical contract rather than reverse engineering opaque request context.
-    specification = yaml.safe_load((Path(__file__).resolve().parents[1] / 'openapi/studio.yaml').read_text())
-    public_spec = deepcopy(specification)
-    for path in public_spec['paths'].values():
-        for operation in path.values():
-            for key in list(operation):
-                if key.startswith('x-studio-'):
-                    del operation[key]
+    specification_path = Path(__file__).resolve().parents[1] / 'openapi/studio.yaml'
+    public_spec = public_openapi_spec(specification_path)
     app.openapi = lambda: deepcopy(public_spec)
     return app
 

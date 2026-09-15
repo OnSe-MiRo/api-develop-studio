@@ -1,0 +1,20 @@
+ExampleInput:
+  type: object
+  properties:
+    name:
+      type: string
+ExampleResponse:
+  type: object
+  properties:
+    status:
+      type: string
+    id:
+      type: integer
+    name:
+      type: string
+    authorized:
+      type: boolean
+    message:
+      type: string
+    error:
+      type: string
