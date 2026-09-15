@@ -4,6 +4,9 @@ import json
 import os
 import subprocess
 from copy import deepcopy
+from contextlib import asynccontextmanager
+from starlette.concurrency import run_in_threadpool
+from api_test.jobs import JobManager, JobError
 from pathlib import Path
 import yaml
 import uvicorn
@@ -51,9 +54,21 @@ def public_openapi_spec(path: Path) -> dict:
 
 
 def create_app(studio) -> FastAPI:
-    app = FastAPI(title="API Develop Studio", docs_url=None, redoc_url=None,
+    manager = JobManager.from_environment()
+
+    @asynccontextmanager
+    async def lifespan(app):
+        if app.state.jobs.closed:
+            app.state.jobs = JobManager.from_environment()
+        try:
+            yield
+        finally:
+            await run_in_threadpool(app.state.jobs.close)
+
+    app = FastAPI(lifespan=lifespan, title="API Develop Studio", docs_url=None, redoc_url=None,
                   openapi_url="/api/schema.json", redirect_slashes=False)
     app.state.studio = studio
+    app.state.jobs = manager
     def error_response(request, exc):
         context = getattr(request.state, "studio", None) or studio.StudioRequest(request, b"")
         status, payload = 400, {"error": str(exc)}
@@ -70,11 +85,13 @@ def create_app(studio) -> FastAPI:
             status, payload = 403, {"error": str(exc), "code": "OWNERSHIP_POLICY_DENIED"}
         elif isinstance(exc, studio.ApiError) and request.method == "POST":
             status = exc.status_code
+        if isinstance(exc, JobError):
+            status = exc.status_code
         if isinstance(exc, DATABASE_ERRORS):
             status, payload = 503, {"error": "저장소에 연결할 수 없습니다. 잠시 후 다시 시도하세요."}
         return context.json_response(status, payload)
 
-    for error in (studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
+    for error in (JobError, studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
                   OSError, json.JSONDecodeError, subprocess.TimeoutExpired, RequestValidationError, *DATABASE_ERRORS):
         app.add_exception_handler(error, error_response)
 

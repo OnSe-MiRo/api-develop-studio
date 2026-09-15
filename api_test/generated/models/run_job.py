@@ -18,14 +18,26 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, StrictBool, 
 
 
 
-class RunResponse(BaseModel):
+class RunJob(BaseModel):
     """Generated contract DTO. Additional document fields and explicit nulls are retained."""
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
     run_id: StrictStr = Field(alias="runId")
+    status: StrictStr
+    created_at: StrictStr = Field(alias="createdAt")
+    started_at: Optional[StrictStr] = Field(default=None, alias="startedAt")
+    finished_at: Optional[StrictStr] = Field(default=None, alias="finishedAt")
     exit_code: Optional[StrictInt] = Field(default=None, alias="exitCode")
+    result: Optional[Dict[str, Any]] = None
     output: Optional[StrictStr] = None
-    result: Optional[Dict[str, Any]] = Field(default=None, description="Version 1 sanitized execution report with run metadata and per-case assertions.")
+    error: Optional[StrictStr] = None
     history_warning: Optional[StrictStr] = Field(default=None, alias="historyWarning")
+
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, value):
+        if value is not None and value not in ('queued', 'running', 'cancelling', 'passed', 'failed', 'error', 'timeout', 'cancelled', ):
+            raise ValueError('Unsupported status')
+        return value
 
 
     def to_dict(self):

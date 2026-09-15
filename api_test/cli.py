@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .reports import RunReport, now
 from .run_log import create_run_logger
 from .runner import ApiTestRunner, CaseConfigurationError, CaseResult, project_request_settings, read_json, resolve_case_path
 from .ownership import OwnershipError, execution_guard, local_policy
@@ -251,7 +252,7 @@ def _run_case_with_project_settings(
 
 
 def run_pipeline(
-    pipeline_path: Path, case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None, environment: str | None = None,
+    pipeline_path: Path, case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None, environment: str | None = None, report_result: RunReport | None = None,
 ) -> int:
     logger, log_path = create_run_logger(log_dir)
 
@@ -305,6 +306,7 @@ def run_pipeline(
             raise CaseConfigurationError("파이프라인과 케이스의 프로젝트가 다릅니다.")
         if raw_step.get("external_once") and case_document.get("request", {}).get("auth", {}).get("type") in ("Digest Auth", "NTLM Authentication"):
             raise CaseConfigurationError("외부 1회 호출에서는 추가 handshake가 필요한 인증을 사용할 수 없습니다.")
+        step_started = now()
         result = _run_case_with_project_settings(
             runner,
             name,
@@ -316,6 +318,8 @@ def run_pipeline(
             retry_interval_seconds=interval,
             external_setup=raw_step.get("external_once") is True,
         )
+        if report_result is not None:
+            report_result.add(result, pipeline_path.as_posix(), step_started, case_document.get("project"))
         results[name] = result
         for line in _result_lines(result):
             report(line, _result_line_level(result, line))
@@ -332,7 +336,7 @@ def run_pipeline(
 
 
 def run_case_files(
-    case_references: list[str], case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None, environment: str | None = None,
+    case_references: list[str], case_root: Path, timeout: float, log_dir: Path = Path("logs"), project_root: Path = Path("projects"), file_root: Path | None = None, environment: str | None = None, report_result: RunReport | None = None,
 ) -> int:
     """Run independent case files directly, without requiring a pipeline JSON file."""
     logger, log_path = create_run_logger(log_dir)
@@ -351,7 +355,10 @@ def run_case_files(
         case_id = f"case_{index}_{case_path.stem}"
         logger.info("Case started: case=%s", case_path)
         case_document = read_json(case_path)
+        step_started = now()
         result = _run_case_with_project_settings(runner, case_id, case_document, project_root, file_root or case_root)
+        if report_result is not None:
+            report_result.add(result, case_reference, step_started, case_document.get("project"))
         results[case_id] = result
         steps.append({"name": case_id, "case": case_reference})
         for line in _result_lines(result):
@@ -382,7 +389,11 @@ def main() -> int:
     parser.add_argument("--log-dir", type=Path, default=Path("logs"), help="Directory for per-run log files")
     parser.add_argument("--case", dest="case_references", nargs="+", help="Run one or more case files relative to --case-root")
     parser.add_argument("--environment", help="Project environment to use for this run")
+    parser.add_argument("--report-json", type=Path, help="Write sanitized JSON execution report")
+    parser.add_argument("--report-junit", type=Path, help="Write JUnit XML CI report")
+    parser.add_argument("--run-id", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    report_result = RunReport(args.environment, args.run_id)
     if not args.case_references and not args.pipelines:
         args.pipelines = [path for path in sorted(Path("pipelines").rglob("*.json")) if not is_disabled_example_pipeline(path)]
         if not args.pipelines:
@@ -392,17 +403,22 @@ def main() -> int:
     exit_code = 0
     for pipeline_path in args.pipelines:
         try:
-            exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root, args.environment))
+            exit_code = max(exit_code, run_pipeline(pipeline_path, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root, args.environment, report_result))
         except (CaseConfigurationError, OwnershipError) as exc:
+            report_result.error(pipeline_path.as_posix())
             print(f"Configuration error in {pipeline_path}: {exc}")
             exit_code = 2
 
     if args.case_references:
         try:
-            exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root, args.environment))
+            exit_code = max(exit_code, run_case_files(args.case_references, args.case_root, args.timeout, args.log_dir, args.project_root, args.file_root, args.environment, report_result))
         except (CaseConfigurationError, OwnershipError) as exc:
+            report_result.error("direct cases")
             print(f"Configuration error in direct cases: {exc}")
             exit_code = 2
+    summary = report_result.finish(exit_code)
+    print(f"Run {summary['runId']}: {summary['status'].upper()} (exit code: {summary['exitCode']})")
+    report_result.write(args.report_json, args.report_junit)
     return exit_code
 
 

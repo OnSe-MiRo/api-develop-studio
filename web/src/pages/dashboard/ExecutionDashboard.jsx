@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../../utils/studio.js'
 import './dashboard.css'
 
-const statusLabels = { passed: '성공', failed: '실패', error: '오류', timeout: '시간 초과' }
+const statusLabels = { passed: '성공', failed: '실패', error: '오류', timeout: '시간 초과', cancelled: '취소' }
 const duration = value => value == null ? '—' : value < 1000 ? `${Math.round(value).toLocaleString('ko-KR')} ms` : `${(value / 1000).toLocaleString('ko-KR', { maximumFractionDigits: 2 })} 초`
 const count = value => value.toLocaleString('ko-KR')
 

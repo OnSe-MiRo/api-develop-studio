@@ -116,3 +116,10 @@
 - 장애·복구: 실제 Redis 중단 fallback 200, PostgreSQL 중단 API 503 및 재시작 후 pool 복구, Compose healthcheck, PostgreSQL dump/restore의 문서 수·ID/revision/hash/삭제 상태 일치, 전체 JSON 투영 복구 명령 통과.
 - 환경 차단 및 해소: sandbox의 Git/Docker/TCP 제한은 작업별 권한 확장으로 해소. SQLite 초기 WAL 설정의 동시성 오류는 수정 후 전체 회귀 통과.
 - 범위: 기존 15초 dashboard polling 유지. 운영 데이터 이관·배포·커밋·병합·푸시 없음. 운영 절차와 나머지 COL-2/COL-1 범위는 [FND-4 저장소 운영 계약](fnd-4-storage.md) 참조.
+
+## 2026-09-15 — RUN-2 실행 이력 연동 진행
+
+- 시작·변경: API 개발 RUN-2에 따라 기능 실행 취소 상태를 공통 실행 이력에 추가하고 대시보드에 취소 표시를 연결.
+- 범위: 비동기 기능 테스트 job의 상태 연동. 부하 발생기·VU 실행·LT 단계는 수행하지 않음.
+- 완료·검증 (2026-09-16): Python 236개 중 194개 통과·42 skip, frontend 17개·build·OpenAPI --check·diff check 통과. 취소 상태 기록·조회와 macOS 프로세스 정리 및 UI 실행·복원 확인.
+- 최종 브랜치: `feature/async-runs`, 미커밋. LT 작업과 부하 실행은 수행하지 않음.

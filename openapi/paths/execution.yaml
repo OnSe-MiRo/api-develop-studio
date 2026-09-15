@@ -95,6 +95,8 @@
           application/json:
             schema:
               $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Concurrent execution limit exceeded
       '504':
         description: Execution timeout
         content:
@@ -112,3 +114,97 @@
         application/json:
           schema:
             $ref: ../components/schemas/execution.yaml#/RunRequest
+/api/runs:
+  post:
+    operationId: submit_run
+    tags:
+    - execution
+    summary: submit run
+    responses:
+      '202':
+        description: Job status
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunJob
+      '413':
+        description: Execution request exceeds 1 MiB
+      '400': &id001
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403': *id001
+      '404': *id001
+      '429': *id001
+      '503': *id001
+    x-studio-handler: execution.submit_run
+    x-studio-parts: '[]'
+    x-studio-route: /api/runs
+    x-studio-upload: false
+    x-studio-alias: false
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/execution.yaml#/RunRequest
+/api/runs/{runId}:
+  get:
+    operationId: get_run
+    tags:
+    - execution
+    summary: get run
+    responses:
+      '200':
+        description: Job status
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunJob
+      '400': *id001
+      '403': *id001
+      '404': *id001
+      '429': *id001
+      '503': *id001
+    x-studio-handler: execution.get_run
+    x-studio-parts: '[context.request.path_params["runId"]]'
+    x-studio-route: /api/runs/{runId}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+/api/runs/{runId}/cancel:
+  post:
+    operationId: cancel_run
+    tags:
+    - execution
+    summary: cancel run
+    responses:
+      '200':
+        description: Job status
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunJob
+      '400': *id001
+      '403': *id001
+      '404': *id001
+      '429': *id001
+      '503': *id001
+    x-studio-handler: execution.cancel_run
+    x-studio-parts: '[context.request.path_params["runId"]]'
+    x-studio-route: /api/runs/{runId}/cancel
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: runId
+      in: path
+      required: true
+      schema:
+        type: string

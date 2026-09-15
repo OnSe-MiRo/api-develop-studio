@@ -148,7 +148,7 @@ function projectFileName(name, existingProjects) {
 async function api(path, options = {}) {
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options })
   const data = await response.json()
-  if (!response.ok) throw new Error(data.error || '요청 처리에 실패했습니다.')
+  if (!response.ok) { const error = new Error(data.error || '요청 처리에 실패했습니다.'); error.status = response.status; throw error }
   return data
 }
 

@@ -94,6 +94,7 @@ class CaseResult:
     expected_definition: dict[str, Any] | None = None
     sensitive_values: set[str] = field(default_factory=set)
     response_time_ms: float | None = None
+    error_category: str | None = None
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -897,6 +898,7 @@ class ApiTestRunner:
         except (urllib.error.URLError, TimeoutError, OSError, AuthorizationError) as exc:
             return CaseResult(
                 case_id, "error", attempt, error=str(exc),
+                error_category="request_timeout" if isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError) else "request_error",
                 request_definition=request_definition, expected_definition=expected,
                 sensitive_values=set(sensitive_values or ()),
                 response_time_ms=(time.perf_counter() - started_at) * 1000,

@@ -33,6 +33,12 @@ paths:
     $ref: ./paths/execution.yaml#/~1api~1request
   /api/run:
     $ref: ./paths/execution.yaml#/~1api~1run
+  /api/runs:
+    $ref: ./paths/execution.yaml#/~1api~1runs
+  /api/runs/{runId}:
+    $ref: ./paths/execution.yaml#/~1api~1runs~1{runId}
+  /api/runs/{runId}/cancel:
+    $ref: ./paths/execution.yaml#/~1api~1runs~1{runId}~1cancel
   /api/dashboard:
     $ref: ./paths/dashboard.yaml#/~1api~1dashboard
   /api/ownership:
@@ -122,6 +128,8 @@ components:
       $ref: ./components/schemas/execution.yaml#/QuickResponse
     RunRequest:
       $ref: ./components/schemas/execution.yaml#/RunRequest
+    RunJob:
+      $ref: ./components/schemas/execution.yaml#/RunJob
     RunResponse:
       $ref: ./components/schemas/execution.yaml#/RunResponse
     DocsRequest:

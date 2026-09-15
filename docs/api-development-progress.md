@@ -33,11 +33,11 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-15
-- 현재 단계: OpenAPI Generator 서버 구조 전환 완료
+- 최종 갱신일: 2026-09-16
+- 현재 단계: RUN-2 비동기 기능 테스트 실행 완료
 - 전체 상태: 진행
-- 반영 브랜치: `feature/openapi-generated-server`. 기존 API-1·2·3 미커밋 변경을 보존하여 이어서 구현. 커밋·병합·푸시는 수행하지 않음.
-- 다음 작업: COL-2 request별 인증 문맥·workspace·실행/artifact 격리
+- 반영 브랜치: `feature/async-runs` (RUN-1 미커밋 변경을 보존). 커밋·병합·푸시는 수행하지 않음.
+- 다음 작업: OAS-1 OpenAPI 편집 확장. SDK 생성의 비동기 전환은 공통 JobManager를 이용한 후속 연동으로 분리.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -52,8 +52,8 @@
 | API-1 | 빠른 API 호출 | P0 | 완료 | JSON·Text·Form Data, 케이스 저장 전환, 응답 대기 취소, cURL 마스킹 |
 | API-2 | 환경 프로필 | P0 | 완료 | 기존 base_url 호환, 웹·CLI 선택, 암호화 override |
 | API-3 | 공통 인증 모델 | P0 | 완료 | 1차 No Auth·API Key·Basic·Bearer 완료. OAuth 2.0 발급은 2차 |
-| RUN-1 | 구조화된 실행 결과와 CI report | P0 | 대기 | 결과 JSON schema |
-| RUN-2 | 비동기 job과 실행 제한 | P0 | 대기 | worker lifecycle |
+| RUN-1 | 구조화된 실행 결과와 CI report | P0 | 완료 | JSON/JUnit·웹 판정 및 민감정보 제외 검증 통과 |
+| RUN-2 | 비동기 job과 실행 제한 | P0 | 완료 | 기능 테스트 제출·조회·취소·제한 검증 완료. SDK 연동은 후속 |
 | OAS-1 | OpenAPI operation·schema·security 편집 | P0 | 대기 | 편집 데이터 모델 |
 | OAS-2 | lint·응답 schema·breaking change 검증 | P0 | 대기 | lint 정책과 차단 수준 |
 | TST-1 | 명세–케이스 커버리지 | P1 | 대기 | operation 안정 ID |
@@ -72,6 +72,28 @@
 OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 기록`](api-load-test-progress.md)에서도 관리한다. 두 문서의 상태가 다르면 실제 검증 기록이 최신인 문서를 확인하고 같은 작업 안에서 동기화한다.
 
 ## 현재 작업
+
+- 작업 ID: RUN-2
+- 시작: 2026-09-15 KST / 완료: 2026-09-16 KST
+- 상태: 완료 — `feature/async-runs` 미커밋 작업 트리 (RUN-1 변경 보존)
+- 결과: 비동기 제출·조회·취소 API, worker·사용자·프로젝트 한도, 종료 정리, 화면 상태·취소·재조회와 대시보드 취소 상태 연결.
+- 검증: Python 236개 중 194개 통과·42개 조건 의존 skip. frontend 17개·production build, OpenAPI 재생성 --check, git diff --check 통과.
+- 실제 동작: macOS 자식 프로세스와 임시 파일이 취소·timeout·shutdown 후 제거됨. 임시 서버 8879에서 로컬 예제 HTTP 200·실행 완료, 새로고침 후 동일 Run ID 결과 복원 확인.
+- 제한: 단일 API 프로세스·메모리 job; 재시작 복구 없음. Windows taskkill 경로는 구현했지만 실제 Windows 검증은 미수행. SDK 생성은 기존 동기 API를 유지하며 공통 JobManager의 후속 adapter 대상.
+- 사용법: [RUN-2 비동기 실행](async-runs.md).
+- 커밋·병합·푸시·배포: 수행하지 않음.
+
+### 이전 RUN-1 작업
+
+- 작업 ID: RUN-1
+- 시작·완료: 2026-09-15 KST
+- 상태: 완료 — `feature/run-reports` 미커밋 작업 트리
+- 결과: 공통 결과 모델·JSON schema, CLI JSON/JUnit 출력, 웹 실행 결과·Run ID 연결
+- 검증: 전체 Python 229개 중 187개 통과·외부 서비스 등 조건 의존 42개 skip. 신규 보고서 테스트 5개, schema 상태 5종·설정 오류 검증, OpenAPI 재생성 --check, git diff --check 통과.
+- 계약 및 제한: [RUN-1 실행 보고서](run-reports.md). 취소·비동기 job은 RUN-2 범위.
+- 커밋·병합·푸시: 수행하지 않음.
+
+### 이전 작업
 
 - 작업 ID: OpenAPI Generator 서버 구조 전환
 - 목표: Studio 명세에서 생성한 라우터·모델과 직접 작성하는 서비스 분리
@@ -129,6 +151,24 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 ## 변경 이력
 
 최신 항목을 위에 추가하고 작업 ID, 변경 파일, 검증 결과, 알려진 제한과 다음 작업을 기록한다.
+
+### 2026-09-16 — RUN-2 기능 테스트 실행 완료
+
+- 변경: app 수명주기 JobManager, 취소 가능한 프로세스 그룹 실행, 크기·보관·동시 실행 제한, OpenAPI 생성 라우터·DTO, 케이스·파이프라인 실행 화면과 sessionStorage 재조회 연결.
+- 추가 수정: 실제 브라우저에서 발견한 케이스 로딩과 결과 복원의 경합을 수정하고 기록 키를 케이스·파이프라인 참조별로 분리.
+- 검증: Python 236개(194 통과·42 skip), frontend 17개·build·OpenAPI --check·diff check 통과. macOS process tree 종료 및 실제 UI 실행·새로고침 복원 확인.
+- 환경 제한 해소: 샌드박스의 ps·loopback bind 제한으로 관련 검증을 허용된 실행 환경에서 재실행해 통과. npm은 web/에서 실행해 검증 완료.
+- 다음: OAS-1. SDK 비동기 연동·영속 job 복구·분산 worker는 미구현이며 운영 계약에 명시.
+
+
+### 2026-09-15 — RUN-1 완료
+
+- 시작: 깨끗한 develop에서 `feature/run-reports` 분기, RUN-1을 진행으로 변경.
+- 변경: `api_test/reports.py`, CLI, runner timeout 분류, 웹 실행 서비스, OpenAPI RunResponse·생성 모델에 공통 보고서 연결. `docs/run-result.schema.json`, `docs/run-reports.md`, 신규 테스트 추가.
+- 검증: Python 229개 중 187개 통과·42개 skip. JSON/JUnit 성공·실패·오류·timeout 및 비밀값 제외, 실제 CLI 설정 오류 보고서, pipeline 실패 중단, 웹 Run ID·임시 파일 정리 확인. schema 및 재생성 --check·diff check 통과.
+- 환경: 기본 Python에 OpenAPI Generator가 없어 기존 `/private/tmp/fnd4-venv`의 고정 버전 생성기로 재생성·검증 완료.
+- 제한: 상세 결과 DB 저장, 비동기 job·취소는 포함하지 않음. 기존 300초 서버 timeout 계약 유지. version·commit은 배포 환경변수 미지정 시 null.
+- 다음: RUN-2 job lifecycle·실행 제한 구현. 커밋·병합·푸시는 미수행.
 
 ### 2026-09-12 — FND-2 — 테스트·migration·route 모듈 기반
 

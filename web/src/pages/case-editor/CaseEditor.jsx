@@ -1,3 +1,4 @@
+import { useRunJob } from '../../hooks/useRunJob.js'
 import { ExecutionEnvironment } from '../../components/ExecutionEnvironment.jsx'
 import { ProjectVariableRows } from '../../components/ProjectVariableRows.jsx'
 import { Field } from '../../components/Field.jsx'
@@ -16,7 +17,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
   const [requestTab, setRequestTab] = useState('Params')
   const [selected, setSelected] = useState('')
   const [notice, setNotice] = useState('')
-  const [result, setResult] = useState(null)
+  const { result, setResult, busy, start: startRun, cancel: cancelRun } = useRunJob(`${projectRef}:case:${caseReference || "new"}`)
   const [savedCaseSignature, setSavedCaseSignature] = useState('')
   const [storageMeta, setStorageMeta] = useState(null)
   const [docOperations, setDocOperations] = useState([])
@@ -62,7 +63,6 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
   const caseRef = `${asText(form.tag)}/${asText(form.apiName)}/${jsonFileName(form.fileName)}`
   const responseVariables = responseVariablesFromJson(form.expectedBody)
   useEffect(() => {
-    setResult(null)
     if (caseReference) load(caseReference)
     else { setForm(newCaseForm()); setSelected(''); setSavedCaseSignature(''); setStorageMeta(null); setNotice('새 API 케이스를 작성하세요.') }
   }, [caseReference, projectRef])
@@ -184,7 +184,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
         validateConditions: typeof validationModes.conditions === 'boolean' ? validationModes.conditions : Array.isArray(expected.assertions) && expected.assertions.length > 0,
         assertions: Array.isArray(expected.assertions) ? expected.assertions.map(assertionFormRow) : [], secretVariables,
       })
-      setSelected(reference); setStorageMeta(data._storage || null); setSavedCaseSignature(caseSignature(reference, data)); setNotice(''); setResult(null)
+      setSelected(reference); setStorageMeta(data._storage || null); setSavedCaseSignature(caseSignature(reference, data)); setNotice('')
     } catch (error) { setNotice(error.message) }
   }
 
@@ -312,8 +312,8 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       const payload = await casePayload()
       const hasUnsavedChanges = caseSignature(caseRef, payload) !== savedCaseSignature
       setResult(null); setNotice(hasUnsavedChanges ? '현재 입력값을 저장하지 않고 실행 중입니다.' : '')
-      setResult(await api('/api/run', { method: 'POST', body: JSON.stringify({ environment, inlineCase: payload, caseReference: caseRef }) }))
-      if (hasUnsavedChanges) setNotice('저장하지 않고 실행했습니다.')
+      await startRun({ environment, inlineCase: payload, caseReference: caseRef })
+      if (hasUnsavedChanges) setNotice('저장하지 않고 실행 작업을 제출했습니다.')
     } catch (error) { setResult({ error: error.message }); setNotice(error.message) }
   }
   const removeCase = async () => {
@@ -349,8 +349,8 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
         {(form.validateExact || form.validateConditions) && <><div className="expected-body-heading"><strong>{form.validateExact ? form.validateConditions ? 'Expected body / 변수 예시 JSON' : 'Expected body' : '변수 예시 JSON'}</strong><span>{form.validateExact ? form.validateConditions ? '일치 검증과 변수 조건 선택에 사용' : '일치 검증에 사용' : '변수 조건 선택에 사용'}</span></div><JsonArea value={form.expectedBody} onChange={value => set('expectedBody', value)} placeholder={'{\n  "id": 1\n}'} /></>}
         {form.validateConditions && <AssertionEditor assertions={form.assertions} variables={responseVariables} enabled onAdd={addAssertion} onUpdate={updateAssertion} onConfirm={confirmAssertion} onSelectVariable={selectAssertionVariable} onRemove={removeAssertion} />}
       </section>
-      <div className="case-run-action"><button className="primary" onClick={runOnly}>실행</button></div>
-      {notice && <p className="notice">{notice}</p>}<RunResult result={result} onClose={() => setResult(null)} />
+      <div className="case-run-action"><button className="primary" disabled={busy} onClick={runOnly}>실행</button></div>
+      {notice && <p className="notice">{notice}</p>}<RunResult result={result} onCancel={cancelRun} onClose={() => setResult(null)} />
     </main>
   </div>
 }

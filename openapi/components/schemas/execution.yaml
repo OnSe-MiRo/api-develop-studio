@@ -83,7 +83,42 @@ RunResponse:
       type: integer
     output:
       type: string
+    result:
+      type: object
+      description: Version 1 sanitized execution report with run metadata and per-case assertions.
+      additionalProperties: true
     historyWarning:
       type: string
   required:
   - runId
+
+RunJob:
+  type: object
+  required: [runId, status, createdAt]
+  properties:
+    runId:
+      type: string
+    status:
+      type: string
+      enum: [queued, running, cancelling, passed, failed, error, timeout, cancelled]
+    createdAt:
+      type: string
+    startedAt:
+      type: string
+      nullable: true
+    finishedAt:
+      type: string
+      nullable: true
+    exitCode:
+      type: integer
+      nullable: true
+    result:
+      type: object
+      nullable: true
+      additionalProperties: true
+    output:
+      type: string
+    error:
+      type: string
+    historyWarning:
+      type: string

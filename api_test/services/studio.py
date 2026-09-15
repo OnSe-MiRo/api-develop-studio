@@ -137,7 +137,7 @@ def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[st
     return sorted(projects), targets
 
 
-def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str, object]:
+def ensure_run_ready():
     if postgres_enabled():
         store = collaboration_store()
         store.repair_projections()
@@ -145,6 +145,10 @@ def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str,
         with closing(store.connect()) as connection, connection:
             if connection.execute("SELECT 1 FROM projection_jobs p JOIN documents d ON d.id=p.document_id WHERE d.workspace_id=? LIMIT 1", (store.context.workspace_id,)).fetchone():
                 raise ApiError("JSON 투영 복구가 필요합니다. 저장소 상태를 확인한 후 다시 실행하세요.")
+
+
+def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str, object]:
+    ensure_run_ready()
     projects, targets = execution_metadata(body)
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
@@ -152,9 +156,19 @@ def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str,
     status, exit_code = "error", None
     response: dict[str, object] = {"runId": run_id}
     try:
-        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
+        with TemporaryDirectory(prefix="api-test-report-") as directory:
+            report_path = Path(directory) / "result.json"
+            result = subprocess.run([*command, "--report-json", str(report_path), "--run-id", run_id],
+                                    cwd=ROOT, capture_output=True, text=True, timeout=300)
+            if report_path.is_file():
+                report = json.loads(report_path.read_text(encoding="utf-8"))
+                if report.get("runId") == run_id and report.get("exitCode") == result.returncode:
+                    report["artifacts"] = []  # The transport file is deleted after this request.
+                    response["result"] = report
         exit_code = result.returncode
         status = "passed" if exit_code == 0 else "failed" if exit_code == 1 else "error"
+        if "result" in response:
+            status = response["result"]["status"]
         response.update({"exitCode": exit_code, "output": result.stdout + result.stderr})
         return response
     except subprocess.TimeoutExpired as exc:

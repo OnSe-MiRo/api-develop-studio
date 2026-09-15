@@ -15,7 +15,7 @@ from api_test.migrations import migrate_studio_database
 from api_test.database import connect, LOCAL_CONTEXT, RequestContext, postgres_enabled, require_membership, initialize_local_context
 
 
-ALLOWED_STATUSES = ("passed", "failed", "error", "timeout")
+ALLOWED_STATUSES = ("passed", "failed", "error", "timeout", "cancelled")
 
 
 class ExecutionHistory:
@@ -97,6 +97,7 @@ class ExecutionHistory:
                         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed,
                         COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0) AS error,
                         COALESCE(SUM(CASE WHEN status = 'timeout' THEN 1 ELSE 0 END), 0) AS timeout,
+                        COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelled,
                         AVG(duration_ms) AS "averageDurationMs"
                         FROM executions WHERE {where}""",
                     parameters,

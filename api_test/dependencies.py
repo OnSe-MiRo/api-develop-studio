@@ -12,7 +12,15 @@ class RequestContext:
         self.transport.check_request_origin()
 
     async def call(self, implementation, arguments=(), *, upload=False):
-        if upload:
+        if self.request.url.path == "/api/runs" and self.request.method == "POST":
+            chunks, size = [], 0
+            async for chunk in self.request.stream():
+                size += len(chunk)
+                if size > 1024 * 1024:
+                    raise self.studio.ApiError("실행 요청은 1 MiB 이하여야 합니다.", status_code=413)
+                chunks.append(chunk)
+            self.transport.body = b"".join(chunks)
+        elif upload:
             chunks, size = [], 0
             async for chunk in self.request.stream():
                 size += len(chunk)
