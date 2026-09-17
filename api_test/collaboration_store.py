@@ -383,6 +383,23 @@ class CollaborationStore:
 
         return pending
 
+    def revision_document(self, kind: str, reference: str, revision: int) -> dict[str, object]:
+        """Read an immutable revision inside the bound workspace."""
+        self._validate_kind(kind)
+        if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
+            raise CollaborationStoreError("revision must be a positive integer")
+        with closing(self.connect()) as connection, connection:
+            row = connection.execute(
+                """SELECT r.content FROM documents d
+                   JOIN document_revisions r ON r.document_id = d.id
+                   WHERE d.workspace_id = ? AND d.kind = ? AND d.reference = ?
+                     AND d.deleted_at IS NULL AND r.revision = ?""",
+                (self.context.workspace_id, kind, reference, revision),
+            ).fetchone()
+        if row is None:
+            raise DocumentNotFoundError("Document revision not found")
+        return json.loads(row["content"])
+
     def revisions(self, kind: str, reference: str) -> list[dict[str, object]]:
         current = self.get(kind, reference, include_deleted=True)
         if current is None:

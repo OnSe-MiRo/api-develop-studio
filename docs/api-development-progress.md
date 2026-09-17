@@ -33,11 +33,11 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-16
-- 현재 단계: RUN-2 비동기 기능 테스트 실행 완료
+- 최종 갱신일: 2026-09-17
+- 현재 단계: OAS-2 계약 검증 구현·로컬 검증 완료 (OAS-1 1차 변경 보존)
 - 전체 상태: 진행
-- 반영 브랜치: `feature/async-runs` (RUN-1 미커밋 변경을 보존). 커밋·병합·푸시는 수행하지 않음.
-- 다음 작업: OAS-1 OpenAPI 편집 확장. SDK 생성의 비동기 전환은 공통 JobManager를 이용한 후속 연동으로 분리.
+- 반영 브랜치: `feature/openapi-contract-validation` 로컬 작업 트리. develop cd32db2 기준, OAS-1 미커밋 변경 보존. 이번 커밋·병합·푸시는 수행하지 않음.
+- 다음 작업: OAS-1 component schema CRUD·reference 선택, security scheme·operation security, request/response 편집과 전체 문서 validation. SDK 비동기 전환은 별도 후속.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -54,8 +54,8 @@
 | API-3 | 공통 인증 모델 | P0 | 완료 | 1차 No Auth·API Key·Basic·Bearer 완료. OAuth 2.0 발급은 2차 |
 | RUN-1 | 구조화된 실행 결과와 CI report | P0 | 완료 | JSON/JUnit·웹 판정 및 민감정보 제외 검증 통과 |
 | RUN-2 | 비동기 job과 실행 제한 | P0 | 완료 | 기능 테스트 제출·조회·취소·제한 검증 완료. SDK 연동은 후속 |
-| OAS-1 | OpenAPI operation·schema·security 편집 | P0 | 대기 | 편집 데이터 모델 |
-| OAS-2 | lint·응답 schema·breaking change 검증 | P0 | 대기 | lint 정책과 차단 수준 |
+| OAS-1 | OpenAPI operation·schema·security 편집 | P0 | 진행 | operation 메타데이터 수정·삭제부터 단계적으로 구현 |
+| OAS-2 | lint·응답 schema·breaking change 검증 | P0 | 완료 | 구조 lint·revision diff·빠른 호출 응답·CLI gate 검증. 원격 CI 실행은 미수행 |
 | TST-1 | 명세–케이스 커버리지 | P1 | 대기 | operation 안정 ID |
 | TST-2 | 명세 변경과 케이스 동기화 | P1 | 대기 | 사용자 assertion 보존 규칙 |
 | TST-3 | 테스트 데이터 setup·teardown | P1 | 대기 | 허용 generator 목록 |
@@ -72,6 +72,30 @@
 OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 기록`](api-load-test-progress.md)에서도 관리한다. 두 문서의 상태가 다르면 실제 검증 기록이 최신인 문서를 확인하고 같은 작업 안에서 동기화한다.
 
 ## 현재 작업
+
+- 작업 ID: OAS-2
+- 시작: 2026-09-17 KST
+- 상태: 완료 — `feature/openapi-contract-validation`, develop 기준에 OAS-1 미커밋 변경 보존.
+- 범위: OpenAPI 3.0/3.1 lint, revision 비교, 빠른 호출의 실제 응답 검증, CLI/CI breaking change 차단과 해시에 연결된 승인 기록.
+- 결정: OAS-1 잔여 편집 UI보다 OAS-2를 먼저 진행한다는 사용자 요청 적용. 검증 오류는 차단, 설명·operationId 누락 등 조직 lint는 경고. 알려진 breaking과 분석 불확실 변경은 CI 차단.
+- 검증: Python 전체 259개(217 통과·42 환경 의존 skip), frontend 22개·production build, 생성 코드 --check·git diff --check. 실제 develop 명세 비교 compatible=true, CLI breaking exit 1·승인 exit 0·오래된 승인 exit 2 검증.
+- 실제 브라우저: 임시 데이터와 HTTP 서버 8883에서 lint 통과, revision 1→2의 required query 추가 차단, 실제 HTTP 200의 유효 body 통과·타입 불일치 실패 확인.
+- 지원 경계: 응답 검증은 빠른 호출에 연결. 케이스·파이프라인 자동 계약 검증은 후속. URL-only 과거 revision, 외부 참조·dynamic/anchor·구조적 ref sibling·사용자 schema dialect·복합 header serialization은 지원하지 않고 차단. 일반 JSON Schema 포함관계 대신 지원 규칙과 review 분류 사용.
+- 승인 경계: 두 명세 hash·변경 ID·reason·approvedBy를 파일로 기록하고 CLI/CI에서 검증. 실제 승인 권한은 저장소 리뷰 정책이며 인증된 승인 UI는 미구현.
+- 문서: [OpenAPI 계약 검증 사용법·정책](openapi-contract-validation.md).
+- 반영: 커밋·병합·푸시·배포 없음. GitHub CI 원격 실행·브랜치 보호 설정·실제 PostgreSQL 회귀는 수행하지 않음.
+
+### 이전 OAS-1 1차 작업
+
+- 작업 ID: OAS-1 (1차 operation 메타데이터 수정·삭제)
+- 시작: 2026-09-17 KST
+- 상태: 1차 완료 / OAS-1 전체 진행 — `feature/openapi-operation-edit`, 깨끗한 develop의 cd32db2 기준.
+- 범위: summary·description·operationId·tags·deprecated 수정, 삭제, 중복 ID 검증, 변경 preview, revision 충돌 및 Example 보호 유지.
+- 후속: component schema·security·request/response 편집과 전체 문서 validation.
+- 검증: Python 242개(200 통과·42 조건 의존 skip), frontend 19개·production build·생성 코드 --check·diff check. 실제 임시 서버 8882에서 브라우저 수정·미리보기·저장·새로고침 후 값 유지 확인.
+- 제한: path/method 변경 미지원. 외부 URL 문서는 프로젝트 사본으로 전환. fragment·공유 path 참조 및 참조 operation은 손실 방지를 위해 편집 거부. 본 단계 검증은 metadata 타입·중복 operationId·기존 문서 검사이며 전체 OpenAPI 표준 validation은 후속.
+
+### 이전 RUN-2 작업
 
 - 작업 ID: RUN-2
 - 시작: 2026-09-15 KST / 완료: 2026-09-16 KST
@@ -109,6 +133,12 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 | 일시 | 작업 ID | 명령 또는 확인 방법 | 결과 | 비고 |
 | --- | --- | --- | --- | --- |
+| 2026-09-17 | OAS-2 | Python 259개, frontend 22개, build, 생성 --check, diff check | 통과 (Python 42 skip) | 구조·중첩/재귀 참조·방향별 diff·응답·revision workspace 경계 검증 |
+| 2026-09-17 | OAS-2 | CLI 실제 develop 비교 및 breaking/승인 fixture | 통과 | 실제 명세 호환, breaking exit 1, 승인 exit 0, stale 승인 exit 2 |
+| 2026-09-17 | OAS-2 | 실제 HTTP·브라우저 8883 | 통과 | lint·revision 필수 parameter 변경 차단·실제 응답 schema 통과/실패 |
+| 2026-09-17 | OAS-2 | 초기 신규 테스트 | 실패 후 해소 | 생성 DTO object import, 없는 revision 400/404 차이, OAS 3.0 빈 required fixture 수정 후 통과 |
+| 2026-09-17 | OAS-1 1차 | Python 242개·frontend 19개·build·생성 --check·diff check | 통과 (Python 42 skip) | 최초 ps 권한·URL mock·region 선택 오류 해소 후 통과 |
+| 2026-09-17 | OAS-1 1차 | 임시 HTTP 서버 및 실제 브라우저 | 통과 | 미리보기·저장·새로고침 후 값 유지, 편집 폼 배치 확인 |
 | 2026-09-12 | FND-2 | `python3 -m unittest discover -s tests -v` | 통과, 150개 | 신규 migration 4개와 기존 route 회귀 포함 |
 | 2026-09-12 | FND-2 | `cd web && npm test`, `npm run build` | 통과, 8개·build 성공 | router 3개, form 변환 3개, dashboard loading·empty·error 2개 |
 | 2026-09-12 | FND-2 | `python3 -m py_compile ...`, `docker compose config --quiet`, `git diff --check` | 통과 | route 모듈과 전체 Python source compile 포함 |
@@ -151,6 +181,27 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 ## 변경 이력
 
 최신 항목을 위에 추가하고 작업 ID, 변경 파일, 검증 결과, 알려진 제한과 다음 작업을 기록한다.
+
+### 2026-09-17 — OAS-2 계약 검사 완료
+
+- 시작: 사용자 요청으로 OAS-1 잔여 편집보다 OAS-2를 진행. feature/openapi-contract-validation에서 기존 OAS-1 변경 유지.
+- 변경: api_test/contracts의 로컬 참조 보존 로더·표준 lint·방향별 breaking diff·응답 schema 검증·CLI, workspace 범위의 immutable revision 조회, 계약 검사 API와 생성 라우터/DTO.
+- 변경: API 목록의 revision 비교 패널, 빠른 호출의 실제 응답 검사 선택/결과, PR base SHA 비교 CI와 JSON artifact, 명세 hash에 묶인 승인 기록 및 사용 안내.
+- 보완: 중첩 참조가 동일 문자열이어도 대상 schema 변경 검출, composition/보안/header 참조 변경은 review 차단, 재귀 schema 유지, 3.0/3.1 read-context required와 불량 dialect 입력 처리. 진단에서 원문 값 제외.
+- 검증: Python 259개(217 통과·42 skip), frontend 22개·build·생성 --check·diff check. CLI·실제 HTTP·브라우저 확인 결과는 검증 기록 참조.
+- 실패 해소: generator의 자유 형식 response 상속 import는 schema 정의 조정 후 재생성. 새 계약 API의 missing revision을 명시적 404로 수정. required=[]가 OpenAPI 3.0에서 유효하지 않아 제거 fixture로 교정. 테스트 파일 상대 위치 오류는 저장소 기준 경로로 수정.
+- 제한: 원격 CI·브랜치 보호·PostgreSQL 실서비스 검증 없음. 저장 케이스 자동 계약 연동 및 인증된 승인 UI는 후속. OAS-1은 여전히 진행.
+- 완료: 로컬 구현·검증·문서 갱신. 커밋·병합·푸시·배포 없음.
+
+### 2026-09-17 — OAS-1 1차 operation 메타데이터 편집
+
+- 시작: RUN-2가 반영된 깨끗한 develop에서 feature/openapi-operation-edit 분기. 전체 OAS-1은 진행으로 유지.
+- 변경: 기존 POST operation 계약에 create/update/delete action 추가, 생성 DTO 재생성. 수정 가능한 필드는 operationId·summary·description·tags·deprecated로 제한. 삭제 시 sibling method·path 공통 parameter·연결 케이스 유지.
+- 보존: bundle의 해당 path 파일만 수정하며 schema 파일·재귀 reference·extension을 유지. inline JSON도 원문 구조를 복제해 필요한 metadata만 수정. revision 기반 저장과 읽기 전용 Example 차단 재사용.
+- 화면: API 목록에서 operation을 펼친 뒤 편집. 변경 전후 preview와 삭제 확정, 저장 충돌 메시지 표시.
+- 검증: Python 242개 중 200 통과·42 외부 서비스 설정 의존 skip, frontend 19개·build, 생성 코드 --check·git diff --check 통과. 임시 SQLite/HTTP 서버에서 브라우저 저장·새로고침 유지 확인.
+- 실패 및 해소: 첫 전체 테스트의 ps 권한 제한은 승인된 실행으로 재검증. URL 문서 조회 mock 회귀는 기존 load 경로 유지로 수정. frontend preview 테스트의 중복 region 선택은 이름으로 지정해 수정. npm 루트 실행 오류는 web/에서 재실행해 해소. 임시 서버 bind 제한도 검증 명령 권한 확장으로 해소.
+- 다음: schema/security/request/response 편집과 전체 문서 validation. 이번 작업은 OAS-1 전체 완료가 아님. 커밋·병합·푸시·배포 없음.
 
 ### 2026-09-16 — RUN-2 기능 테스트 실행 완료
 

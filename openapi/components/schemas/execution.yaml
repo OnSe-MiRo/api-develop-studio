@@ -1,6 +1,9 @@
 QuickRequest:
   type: object
   properties:
+    validateContract:
+      type: boolean
+      default: false
     project:
       type: string
     environment:
@@ -36,6 +39,9 @@ QuickRequest:
 QuickResponse:
   type: object
   properties:
+    contract:
+      type: object
+      additionalProperties: true
     status:
       type: integer
     elapsedMs:

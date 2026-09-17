@@ -156,3 +156,37 @@
         application/json:
           schema:
             $ref: ../components/schemas/openapi.yaml#/GenerateRequest
+/api/projects/{reference}/openapi/contract:
+  post:
+    operationId: check_contract
+    tags:
+    - openapi
+    summary: Lint current project contract and compare an immutable revision
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/openapi.yaml#/ContractCheckRequest
+    responses:
+      '200':
+        description: Contract analysis
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/openapi.yaml#/ContractCheckResponse
+      '400':
+        description: Invalid document or request
+      '404':
+        description: Revision not found
+    x-studio-handler: openapi.check_contract
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/openapi/contract
+    x-studio-upload: false
+    x-studio-alias: true

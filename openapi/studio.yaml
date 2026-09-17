@@ -25,6 +25,8 @@ paths:
     $ref: ./paths/pipelines.yaml#/~1api~1pipelines~1{reference}
   /api/projects/{reference}/openapi/operations:
     $ref: ./paths/openapi.yaml#/~1api~1projects~1{reference}~1openapi~1operations
+  /api/projects/{reference}/openapi/contract:
+    $ref: ./paths/openapi.yaml#/~1api~1projects~1{reference}~1openapi~1contract
   /api/docs:
     $ref: ./paths/openapi.yaml#/~1api~1docs
   /api/generate:
@@ -58,6 +60,10 @@ components:
     ETag:
       $ref: ./components/headers.yaml#/ETag
   schemas:
+    ContractCheckRequest:
+      $ref: ./components/schemas/openapi.yaml#/ContractCheckRequest
+    ContractCheckResponse:
+      $ref: ./components/schemas/openapi.yaml#/ContractCheckResponse
     OwnershipRequest:
       $ref: ./components/schemas/ownership.yaml#/OwnershipRequest
     OwnershipResponse:

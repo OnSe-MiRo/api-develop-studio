@@ -22,6 +22,8 @@ from api_test.generated.models.storage_metadata import StorageMetadata
 class AuthorOperationRequest(BaseModel):
     """Generated contract DTO. Additional document fields and explicit nulls are retained."""
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
+    action: Optional[StrictStr] = 'create'
+    changes: Optional[Dict[str, Any]] = Field(default=None, description="Operation metadata patch for update; only operationId, summary, description, tags, deprecated.")
     method: Optional[StrictStr] = None
     path: Optional[StrictStr] = None
     operation_id: Optional[StrictStr] = None
@@ -37,6 +39,13 @@ class AuthorOperationRequest(BaseModel):
     response_body: Optional[Any] = None
     error_statuses: Optional[List[StrictInt]] = None
     storage: Optional[StorageMetadata] = Field(default=None, alias="_storage")
+
+    @field_validator('action')
+    @classmethod
+    def validate_action(cls, value):
+        if value is not None and value not in ('create', 'update', 'delete', ):
+            raise ValueError('Unsupported action')
+        return value
 
 
     def to_dict(self):

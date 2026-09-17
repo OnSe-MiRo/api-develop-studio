@@ -3,10 +3,12 @@ from fastapi import APIRouter, Depends, Response
 from api_test.dependencies import request_context
 from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard
 from pydantic import Field, StrictBytes, StrictStr
-from typing import Tuple, Union
+from typing import Any, Tuple, Union
 from typing_extensions import Annotated
 from api_test.generated.models.author_operation_request import AuthorOperationRequest
 from api_test.generated.models.author_operation_response import AuthorOperationResponse
+from api_test.generated.models.contract_check_request import ContractCheckRequest
+from api_test.generated.models.contract_check_response import ContractCheckResponse
 from api_test.generated.models.docs_request import DocsRequest
 from api_test.generated.models.docs_response import DocsResponse
 from api_test.generated.models.error_response import ErrorResponse
@@ -26,6 +28,22 @@ router = APIRouter()
 async def author_operation(context=Depends(request_context)) -> Response:
     return await context.call(
         openapi.author_operation, [],
+        upload=False,
+
+    )
+
+@router.post("/api/projects/{reference:path}/openapi/contract/", include_in_schema=False)
+@router.post(
+    "/api/projects/{reference:path}/openapi/contract",
+    operation_id="check_contract",
+    tags=["openapi",],
+    responses={
+        200: {"description": "Contract analysis", "model": ContractCheckResponse},400: {"description": "Invalid document or request"},404: {"description": "Revision not found"},
+    },
+)
+async def check_contract(context=Depends(request_context)) -> Response:
+    return await context.call(
+        openapi.check_contract, [],
         upload=False,
 
     )

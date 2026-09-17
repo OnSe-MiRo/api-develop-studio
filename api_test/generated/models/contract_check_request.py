@@ -1,5 +1,4 @@
 # coding: utf-8
-
 """
     API Develop Studio
 
@@ -18,16 +17,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, StrictBool, 
 
 
 
-class QuickResponse(BaseModel):
+class ContractCheckRequest(BaseModel):
     """Generated contract DTO. Additional document fields and explicit nulls are retained."""
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
-    contract: Optional[Dict[str, Any]] = None
-    status: StrictInt
-    elapsed_ms: Union[StrictFloat, StrictInt] = Field(alias="elapsedMs")
-    size_bytes: StrictInt = Field(alias="sizeBytes")
-    headers: Dict[str, StrictStr]
-    body: Optional[Any] = None
-    raw_body: StrictStr = Field(alias="rawBody")
+    baseline_revision: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(default=None, alias="baselineRevision")
 
 
     def to_dict(self):
@@ -36,4 +29,3 @@ class QuickResponse(BaseModel):
     @classmethod
     def from_dict(cls, value):
         return cls.model_validate(value)
-

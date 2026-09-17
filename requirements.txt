@@ -20,3 +20,8 @@ httpx==0.28.1
 # FND-4 permanent storage and disposable revision metadata cache.
 psycopg[binary,pool]>=3.2,<4
 redis>=5,<7
+
+# OAS-2 OpenAPI 3.0/3.1 structure and response validation.
+openapi-spec-validator==0.7.2
+openapi-schema-validator==0.6.3
+jsonschema>=4.23,<5

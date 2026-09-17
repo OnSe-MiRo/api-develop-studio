@@ -466,6 +466,7 @@ def openapi_operations(document: dict[str, object], *, for_case: bool = False) -
                 "expected_status": status, "has_response_body": response_body is not MISSING,
                 "response_body": None if response_body is MISSING else normalize_openapi_value(response_body),
                 "responses": response_summaries,
+                "editable": {key: operation[key] for key in ("operationId", "summary", "description", "tags", "deprecated") if key in operation},
             })
     return operations
 
@@ -1322,6 +1323,23 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
             body["url"] = resolve_request_url(body.get("url", ""), settings.base_url)
         except (ProjectVariableError, CaseConfigurationError) as exc:
             raise ApiError(str(exc)) from exc
+    contract_document = None
+    validate_contract = body.get("validateContract", False)
+    if not isinstance(validate_contract, bool):
+        raise ApiError("validateContract must be a boolean")
+    if validate_contract:
+        from api_test.contracts import ContractError, project_document, lint
+        if not body.get("project"):
+            raise ApiError("계약 검증에는 프로젝트가 필요합니다.")
+        saved_project = collaboration_store().get("projects", body["project"])
+        if saved_project is None:
+            raise ApiError("프로젝트를 찾을 수 없습니다.")
+        try:
+            contract_document = project_document(saved_project.document)
+            if any(item["severity"] == "error" for item in lint(contract_document)):
+                raise ApiError("명세 lint 오류를 먼저 수정하세요.")
+        except (ContractError, RecursionError) as exc:
+            raise ApiError("검증 가능한 저장된 명세가 필요합니다.") from exc
     raw_url = body.get("url")
     if not isinstance(raw_url, str) or not raw_url.strip():
         raise ApiError("URL을 입력하세요.")
@@ -1465,6 +1483,14 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     except json.JSONDecodeError:
         parsed_body = raw_response_body
 
+    contract_result = None
+    if contract_document is not None:
+        from api_test.contracts import validate_response
+        contract_result = validate_response(
+            contract_document, method, url, status, response_headers, parsed_body,
+            raw_body=raw_response_body, base_url=settings.base_url,
+        )
+
     def mask_payload(value):
         if isinstance(value, dict):
             return {mask_sensitive_values(key, sensitive_values): mask_payload(item) for key, item in value.items()}
@@ -1478,6 +1504,7 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     response_headers = {key: ("***" if key.lower() in {"set-cookie", "authorization", "x-api-key"} else mask_sensitive_values(value, sensitive_values)) for key, value in response_headers.items()}
 
     return {
+        **({"contract": contract_result} if contract_result is not None else {}),
         "status": status,
         "elapsedMs": elapsed_ms,
         "sizeBytes": size_bytes,

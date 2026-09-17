@@ -619,3 +619,7 @@ API 케이스의 URL·Params·Authorization·Headers·JSON Body·form-data 텍�
 ### 비동기 기능 테스트 실행 (RUN-2)
 
 케이스·파이프라인 화면에서 실행 상태를 조회하고 실행을 취소할 수 있습니다. API·worker 설정·보관 및 단일 프로세스 운영 제한은 [비동기 실행 안내](docs/async-runs.md)를 참고하세요.
+
+## OpenAPI 계약 검증 (OAS-2)
+
+API 목록에서 명세 lint와 revision 비교를 실행하고, 빠른 API 호출에서 실제 응답 계약 검증을 선택할 수 있습니다. CLI·CI 차단, 승인 기록과 지원 범위는 [OpenAPI 계약 검증 안내](docs/openapi-contract-validation.md)를 참고하세요.

@@ -35,6 +35,14 @@ GenerateRequest:
 AuthorOperationRequest:
   type: object
   properties:
+    action:
+      type: string
+      enum: [create, update, delete]
+      default: create
+    changes:
+      type: object
+      description: Operation metadata patch for update; only operationId, summary, description, tags, deprecated.
+      additionalProperties: true
     method:
       type: string
     path:
@@ -76,3 +84,30 @@ AuthorOperationResponse:
       additionalProperties: true
     _storage:
       $ref: ./common.yaml#/StorageMetadata
+
+ContractCheckRequest:
+  type: object
+  properties:
+    baselineRevision:
+      type: integer
+      minimum: 1
+ContractCheckResponse:
+  type: object
+  properties:
+    compatible:
+      type: boolean
+    currentRevision:
+      type: integer
+    baselineRevision:
+      type: integer
+      nullable: true
+    issues:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    changes:
+      type: array
+      items:
+        type: object
+        additionalProperties: true

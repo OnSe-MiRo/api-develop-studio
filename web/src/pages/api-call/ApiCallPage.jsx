@@ -14,6 +14,7 @@ function ApiCallPage() {
   const [casePath, setCasePath] = useState('')
   const [saveNotice, setSaveNotice] = useState('')
   const [project, setProject] = useState('')
+  const [validateContract, setValidateContract] = useState(false)
   const [projects, setProjects] = useState([])
   useEffect(() => { api('/api/projects').then(data => setProjects(data.items || [])).catch(error => setErrorNotice(error.message)) }, [])
   useEffect(() => {
@@ -61,7 +62,7 @@ function ApiCallPage() {
     setResult(null)
 
     try {
-      const payload = { project, environment, body_format: bodyMode, ...makeRequest(), proxy_url: proxyUrl.trim(), no_proxy: noProxy }
+      const payload = { project, environment, validateContract, body_format: bodyMode, ...makeRequest(), proxy_url: proxyUrl.trim(), no_proxy: noProxy }
       controller.current = new AbortController()
       const response = await fetch('/api/request', {
         signal: controller.current.signal,
@@ -129,7 +130,7 @@ function ApiCallPage() {
 
   return (
     <main className="project-page api-call-page">
-      <section className="card"><Field label="소유권 확인 프로젝트"><select value={project} onChange={event => setProject(event.target.value)}><option value="">프로젝트 선택 (로컬 인증 생략 시 선택사항)</option>{projects.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="실행 환경"><select value={environment} onChange={event => setEnvironment(event.target.value)}><option value="">프로젝트 기본 환경</option>{Object.keys(projectDocument.environments || {}).map(name => <option key={name}>{name}</option>)}</select></Field><Field label="공통 인증 프로필"><select value={authProfile} onChange={event => setAuthProfile(event.target.value)}><option value="">직접 설정</option>{Object.keys(profiles).map(name => <option key={name}>{name}</option>)}</select></Field><p className="hint">프로젝트 설정에서 대상 Base URL을 저장하고 소유권을 확인하세요.</p></section>
+      <section className="card"><Field label="소유권 확인 프로젝트"><select value={project} onChange={event => { setProject(event.target.value); setValidateContract(false) }}><option value="">프로젝트 선택 (로컬 인증 생략 시 선택사항)</option>{projects.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="실행 환경"><select value={environment} onChange={event => setEnvironment(event.target.value)}><option value="">프로젝트 기본 환경</option>{Object.keys(projectDocument.environments || {}).map(name => <option key={name}>{name}</option>)}</select></Field><Field label="공통 인증 프로필"><select value={authProfile} onChange={event => setAuthProfile(event.target.value)}><option value="">직접 설정</option>{Object.keys(profiles).map(name => <option key={name}>{name}</option>)}</select></Field><label className="toggle"><input type="checkbox" checked={validateContract} disabled={!project} onChange={event => setValidateContract(event.target.checked)} />OpenAPI 실제 응답 검증</label><p className="hint">프로젝트 설정에서 대상 Base URL을 저장하고 소유권을 확인하세요.</p></section>
       <section className="card">
         <div className="section-header">
           <div>
@@ -257,6 +258,7 @@ function ApiCallPage() {
 
       {result && (
         <section className="card api-call-result-panel" role="region" aria-live="polite">
+          {result.contract && <div role="status"><h3>{result.contract.valid ? '응답 계약 검증 통과' : '응답 계약 검증 실패'}</h3>{result.contract.issues.map((item, index) => <p key={index}>{item.code} · <code>{item.path}</code></p>)}</div>}
           <div className="api-call-result-header">
             <div className="result-status-group">
               <span className={`status-badge ${statusColorClass(result.status)}`}>

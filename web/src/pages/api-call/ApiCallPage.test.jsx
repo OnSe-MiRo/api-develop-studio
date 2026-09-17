@@ -42,3 +42,17 @@ it('cancels response waiting and enables rerun', async () => {
   await screen.findByText(/응답 대기를 취소했습니다/)
   expect(screen.getByRole('button', { name: '실행' })).toBeEnabled()
 })
+
+it('opts into contract validation and displays failed rules without hiding the response', async () => {
+  const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 200, elapsedMs: 1, sizeBytes: 2, body: {}, headers: {}, contract: { valid: false, issues: [{ code: 'schema_required', path: '#/response/body' }] } }) })
+  vi.stubGlobal('fetch', fetch)
+  render(<ApiCallPage />)
+  await screen.findByRole('option', { name: 'sample.json' })
+  fireEvent.change(screen.getByLabelText('소유권 확인 프로젝트'), { target: { value: 'sample.json' } })
+  fireEvent.click(screen.getByLabelText('OpenAPI 실제 응답 검증'))
+  fireEvent.change(screen.getByLabelText('Request URL'), { target: { value: '/items' } })
+  fireEvent.click(screen.getByRole('button', { name: '실행' }))
+  expect(await screen.findByText('응답 계약 검증 실패')).toBeInTheDocument()
+  expect(screen.getByText('200')).toBeInTheDocument()
+  expect(JSON.parse(fetch.mock.calls[0][1].body).validateContract).toBe(true)
+})

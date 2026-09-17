@@ -1,4 +1,5 @@
 """OpenAPI authoring, inspection and client generation services."""
+from api_test.openapi_editing import edit_operation
 
 
 def inspect_document(request, studio):
@@ -33,6 +34,12 @@ def author_operation(request, studio):
     current = store.get("projects", reference)
     if current is None:
         raise studio.ApiError("선택한 프로젝트를 찾을 수 없습니다.")
+    if payload.get("action", "create") != "create":
+        updated_project, operation = edit_operation(current.document, payload, studio)
+        studio.validate_project_document(updated_project)
+        stored = store.save("projects", reference, updated_project, expected_revision=expected_revision,
+                            actor_id=request.actor_id(), action=f"{payload['action']}_openapi_operation")
+        return request.json_response(200, {"operation": operation, "_storage": stored.metadata()})
     has_source = bool(current.document.get("docs_url")) or isinstance(current.document.get("docs_file"), dict) or isinstance(current.document.get("docs_bundle"), dict)
     source_document = studio.project_openapi_document(current.document) if has_source else None
     document, operation = studio.author_openapi_operation(current.document, payload, source_document)
@@ -67,3 +74,28 @@ def generate_client(request, studio):
     )
     return request.attachment_response(archive, filename)
 
+
+
+def check_contract(request, studio):
+    from api_test.contracts import ContractError, project_document, lint, compare
+    reference = request.request.path_params["reference"]
+    studio.ensure_example_project_enabled(reference)
+    body = request.read_body()
+    store = studio.collaboration_store()
+    current = store.get("projects", reference)
+    if current is None:
+        raise studio.ApiError("Project not found", status_code=404)
+    try:
+        document = project_document(current.document)
+        baseline_revision = body.get("baselineRevision")
+        if baseline_revision is None:
+            issues = lint(document)
+            result = {"issues": issues, "changes": [], "compatible": not any(item["severity"] == "error" for item in issues)}
+        else:
+            baseline = project_document(store.revision_document("projects", reference, baseline_revision))
+            result = compare(baseline, document)
+        return request.json_response(200, {**result, "currentRevision": current.revision, "baselineRevision": baseline_revision})
+    except studio.DocumentNotFoundError as exc:
+        raise studio.ApiError("Document revision not found", status_code=404) from exc
+    except (ContractError, RecursionError) as exc:
+        raise studio.ApiError("명세 검사 실패: " + (str(exc) if isinstance(exc, ContractError) else "문서 중첩 한도 초과")) from None

@@ -22,6 +22,7 @@ from api_test.generated.models.form_data_item import FormDataItem
 class QuickRequest(BaseModel):
     """Generated contract DTO. Additional document fields and explicit nulls are retained."""
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
+    validate_contract: Optional[StrictBool] = Field(default=False, alias="validateContract")
     project: Optional[StrictStr] = None
     environment: Optional[StrictStr] = None
     method: Optional[StrictStr] = None
