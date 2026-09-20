@@ -68,6 +68,16 @@ class ExecutionHistory:
                 ),
             )
 
+    def case_successes(self, project):
+        successes = {}
+        with self.connect() as connection:
+            rows = connection.execute("SELECT targets, finished_at FROM executions WHERE workspace_id = ? ORDER BY finished_at", (self.context.workspace_id,)).fetchall()
+        for row in rows:
+            for target in json.loads(row['targets']):
+                if target.get('project') == project and target.get('status') == 'passed' and target.get('caseReference'):
+                    successes[(target['caseReference'], str(target.get('httpStatus')))] = row['finished_at']
+        return successes
+
     def dashboard(
         self,
         *,

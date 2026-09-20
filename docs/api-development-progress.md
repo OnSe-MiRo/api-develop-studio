@@ -33,10 +33,10 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-17
-- 현재 단계: OAS-2 계약 검증 구현·로컬 검증 완료 (OAS-1 1차 변경 보존)
+- 최종 갱신일: 2026-09-20
+- 현재 단계: TST-1·TST-2·TST-3 구현 및 로컬 검증 완료
 - 전체 상태: 진행
-- 반영 브랜치: `feature/openapi-contract-validation` 로컬 작업 트리. develop cd32db2 기준, OAS-1 미커밋 변경 보존. 이번 커밋·병합·푸시는 수행하지 않음.
+- 반영 브랜치: `feature/test-coverage-lifecycle` 로컬 작업 트리. clean develop에서 분기. 커밋·병합·푸시는 수행하지 않음.
 - 다음 작업: OAS-1 component schema CRUD·reference 선택, security scheme·operation security, request/response 편집과 전체 문서 validation. SDK 비동기 전환은 별도 후속.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
@@ -56,9 +56,9 @@
 | RUN-2 | 비동기 job과 실행 제한 | P0 | 완료 | 기능 테스트 제출·조회·취소·제한 검증 완료. SDK 연동은 후속 |
 | OAS-1 | OpenAPI operation·schema·security 편집 | P0 | 진행 | operation 메타데이터 수정·삭제부터 단계적으로 구현 |
 | OAS-2 | lint·응답 schema·breaking change 검증 | P0 | 완료 | 구조 lint·revision diff·빠른 호출 응답·CLI gate 검증. 원격 CI 실행은 미수행 |
-| TST-1 | 명세–케이스 커버리지 | P1 | 대기 | operation 안정 ID |
-| TST-2 | 명세 변경과 케이스 동기화 | P1 | 대기 | 사용자 assertion 보존 규칙 |
-| TST-3 | 테스트 데이터 setup·teardown | P1 | 대기 | 허용 generator 목록 |
+| TST-1 | 명세–케이스 커버리지 | P1 | 완료 | operation/status 연결 수·최근 성공, 미검증 응답 표시 |
+| TST-2 | 명세 변경과 케이스 동기화 | P1 | 완료 | field preview·선택 갱신·revision 충돌·assertion/secret 보존 |
+| TST-3 | 테스트 데이터 setup·teardown | P1 | 완료 | UUID/시각/정수·seed·run 변수 추출·정리 결과 분리 |
 | MOCK-1 | OpenAPI 기반 Mock Server | P1 | 대기 | state와 외부 공개 정책 |
 | OBS-1 | 기능 테스트 실행 이력 | P1 | 대기 | RUN-1 공통 metadata |
 | OBS-2 | 부하테스트 결과 대시보드 | P1 | 대기 | 별도 진행 기록 참조 |
@@ -71,7 +71,7 @@
 
 OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 기록`](api-load-test-progress.md)에서도 관리한다. 두 문서의 상태가 다르면 실제 검증 기록이 최신인 문서를 확인하고 같은 작업 안에서 동기화한다.
 
-## 현재 작업
+## 직전 작업
 
 - 작업 ID: OAS-2
 - 시작: 2026-09-17 KST
@@ -353,3 +353,19 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 변경: API 앱은 외부 참조를 해석한 self-contained `/api/schema.json`을 반환하고 내부 `x-studio-*` binding 정보는 제거.
 - 검증: OpenAPI Generator 7.24.0 `--check`, Python 224개 중 182개 통과·42개 외부 서비스 설정 의존 skip, frontend 14개·build·diff check 통과. 실제 API 컨테이너에서 20개 path·41개 schema·2개 header 반환 확인.
 - 상태: 완료 — 생성 라우터 결과와 기존 HTTP 계약 유지.
+
+## 현재 작업: TST-1·TST-2·TST-3 (2026-09-20)
+
+- 상태: 완료 — `feature/test-coverage-lifecycle`, clean develop에서 분기.
+- 시작: 명세 operation/status 커버리지, 사용자 검증 보존 동기화 preview, run별 generator·변수 추출·setup/teardown 구현.
+- 보존 규칙: assertion, body, headers, 인증 및 secret은 동기화 대상에서 제외. 생성 기준과 일치하는 method/path/status만 선택 갱신.
+- 정리 단계는 본 실행 실패 후에도 수행하며 결과에 phase를 남긴다. 프로세스 강제 종료에서는 정리를 보장하지 않는다.
+
+- 의미 있는 변경: 명세 연결 fingerprint와 보수적 선택 갱신 API/화면, saved-case 결과 metadata, phase별 실행 결과 및 generator/추출 입력 UI. OpenAPI 생성 route/DTO 동기화.
+- 검증: 전체 Python 268개 실행(226 통과, 전용 PostgreSQL URL 미설정 42 제외), 후속 응답 범위/default 보완 후 관련 테스트 10개 통과. frontend 24개 및 Vite build 통과. 생성 코드 최신성 검사·git diff --check 통과.
+- 실제 HTTP: 임시 로컬 서버에서 setup 응답 추출 → 본 테스트 500 실패 → teardown 200 성공, 추출 변수 전달 및 mainStatus/cleanupStatus 분리 확인.
+- 브라우저: 임시 DB에서 미검증 응답, field preview, 선택 저장, 새로고침 후 명세 일치, generator/seed/추출/setup·teardown 저장·복원 확인. 최종 콘솔 오류 없음.
+- 검증 환경: 로컬 bind와 프로세스 조회 제한은 허용된 재실행으로 해결. 도구 의존성은 /private/tmp/tst-deps에만 설치. 임시 서버 초기 ROOT 설정 오류를 수정해 저장 검증 완료; 사용자 데이터는 사용하지 않음.
+- 제한: sync 자동 변경은 생성 기준과 동일한 method/url/status만, body/assertion은 직접 검토. component 변경은 보수적 영향 표시. operationId 없는 경로 변경은 재연결 필요. 강제 종료·취소·전체 timeout의 teardown은 보장하지 않음. PostgreSQL 통합 재검증은 전용 URL 미제공으로 제외.
+- 사용 안내: [테스트 커버리지와 데이터 수명주기](test-coverage-lifecycle.md).
+- Git: 커밋·병합·원격 반영 없음.

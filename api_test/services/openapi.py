@@ -22,6 +22,11 @@ def inspect_document(request, studio):
         operations = studio.openapi_document_operations(document, for_case=for_case)
     else:
         operations = studio.load_openapi_document(url.strip(), no_proxy=no_proxy, for_case=for_case)
+    from api_test.test_coverage import source_for
+    if bundle is not None or document is not None:
+        resolved = studio.resolve_openapi_bundle(bundle) if bundle is not None else document
+        for operation in operations:
+            operation['spec_source'] = source_for(operation, resolved)
     return request.json_response(200, {"operations": studio.normalize_openapi_value(operations)})
 
 
@@ -99,3 +104,61 @@ def check_contract(request, studio):
         raise studio.ApiError("Document revision not found", status_code=404) from exc
     except (ContractError, RecursionError) as exc:
         raise studio.ApiError("명세 검사 실패: " + (str(exc) if isinstance(exc, ContractError) else "문서 중첩 한도 초과")) from None
+
+
+def test_coverage(request, studio):
+    from api_test.test_coverage import linked_operation, source_for, sync_preview, apply_sync, response_key
+    reference = request.request.path_params['reference']
+    studio.ensure_example_project_enabled(reference)
+    store = studio.collaboration_store()
+    project = store.get('projects', reference)
+    if project is None:
+        raise studio.ApiError('프로젝트를 찾을 수 없습니다.', status_code=404)
+    document = studio.project_openapi_document(project.document)
+    operations = studio.openapi_document_operations(document, for_case=True)
+    body = request.read_body()
+    case_reference = body.get('case')
+    if case_reference:
+        current = store.get('cases', case_reference)
+        if current is None or current.document.get('project') != reference:
+            raise studio.ApiError('프로젝트 케이스를 찾을 수 없습니다.', status_code=404)
+        operation = linked_operation(current.document, operations)
+        if operation is None:
+            raise studio.ApiError('연결된 operation이 삭제되었거나 연결이 모호합니다.')
+        preview = sync_preview(current.document, operation, source_for(operation, document))
+        if body.get('apply') is True:
+            if type(body.get('caseRevision')) is not int or body['caseRevision'] != current.revision:
+                raise studio.ApiError('케이스가 변경되었습니다. 미리보기를 다시 불러오세요.', status_code=409)
+            studio.ensure_example_document_writable('cases', case_reference, current.document)
+            if body.get('projectRevision') != project.revision:
+                raise studio.ApiError('명세가 변경되었습니다. 미리보기를 다시 불러오세요.', status_code=409)
+            try:
+                updated = apply_sync(current.document, preview, body.get('fields', []))
+            except ValueError as exc:
+                raise studio.ApiError(str(exc)) from exc
+            saved = store.save('cases', case_reference, updated, expected_revision=body.get('caseRevision'),
+                               actor_id=request.actor_id(), action='sync_case_spec')
+            return request.json_response(200, {'_storage': saved.metadata()})
+        return request.json_response(200, {**preview, 'caseRevision': current.revision, 'projectRevision': project.revision})
+    cases = [(ref, store.get('cases', ref)) for ref in store.list_references('cases', reference)]
+    successes = studio.execution_history().case_successes(reference)
+    rows, unlinked = [], []
+    links = {}
+    for ref, saved in cases:
+        operation = linked_operation(saved.document, operations)
+        if operation is None:
+            unlinked.append(ref)
+        else:
+            links.setdefault(operation['id'], []).append((ref, saved.document))
+    for operation in operations:
+        linked = links.get(operation['id'], [])
+        source = source_for(operation, document)
+        responses = []
+        for response in operation['responses']:
+            status = str(response['status'])
+            refs = [ref for ref, case in linked if response_key(case.get('expected', {}).get('status'), operation['responses']) == status]
+            responses.append({'status': status, 'cases': refs, 'lastSuccess': max((stamp for (ref, actual), stamp in successes.items() if ref in refs and response_key(actual, operation['responses']) == status), default='') or None})
+        rows.append({'id': operation['id'], 'responses': responses, 'lastSuccess': max((stamp for (ref, status), stamp in successes.items() if any(ref == linked_ref for linked_ref, _ in linked)), default='') or None, 'cases': [
+            {'reference': ref, 'changed': case.get('spec_source', {}).get('fingerprint') != source['fingerprint'],
+             'linked': bool(case.get('spec_source'))} for ref, case in linked]})
+    return request.json_response(200, {'operations': rows, 'unlinked': unlinked})

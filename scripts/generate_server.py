@@ -31,6 +31,10 @@ def main():
         files = {str(p.relative_to(source)): p.read_bytes() for p in source.rglob('*.py') if p.name != 'security_api.py' and not p.name.endswith('_base.py')}
         destination = ROOT / 'api_test/generated'
         existing = {str(p.relative_to(destination)): p.read_bytes() for p in destination.rglob('*.py')}
+        # Generator whitespace must not rewrite otherwise identical existing DTOs.
+        for name in files.keys() & existing.keys():
+            if files[name].replace(b'# coding: utf-8\n\n', b'# coding: utf-8\n', 1).rstrip(b'\n') == existing[name].replace(b'# coding: utf-8\n\n', b'# coding: utf-8\n', 1).rstrip(b'\n'):
+                files[name] = existing[name]
         if args.check:
             changed = sorted(name for name in files.keys() | existing.keys() if files.get(name) != existing.get(name))
             if changed:

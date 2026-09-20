@@ -23,11 +23,20 @@ class PipelineStep(BaseModel):
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
     name: StrictStr
     case: StrictStr
+    phase: Optional[StrictStr] = None
+    extract: Optional[Dict[str, StrictStr]] = None
     retry: Optional[StrictInt] = None
     retry_interval_seconds: Optional[Union[StrictFloat, StrictInt]] = None
     external_once: Optional[StrictBool] = None
     continue_on_failure: Optional[StrictBool] = None
     input_mappings: Optional[List[Dict[str, Any]]] = None
+
+    @field_validator('phase')
+    @classmethod
+    def validate_phase(cls, value):
+        if value is not None and value not in ('setup', 'test', 'teardown', ):
+            raise ValueError('Unsupported phase')
+        return value
 
 
     def to_dict(self):

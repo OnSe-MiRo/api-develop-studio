@@ -1,5 +1,6 @@
 """Cancellable process-tree execution. Temporary reports and logs belong to one job."""
 from __future__ import annotations
+from api_test.reports import history_targets
 
 import json
 import os
@@ -78,7 +79,7 @@ def execute_job(job, command, studio, projects, targets):
     try:
         studio.execution_history().record(run_id=job.id, started_at=started_at, finished_at=now(),
             duration_ms=(time.monotonic() - started) * 1000, status=response['status'],
-            exit_code=response['exitCode'], projects=projects, targets=targets)
+            exit_code=response['exitCode'], projects=projects, targets=history_targets(targets, response.get('result')))
     except (OSError, ValueError, *studio.DATABASE_ERRORS):
         response['historyWarning'] = '실행 이력을 저장하지 못했습니다. 저장소 상태를 확인하세요.'
     return response

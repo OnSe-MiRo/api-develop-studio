@@ -190,3 +190,36 @@
     x-studio-route: /api/projects/{reference:path}/openapi/contract
     x-studio-upload: false
     x-studio-alias: true
+
+/api/projects/{reference}/openapi/coverage:
+  post:
+    operationId: test_coverage
+    tags: [openapi]
+    summary: Inspect coverage or preview and selectively synchronize a case
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    responses:
+      '200':
+        description: Coverage or synchronization result
+      '400':
+        description: Invalid selection
+      '404':
+        description: Project or case not found
+      '409':
+        description: Revision conflict
+    x-studio-handler: openapi.test_coverage
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/openapi/coverage
+    x-studio-upload: false
+    x-studio-alias: true

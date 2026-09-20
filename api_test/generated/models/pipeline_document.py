@@ -26,6 +26,8 @@ class PipelineDocument(BaseModel):
     name: Optional[StrictStr] = None
     project: Optional[StrictStr] = None
     steps: Optional[List[PipelineStep]] = None
+    seed: Optional[Any] = Field(default=None, description="Fixed integer or string seed; omitted means random values")
+    generators: Optional[Dict[str, Dict[str, Any]]] = None
     defaults: Optional[Dict[str, Any]] = None
     storage: Optional[StorageMetadata] = Field(default=None, alias="_storage")
 

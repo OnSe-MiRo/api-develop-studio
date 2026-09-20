@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Response
 from api_test.dependencies import request_context
 from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard
 from pydantic import Field, StrictBytes, StrictStr
-from typing import Any, Tuple, Union
+from typing import Any, Dict, Tuple, Union
 from typing_extensions import Annotated
 from api_test.generated.models.author_operation_request import AuthorOperationRequest
 from api_test.generated.models.author_operation_response import AuthorOperationResponse
@@ -44,6 +44,22 @@ async def author_operation(context=Depends(request_context)) -> Response:
 async def check_contract(context=Depends(request_context)) -> Response:
     return await context.call(
         openapi.check_contract, [],
+        upload=False,
+
+    )
+
+@router.post("/api/projects/{reference:path}/openapi/coverage/", include_in_schema=False)
+@router.post(
+    "/api/projects/{reference:path}/openapi/coverage",
+    operation_id="test_coverage",
+    tags=["openapi",],
+    responses={
+        200: {"description": "Coverage or synchronization result"},400: {"description": "Invalid selection"},404: {"description": "Project or case not found"},409: {"description": "Revision conflict"},
+    },
+)
+async def test_coverage(context=Depends(request_context)) -> Response:
+    return await context.call(
+        openapi.test_coverage, [],
         upload=False,
 
     )

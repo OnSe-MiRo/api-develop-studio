@@ -5,6 +5,13 @@ PipelineStep:
       type: string
     case:
       type: string
+    phase:
+      type: string
+      enum: [setup, test, teardown]
+    extract:
+      type: object
+      additionalProperties:
+        type: string
     retry:
       type: integer
     retry_interval_seconds:
@@ -32,6 +39,13 @@ PipelineDocument:
       type: array
       items:
         $ref: '#/PipelineStep'
+    seed:
+      description: Fixed integer or string seed; omitted means random values
+    generators:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties: true
     defaults:
       type: object
       additionalProperties: true

@@ -1,6 +1,7 @@
 """Local REST server used by the React API Develop Studio."""
 
 from __future__ import annotations
+from api_test.reports import history_targets
 
 import io
 import hashlib
@@ -185,7 +186,7 @@ def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str,
                 status=status,
                 exit_code=exit_code,
                 projects=projects,
-                targets=targets,
+                targets=history_targets(targets, response.get('result')),
             )
         except (OSError, ValueError, *DATABASE_ERRORS):
             response["historyWarning"] = "실행 이력을 저장하지 못했습니다. 저장소 상태를 확인하세요."

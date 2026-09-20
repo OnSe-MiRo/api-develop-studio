@@ -812,7 +812,9 @@ class ApiTestRunner:
                 raise CaseConfigurationError("case.timeout must be a positive number of seconds")
             timeout_seconds = float(case_timeout)
 
-        resolved_request = resolve_references(copy.deepcopy(request_definition), context or {})
+        from .test_data import resolve
+        resolved_request = resolve(copy.deepcopy(request_definition), getattr(self, 'run_variables', {}))
+        resolved_request = resolve_references(resolved_request, context or {})
         try:
             resolved_request = resolve_auth_profile(resolved_request, auth_profiles or {})
             case_plain, case_secret = stored_project_variables(case, case_id)
@@ -832,6 +834,9 @@ class ApiTestRunner:
                 stored_case_variables(case, case_id),
             )
             sensitive_values.update(case_sensitive_values)
+            from .authorization import sensitive_value_variants
+            from .test_data import sensitive_strings
+            sensitive_values.update(sensitive_value_variants(sensitive_strings(getattr(self, 'run_variables', {}))))
         except ProjectVariableError as exc:
             raise CaseConfigurationError(str(exc)) from exc
         resolved_request["url"] = resolve_request_url(resolved_request["url"], base_url)

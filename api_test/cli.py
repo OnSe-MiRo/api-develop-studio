@@ -272,66 +272,82 @@ def run_pipeline(
     runner = ApiTestRunner(timeout)
     runner.environment = environment
     results: dict[str, CaseResult] = {}
+    from .test_data import generate, extract
+    runner.run_variables = generate(pipeline.get('generators', {}), pipeline.get('seed'))
     failures = 0
-    test_started = False
+    stopped = False
+    ownership_error = None
+    previous_phase = -1
+    names = set()
     external_cases = set()
-    for step in steps:
-        if not isinstance(step, dict) or step.get("phase", "test") not in ("setup", "test"):
-            raise CaseConfigurationError("단계 phase는 setup 또는 test여야 합니다.")
-        if not isinstance(step.get("external_once", False), bool):
-            raise CaseConfigurationError("external_once는 true 또는 false여야 합니다.")
-        if step.get("phase", "test") == "test":
-            test_started = True
-        elif test_started:
-            raise CaseConfigurationError("Setup 단계는 테스트 단계 앞에 배치하세요.")
-        if step.get("external_once"):
-            if step.get("phase") != "setup" or step.get("case") in external_cases:
-                raise CaseConfigurationError("외부 1회 호출은 중복 없는 Setup 단계에서만 가능합니다.")
-            if _retry_config(step, defaults)[0] != 0 or step.get("continue_on_failure", False):
-                raise CaseConfigurationError("외부 Setup은 재시도와 실패 후 계속 실행을 허용하지 않습니다.")
-            external_cases.add(step.get("case"))
+    for index, step in enumerate(steps, 1):
+        if not isinstance(step, dict) or not isinstance(step.get('case'), str):
+            raise CaseConfigurationError('Each step needs a case string')
+        phase = step.get('phase', 'test')
+        if phase not in ('setup', 'test', 'teardown'):
+            raise CaseConfigurationError('phase must be setup, test or teardown')
+        order = ('setup', 'test', 'teardown').index(phase)
+        if order < previous_phase:
+            raise CaseConfigurationError('Setup 단계는 테스트 단계 앞에 배치하세요. Teardown은 마지막에 배치하세요.')
+        previous_phase = order
+        name = step.get('name', f'step_{index}')
+        if not isinstance(name, str) or not name or name in names:
+            raise CaseConfigurationError('Duplicate or invalid pipeline step name')
+        names.add(name)
+        if not isinstance(step.get('external_once', False), bool):
+            raise CaseConfigurationError('external_once는 true 또는 false여야 합니다.')
+        if step.get('external_once'):
+            if phase != 'setup' or step['case'] in external_cases:
+                raise CaseConfigurationError('외부 1회 호출은 중복 없는 Setup 단계에서만 가능합니다.')
+            if _retry_config(step, defaults)[0] != 0 or step.get('continue_on_failure', False):
+                raise CaseConfigurationError('외부 Setup은 재시도와 실패 후 계속 실행을 허용하지 않습니다.')
+            external_cases.add(step['case'])
     for index, raw_step in enumerate(steps, start=1):
-        if not isinstance(raw_step, dict) or not isinstance(raw_step.get("case"), str):
-            raise CaseConfigurationError(f"steps[{index}] needs a case string")
-        name = raw_step.get("name", f"step_{index}")
-        if not isinstance(name, str) or not name:
-            raise CaseConfigurationError(f"steps[{index}].name must be a non-empty string")
-        if name in results:
-            raise CaseConfigurationError(f"Duplicate pipeline step name: {name}")
-        retry, interval = _retry_config(raw_step, defaults)
-        case_path = resolve_case_path(case_root, raw_step["case"])
-        logger.info("Step started: name=%s case=%s retry=%s retry_interval_seconds=%s", name, case_path, retry, interval)
-        case_document = apply_input_mappings(read_json(case_path), raw_step.get("input_mappings"), results, index)
-        if pipeline.get("project") and case_document.get("project") != pipeline["project"]:
-            raise CaseConfigurationError("파이프라인과 케이스의 프로젝트가 다릅니다.")
-        if raw_step.get("external_once") and case_document.get("request", {}).get("auth", {}).get("type") in ("Digest Auth", "NTLM Authentication"):
-            raise CaseConfigurationError("외부 1회 호출에서는 추가 handshake가 필요한 인증을 사용할 수 없습니다.")
+        phase = raw_step.get('phase', 'test')
+        if stopped and phase != 'teardown':
+            continue
+        name = raw_step.get('name', f'step_{index}')
         step_started = now()
-        result = _run_case_with_project_settings(
-            runner,
-            name,
-            case_document,
-            project_root,
-            file_root or case_root,
-            context=results,
-            retry=retry,
-            retry_interval_seconds=interval,
-            external_setup=raw_step.get("external_once") is True,
-        )
+        case_document = {}
+        try:
+            retry, interval = _retry_config(raw_step, defaults)
+            case_path = resolve_case_path(case_root, raw_step['case'])
+            logger.info('Step started: name=%s case=%s retry=%s retry_interval_seconds=%s', name, case_path, retry, interval)
+            case_document = apply_input_mappings(read_json(case_path), raw_step.get('input_mappings'), results, index)
+            if pipeline.get('project') and case_document.get('project') != pipeline['project']:
+                raise CaseConfigurationError('파이프라인과 케이스의 프로젝트가 다릅니다.')
+            if raw_step.get('external_once') and case_document.get('request', {}).get('auth', {}).get('type') in ('Digest Auth', 'NTLM Authentication'):
+                raise CaseConfigurationError('외부 1회 호출에서는 추가 handshake가 필요한 인증을 사용할 수 없습니다.')
+            result = _run_case_with_project_settings(runner, name, case_document, project_root,
+                file_root or case_root, context=results, retry=retry, retry_interval_seconds=interval,
+                external_setup=raw_step.get('external_once') is True)
+            if result.response is not None and raw_step.get('extract'):
+                extracted = extract(raw_step['extract'], result.response)
+                runner.run_variables.update(extracted)
+                from .test_data import sensitive_strings
+                from .authorization import sensitive_value_variants
+                result.sensitive_values.update(sensitive_value_variants(sensitive_strings(extracted)))
+        except (CaseConfigurationError, OwnershipError, OSError, ValueError) as exc:
+            if isinstance(exc, OwnershipError):
+                ownership_error = exc
+            result = CaseResult(name, 'error', 0, error='Pipeline step configuration or execution failed', error_category='configuration_error')
         if report_result is not None:
-            report_result.add(result, pipeline_path.as_posix(), step_started, case_document.get("project"))
+            report_result.add(result, pipeline_path.as_posix(), step_started, case_document.get('project'), raw_step['case'], phase)
         results[name] = result
+        report(f'Phase: {phase}')
         for line in _result_lines(result):
             report(line, _result_line_level(result, line))
-        if result.status != "passed":
+        if result.status != 'passed':
             failures += 1
-            if raw_step.get("continue_on_failure", False) is not True:
-                report("Pipeline stopped because the step did not pass.", logging.ERROR)
-                break
+            if phase != 'teardown' and raw_step.get('continue_on_failure', False) is not True:
+                report('Pipeline stopped because the step did not pass; teardown will continue.', logging.ERROR)
+                stopped = True
     report(f"Pipeline result: {len(results) - failures} passed, {failures} failed/error")
     for summary_line in _tag_summary_lines(steps, results):
         report(summary_line)
     report(f"Log file: {log_path}")
+    if ownership_error is not None:
+        raise ownership_error
     return 0 if failures == 0 and len(results) == len(steps) else 1
 
 
@@ -358,7 +374,7 @@ def run_case_files(
         step_started = now()
         result = _run_case_with_project_settings(runner, case_id, case_document, project_root, file_root or case_root)
         if report_result is not None:
-            report_result.add(result, case_reference, step_started, case_document.get("project"))
+            report_result.add(result, case_reference, step_started, case_document.get("project"), case_reference)
         results[case_id] = result
         steps.append({"name": case_id, "case": case_reference})
         for line in _result_lines(result):

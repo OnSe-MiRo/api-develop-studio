@@ -141,7 +141,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       if (parameter.in === 'header') headers.push(`${parameter.name}: ${value}`)
     })
     setForm(current => ({
-      ...current, method: operation.method, url, params: [...queryParams, { key: '', value: '' }], headers: headers.join('\n'), bodyMode: 'json',
+      ...current, specSource: operation.spec_source, method: operation.method, url, params: [...queryParams, { key: '', value: '' }], headers: headers.join('\n'), bodyMode: 'json',
       body: operation.has_request_body ? JSON.stringify(operation.request_body, null, 2) : '', expectedStatus: String(operation.expected_status),
       expectedBody: operation.has_response_body ? JSON.stringify(operation.response_body, null, 2) : '', validateExact: operation.has_response_body,
     }))
@@ -173,7 +173,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       }))
       setForm({
         tag: asText(tag), apiName: asText(apiName), fileName: caseName(fileName), method: asText(request.method) || 'GET', url: requestUrl.baseUrl,
-        plainVariables: data.variables?.plain || {}, baseUrlName: asText(data.base_url_name), authProfile: request.auth_profile || '',
+        specSource: data.spec_source, plainVariables: data.variables?.plain || {}, baseUrlName: asText(data.base_url_name), authProfile: request.auth_profile || '',
         timeout: data.timeout === undefined ? '' : String(data.timeout), params: requestUrl.params.concat({ key: '', value: '' }),
         maxResponseTimeMs: expected.max_response_time_ms === undefined ? '' : String(expected.max_response_time_ms),
         authType: authorizationTypes.includes(loadedAuthType) ? loadedAuthType : 'No Auth', authValues: loadedAuthValues,
@@ -293,7 +293,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       else if (item.configured) secret[name] = { preserve: true }
       else throw new Error(`케이스 보안 변수 ${name}의 값을 입력하세요.`)
     })
-    return { project: projectRef, ...(form.baseUrlName ? { base_url_name: form.baseUrlName } : {}), ...(timeout === undefined ? {} : { timeout }), request, expected, variables: { plain: form.plainVariables || {}, secret } }
+    return { project: projectRef, ...(form.specSource ? { spec_source: form.specSource } : {}), ...(form.baseUrlName ? { base_url_name: form.baseUrlName } : {}), ...(timeout === undefined ? {} : { timeout }), request, expected, variables: { plain: form.plainVariables || {}, secret } }
   }
 
   const casePayload = async () => ({ ...(await document()), _expectedBodyRaw: form.expectedBody })

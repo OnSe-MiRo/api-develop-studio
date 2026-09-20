@@ -23,7 +23,7 @@ class RunReport:
             "targets": [], "artifacts": [],
         }
 
-    def add(self, result, target, started_at, project=None):
+    def add(self, result, target, started_at, project=None, case_reference=None, phase="test"):
         status = result.status
         reason = None
         if status == "error":
@@ -35,6 +35,7 @@ class RunReport:
             reason = "assertion_failed"
         self.data["targets"].append({
             "target": target, "caseId": result.case_id, "project": project,
+            "caseReference": case_reference, "phase": phase,
             "startedAt": started_at, "finishedAt": now(), "status": status,
             "attempts": result.attempts, "httpStatus": result.response.status if result.response else None,
             "elapsedMs": result.response_time_ms, "errorCategory": reason,
@@ -51,6 +52,9 @@ class RunReport:
         self.data.update(finishedAt=now(), exitCode=exit_code,
                          status=next((s for s in ("cancelled", "timeout", "error", "failed") if s in states),
                                      "passed" if exit_code == 0 else "error"))
+        for field, selected in (("mainStatus", [i for i in self.data["targets"] if i.get("phase") != "teardown"]),
+                                ("cleanupStatus", [i for i in self.data["targets"] if i.get("phase") == "teardown"])):
+            self.data[field] = next((state for state in ("cancelled", "timeout", "error", "failed") if any(i["status"] == state for i in selected)), "passed" if selected else "not_run")
         return self.data
 
     def write(self, json_path=None, junit_path=None):
@@ -81,3 +85,11 @@ class RunReport:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(value, encoding="utf-8")
+
+
+def history_targets(targets, report):
+    """Keep only saved-case outcome metadata, never response data or preview runs."""
+    if any(t.get('preview') for t in targets):
+        return targets
+    return targets + [{key: item.get(key) for key in ('caseReference', 'project', 'status', 'httpStatus', 'phase')}
+                      for item in (report or {}).get('targets', []) if item.get('caseReference')]

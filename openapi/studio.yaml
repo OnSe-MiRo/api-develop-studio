@@ -27,6 +27,8 @@ paths:
     $ref: ./paths/openapi.yaml#/~1api~1projects~1{reference}~1openapi~1operations
   /api/projects/{reference}/openapi/contract:
     $ref: ./paths/openapi.yaml#/~1api~1projects~1{reference}~1openapi~1contract
+  /api/projects/{reference}/openapi/coverage:
+    $ref: ./paths/openapi.yaml#/~1api~1projects~1{reference}~1openapi~1coverage
   /api/docs:
     $ref: ./paths/openapi.yaml#/~1api~1docs
   /api/generate:
