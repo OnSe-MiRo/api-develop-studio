@@ -63,6 +63,8 @@ def create_app(studio) -> FastAPI:
         try:
             yield
         finally:
+            from api_test.services.mock import manager as mock_manager
+            await run_in_threadpool(mock_manager.stop_all)
             await run_in_threadpool(app.state.jobs.close)
 
     app = FastAPI(lifespan=lifespan, title="API Develop Studio", docs_url=None, redoc_url=None,

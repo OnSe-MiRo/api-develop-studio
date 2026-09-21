@@ -1,5 +1,45 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## MOCK-1 2차 수정 검증 (2026-09-21)
+
+- 시작/검증: R1–R8 수정본의 전체 Python 288개(246 통과/42 skip), 실제 HTTP pipeline 및 smoke 재실행. pipeline 본문 불일치 negative 검증도 통과.
+- 발견: smoke deadline 0.05초, 0.2초 stub 작업 5개/동시성1에서 약 1.035초 후 반환. future timeout 이후에도 executor가 모든 작업을 끝낼 때까지 대기하므로 전체 시간 제한은 미해결.
+- 상태: MOCK-1 진행 유지. [2차 리뷰](mock-1-review.md)의 잔여 6개 수정 필요. LT/DB 단계 완료 아님.
+- 차단: 브라우저용 서버 실행은 자동 승인 검토 사용량 한도로 미실행. 이번 제품 코드 변경·커밋·푸시 없음.
+
+## MOCK-1 결함 보완 후 HTTP 부하 Smoke 재검증 (2026-09-21)
+
+- 시작: MOCK-1 독립 리뷰 결함 보완 후 smoke 하네스 deadline 및 동시성 재검증 수행.
+- 개선: `api_test/mock_smoke.py`에 전체 실행 `deadline_seconds`(기본 30초) 및 타임아웃 예외 처리 추가.
+- 검증 결과 (`example-api.json` 기반 Loopback Mock Server):
+  - 총 요청: 100건 (성공 100건, 실패 0건, 성공률 100%)
+  - 동시성: 10 동시 worker
+  - 총 소요 시간: 0.286초
+  - RPS: 349.6 req/s
+  - 지연시간: min 1.34ms, avg 28.42ms, p50 2.90ms, p95 256.59ms, p99 257.89ms, max 258.79ms
+  - 상태 코드 분포: 201 Created 34건, 200 OK 66건
+- 판정: MOCK-1 동시성 smoke 통과. 독립 재검증 대기. (LT/DB 단계는 대기 유지)
+
+## MOCK-1 독립 리뷰 및 smoke 재검증 (2026-09-21)
+
+- 시작: 개발 모델의 구현/검증 보고를 독립적으로 확인.
+- 검증: 권한 확장 후 전체 Python 282개 중 240 통과/42 skip. Mock 실제 HTTP pipeline 및 50요청/동시성5 smoke 테스트 통과.
+- 발견: pipeline 본문 검증 필드가 잘못되어 응답 내용 오류를 놓치며, resource state 혼합과 ID 덮어쓰기를 독립 재현. smoke 전체 실행 deadline도 미구현.
+- 판정: MOCK-1 진행, 수정 후 재검증 필요. [상세 리뷰](mock-1-review.md) 참조. LT/DB 단계 완료를 의미하지 않음.
+- 변경: 이번에는 리뷰/진행 문서만 갱신. 임시 브라우저 검증 서버의 Mock은 중지했고 사용자 데이터는 사용하지 않음.
+
+## MOCK-1 Mock Server 동시 HTTP 부하 Smoke (2026-09-21)
+
+- 대상: OpenAPI 기반 Mock Server (`feature/mock-server`, Loopback `127.0.0.1:8940`)
+- 내용: `example-api.json` 명세 기반 mock server를 기동하고 `api_test/mock_smoke.py` 하네스로 10 동시성·100회 요청의 짧은 HTTP 부하 smoke 실행.
+- 부하 대상: `GET /__mock/health` (200), `GET /example-api/health` (200), `POST /example-api/users` (201).
+- 결과:
+  - 총 요청: 100건 (성공 100건, 실패 0건, 에러율 0.0%)
+  - 상태 분포: 200 OK 67건, 201 Created 33건
+  - 처리량(RPS): 1,927.5 req/s (총 소요시간 0.052초)
+  - 지연시간: min 2.54ms, avg 4.75ms, p50 4.30ms, p95 8.04ms, p99 9.69ms, max 10.35ms
+- 참고: 이 smoke는 MOCK-1 동시성/안정성 검증용이며, LT-1~LT-5 및 DB-1~DB-5 전체 부하테스트/대시보드 단계는 대기 상태를 유지함.
+
 ## 로컬 정책 예제 추가 (2026-09-11)
 
 - 완료: `example-ownership-local.json`에 health Setup → 인증 누락 401 → 유효한 키 200 예제 추가.
