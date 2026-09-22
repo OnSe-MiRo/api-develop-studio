@@ -8,6 +8,8 @@ from api_test.generated.apis.example_api import router as ExampleApiRouter
 
 from api_test.generated.apis.execution_api import router as ExecutionApiRouter
 
+from api_test.generated.apis.mock_api import router as MockApiRouter
+
 from api_test.generated.apis.openapi_api import router as OpenapiApiRouter
 
 from api_test.generated.apis.ownership_api import router as OwnershipApiRouter
@@ -28,6 +30,8 @@ routers = [
     ExampleApiRouter,
 
     ExecutionApiRouter,
+
+    MockApiRouter,
 
     OpenapiApiRouter,
 

@@ -1,0 +1,67 @@
+MockStatusResponse:
+  type: object
+  properties:
+    status:
+      type: string
+      enum: [stopped, running, error]
+    host:
+      type: string
+    port:
+      type: integer
+    url:
+      type: string
+    seed:
+      type: integer
+    scenario:
+      type: string
+    defaultLatencyMs:
+      type: integer
+    activeOperations:
+      type: integer
+    requestCount:
+      type: integer
+    overrides:
+      type: object
+      additionalProperties: true
+  required:
+  - status
+
+MockStartRequest:
+  type: object
+  properties:
+    port:
+      type: integer
+    host:
+      type: string
+    seed:
+      type: integer
+    scenario:
+      type: string
+    defaultLatencyMs:
+      type: integer
+    overrides:
+      type: object
+      additionalProperties: true
+
+MockConfigUpdateRequest:
+  type: object
+  properties:
+    seed:
+      type: integer
+    scenario:
+      type: string
+    defaultLatencyMs:
+      type: integer
+    overrides:
+      type: object
+      additionalProperties: true
+
+MockActionResponse:
+  type: object
+  properties:
+    status:
+      type: string
+    message:
+      type: string
+  required:
+  - status

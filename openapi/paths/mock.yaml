@@ -1,0 +1,196 @@
+/api/projects/{reference}/mock:
+  get:
+    operationId: get_mock_status
+    tags:
+    - mock
+    summary: Get mock server status and configuration
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '200':
+        description: Mock server status
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/mock.yaml#/MockStatusResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Project not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: mock.get_status
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/mock
+    x-studio-upload: false
+    x-studio-alias: true
+
+/api/projects/{reference}/mock/start:
+  post:
+    operationId: start_mock_server
+    tags:
+    - mock
+    summary: Start mock server for project
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/mock.yaml#/MockStartRequest
+    responses:
+      '200':
+        description: Mock server started
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/mock.yaml#/MockStatusResponse
+      '400':
+        description: Invalid request or port conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Project not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: mock.start_server
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/mock/start
+    x-studio-upload: false
+    x-studio-alias: true
+
+/api/projects/{reference}/mock/stop:
+  post:
+    operationId: stop_mock_server
+    tags:
+    - mock
+    summary: Stop mock server for project
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '200':
+        description: Mock server stopped
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/mock.yaml#/MockActionResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Project not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: mock.stop_server
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/mock/stop
+    x-studio-upload: false
+    x-studio-alias: true
+
+/api/projects/{reference}/mock/reset:
+  post:
+    operationId: reset_mock_server
+    tags:
+    - mock
+    summary: Reset mock server state
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '200':
+        description: Mock server reset
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/mock.yaml#/MockActionResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Project not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: mock.reset_server
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/mock/reset
+    x-studio-upload: false
+    x-studio-alias: true
+
+/api/projects/{reference}/mock/config:
+  post:
+    operationId: update_mock_config
+    tags:
+    - mock
+    summary: Update mock server configuration
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/mock.yaml#/MockConfigUpdateRequest
+    responses:
+      '200':
+        description: Mock server configuration updated
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/mock.yaml#/MockStatusResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Project not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: mock.update_config
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/mock/config
+    x-studio-upload: false
+    x-studio-alias: true

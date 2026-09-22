@@ -231,14 +231,23 @@ python3 run_api_tests.py pipelines/upload.json --case-root case --file-root case
 python3 run_api_tests.py pipelines/my_pipeline.json --project-root projects
 ```
 
-테스트는 다음 명령으로 실행합니다.
+테스트는 전용 PostgreSQL·Redis를 기동한 뒤 다음 명령으로 실행합니다.
+
+처음에는 `python3 -m venv .venv`로 가상환경을 만들고 활성화한 다음 `python -m pip install -r requirements.txt`로 의존성을 설치하세요. macOS/Linux에서는 `source .venv/bin/activate`, Windows PowerShell에서는 `.venv/Scripts/Activate.ps1`로 활성화합니다.
 
 ```bash
+docker compose -f docker-compose.test.yml up -d --wait
 python3 -m unittest discover -s tests -v
 cd web
 npm test
 npm run build
 ```
+
+통합 테스트의 기본 접속값은 `FND4_TEST_DATABASE_URL=postgresql://studio_test:studio_test_local@127.0.0.1:15432/postgres`, `FND4_TEST_REDIS_URL=redis://127.0.0.1:16379/0`입니다. 환경변수가 없으면 테스트에서 자동 적용하며, 별도 값을 설정하면 해당 값이 우선합니다. 애플리케이션의 `STUDIO_DATABASE_URL`은 테스트 기본값으로 사용하지 않습니다. 기본 인증 정보는 폐기 가능한 로컬 테스트 서비스 전용입니다.
+
+각 PostgreSQL 테스트는 임의 이름의 DB를 생성·삭제하므로 연결 계정에 CREATEDB 권한이 필요합니다. 기본 서비스는 loopback에만 노출되고 운영 볼륨을 공유하지 않습니다. PostgreSQL 데이터는 컨테이너가 멈추면 사라지며 Redis도 영속 저장을 하지 않습니다. 테스트 서비스가 없으면 자동 skip 대신 연결 오류로 실패합니다. CI에도 동일한 전용 서비스를 구성했습니다.
+
+의도적으로 SQLite만 검사하려면 두 환경변수를 빈 문자열로 설정하세요. 테스트 서비스 종료는 저장소 루트에서 `docker compose -f docker-compose.test.yml down`으로 수행합니다.
 
 프런트엔드 테스트는 Vitest와 React Testing Library로 router, form 변환, loading·empty·error 상태를 검증합니다.
 

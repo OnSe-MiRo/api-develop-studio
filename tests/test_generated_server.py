@@ -26,13 +26,13 @@ class GeneratedServerTest(unittest.TestCase):
         self.assertEqual(path_files, {
             'projects.yaml', 'cases.yaml', 'pipelines.yaml', 'openapi.yaml',
             'execution.yaml', 'dashboard.yaml', 'ownership.yaml',
-            'uploads.yaml', 'example.yaml',
+            'uploads.yaml', 'example.yaml', 'mock.yaml',
         })
         schema_files = {path.name for path in (ROOT / 'openapi/components/schemas').glob('*.yaml')}
         self.assertEqual(schema_files, {
             'common.yaml', 'projects.yaml', 'cases.yaml', 'pipelines.yaml',
             'execution.yaml', 'openapi.yaml', 'dashboard.yaml', 'ownership.yaml',
-            'uploads.yaml', 'example.yaml',
+            'uploads.yaml', 'example.yaml', 'mock.yaml',
         })
         for path, value in source['paths'].items():
             self.assertEqual(len(value), 1)

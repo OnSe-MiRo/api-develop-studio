@@ -51,6 +51,16 @@ paths:
     $ref: ./paths/ownership.yaml#/~1api~1ownership~1{action}
   /api/uploads/{reference}:
     $ref: ./paths/uploads.yaml#/~1api~1uploads~1{reference}
+  /api/projects/{reference}/mock:
+    $ref: ./paths/mock.yaml#/~1api~1projects~1{reference}~1mock
+  /api/projects/{reference}/mock/start:
+    $ref: ./paths/mock.yaml#/~1api~1projects~1{reference}~1mock~1start
+  /api/projects/{reference}/mock/stop:
+    $ref: ./paths/mock.yaml#/~1api~1projects~1{reference}~1mock~1stop
+  /api/projects/{reference}/mock/reset:
+    $ref: ./paths/mock.yaml#/~1api~1projects~1{reference}~1mock~1reset
+  /api/projects/{reference}/mock/config:
+    $ref: ./paths/mock.yaml#/~1api~1projects~1{reference}~1mock~1config
   /example-api:
     $ref: ./paths/example.yaml#/~1example-api
   /example-api/{reference}:
@@ -150,3 +160,11 @@ components:
       $ref: ./components/schemas/openapi.yaml#/AuthorOperationRequest
     AuthorOperationResponse:
       $ref: ./components/schemas/openapi.yaml#/AuthorOperationResponse
+    MockStatusResponse:
+      $ref: ./components/schemas/mock.yaml#/MockStatusResponse
+    MockStartRequest:
+      $ref: ./components/schemas/mock.yaml#/MockStartRequest
+    MockConfigUpdateRequest:
+      $ref: ./components/schemas/mock.yaml#/MockConfigUpdateRequest
+    MockActionResponse:
+      $ref: ./components/schemas/mock.yaml#/MockActionResponse

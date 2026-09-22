@@ -1,5 +1,13 @@
 # API 개발 기능 진행 기록
 
+## 테스트 PostgreSQL·Redis 기본 설정 (2026-09-22)
+
+- 시작: 사용자 요청으로 테스트 전용 접속 설정을 기본값으로 적용.
+- 변경: `tests/test_postgres_storage.py`에서 환경변수 미설정 시 loopback PostgreSQL 15432/Redis 16379 사용. 명시한 override 우선, 빈 문자열은 의도적인 SQLite-only 실행을 위한 opt-out으로 유지.
+- 환경: `docker-compose.test.yml`에 앱 저장소와 분리된 테스트 컨테이너 구성. PostgreSQL tmpfs, loopback 포트, Redis 비영속 저장. CI 서비스도 동일 기본값으로 구성. README 실행 안내 및 `.venv/` ignore 추가.
+- 검증: 최초 시스템 Python 실행은 psycopg 누락으로 오류. 기존 Python 의존성을 재사용하는 프로젝트 `.venv`에 psycopg binary/pool 및 redis 설치 후 `.venv/bin/python -m unittest discover -s tests -v` 실행, **297개 전체 통과·skip 0**(15.845초). diff 검사 통과. 원격 CI 자체 실행은 미수행.
+- 완료: 기본 설정과 로컬 검증 완료. 테스트 전용 PostgreSQL·Redis 컨테이너는 다음 실행을 위해 기동 상태 유지. 기존 앱/운영 데이터는 변경하지 않음. 커밋·푸시·병합 없음.
+
 ## FastAPI·PostgreSQL·Redis·Java WAS 개발 순서 계획 (2026-09-12)
 
 - 상태: 완료 — 구현이 아닌 로드맵 문서 정리.
@@ -33,11 +41,11 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-20
-- 현재 단계: TST-1·TST-2·TST-3 구현 및 로컬 검증 완료
+- 최종 갱신일: 2026-09-22
+- 현재 단계: MOCK-1 report 및 reset·종료·입력 경계 결함 수정·관련 검증 완료, 브라우저 등 잔여 검증 대기
 - 전체 상태: 진행
-- 반영 브랜치: `feature/test-coverage-lifecycle` 로컬 작업 트리. clean develop에서 분기. 커밋·병합·푸시는 수행하지 않음.
-- 다음 작업: OAS-1 component schema CRUD·reference 선택, security scheme·operation security, request/response 편집과 전체 문서 validation. SDK 비동기 전환은 별도 후속.
+- 반영 브랜치: `feature/mock-server`, clean develop `f033c44`에서 분기. 독립 검증 작업으로 커밋·병합·푸시는 수행하지 않음.
+- 다음 작업: 검증 report 최신 상태에 기재한 실제 브라우저·동시성·지연 종료 증거 보완 후 전체 완료 판정.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -59,7 +67,7 @@
 | TST-1 | 명세–케이스 커버리지 | P1 | 완료 | operation/status 연결 수·최근 성공, 미검증 응답 표시 |
 | TST-2 | 명세 변경과 케이스 동기화 | P1 | 완료 | field preview·선택 갱신·revision 충돌·assertion/secret 보존 |
 | TST-3 | 테스트 데이터 setup·teardown | P1 | 완료 | UUID/시각/정수·seed·run 변수 추출·정리 결과 분리 |
-| MOCK-1 | OpenAPI 기반 Mock Server | P1 | 대기 | state와 외부 공개 정책 |
+| MOCK-1 | OpenAPI 기반 Mock Server | P1 | 진행 | 추가 경계 수정 후 Python 255 통과/42 skip. 실제 지연 종료·reset 회귀 통과, 브라우저 등 계획 잔여 검증 필요 |
 | OBS-1 | 기능 테스트 실행 이력 | P1 | 대기 | RUN-1 공통 metadata |
 | OBS-2 | 부하테스트 결과 대시보드 | P1 | 대기 | 별도 진행 기록 참조 |
 | IOP-1 | cURL·Postman·HAR 연동 | P1 | 대기 | 지원 형식과 round trip 기준 |
@@ -72,6 +80,52 @@
 OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 기록`](api-load-test-progress.md)에서도 관리한다. 두 문서의 상태가 다르면 실제 검증 기록이 최신인 문서를 확인하고 같은 작업 안에서 동기화한다.
 
 ## 직전 작업
+
+### MOCK-1 독립 검증 결과 (2026-09-21)
+
+- 작업 ID: MOCK-1 (독립 검증 결과)
+- 일시: 2026-09-21 23:36 KST
+- 검증 기준: `docs/mock-1-verification-plan.md` (M01~M20 전수 및 최근 6개 수정 검증)
+- 상세 보고서: `docs/mock-1-verification-report.md`
+- 최종 판정: **진행** (핵심 기능 M01~M15, M17~M20 통과, M16 경미 지연 및 생성기 개행 2건 보완 필요)
+- 검증 내역:
+  - 기능 매트릭스: M01~M15, M17~M20 (총 19개 항목) 통과.
+  - 자동화 테스트:
+    - `python3 -m unittest discover -s tests -v`: 293개 실행, 251개 통과, 42개 skip, 0 failure, 0 error (기존 전체 회귀 무결성 검증).
+    - `python3 -m unittest tests/test_mock_server.py -v`: 11개 전체 통과.
+    - `python3 -m unittest tests/test_mock_review_regressions.py -v`: 11개 전체 통과.
+    - `cd web && npm test`: 10개 파일 27개 테스트 전체 통과 (MockServerPanel 3개 포함).
+    - `cd web && npm run build`: Vite 번들 정상 빌드 완료.
+    - `git diff --check && git diff --cached --check`: 공백 오류 0건 통과.
+    - 라이브 HTTP 수명주기: GET -> start -> health -> config -> reset -> stop -> 포트 릴리즈 100% 통과.
+  - 발견 결함:
+    - **Finding 1 (P2 / M16)**: `test_mock_concurrent_smoke_harness` 단독 실행 시 `synthesize_schema`의 `contracts.validation` 동적 import로 인한 콜드스타트 GIL 병목으로 p95 238ms~256ms 초과 (`assertLess(p95, 200.0)` 실패).
+    - **Finding 2 (P3 / 빌드 정합성)**: `python3 scripts/generate_server.py --check` 실행 시 `api_test/generated/apis/mock_api.py` 라우터 함수 간 개행 빈 줄 누락으로 exit code 1 차이 감지.
+- 후속 조치: `schema_errors` 모듈 선행 import 및 `mock_api.py` 개행 정합성 조정 후 최종 재검증. 코드는 임의 수정하지 않고 작업 트리 보존.
+
+### MOCK-1 독립 리뷰 결함(R1–R8) 및 경계 보완 (2026-09-21)
+
+- 작업 ID: MOCK-1 (결함 보완 및 재검증 대기)
+- 시작: 2026-09-21 KST
+- 상태: 진행 (보완 완료, 독립 재검증 대기) — `feature/mock-server`, clean develop `f033c44` 기준 미커밋 작업 트리 유지.
+- 결함 수정 내역:
+  - **R1 (P1 · State 격리)**: 경로 템플릿과 상위 파라미터 값을 결합한 명시적 컬렉션 키 매핑 적용. `/api/users`와 `/api/orders` 간 state 격리 보장.
+  - **R2 (P1 · ID 카운터 및 충돌 방지)**: 컬렉션별 단조 증가 `_next_ids` 카운터 도입, 삭제 후 새 항목 생성 시 기존 ID 보존, 명시적 중복 ID 생성 요청 시 409 Conflict 반환.
+  - **R3 (P2 · 상태 변경 및 응답 순서)**: 오버라이드/에러 시뮬레이션에 의한 오류 상태(>= 400) 발생 시 state 변경 차단. POST 시 스키마 기본값(예: `status: "active"`)과 본문 병합 후 저장·반환.
+  - **R4 (P2 · 스키마 제약 준수)**: `minItems`, `maxItems`, `minimum`, `maximum`, `exclusiveMinimum/Maximum`, `minLength`, `maxLength` 제약값 만족. 깊이 초과/순환 참조 시 non-null 스키마에 대해 타입 기본값(`{}`, `[]`, `""`, `0`) 반환. `jsonschema` 검증 통과.
+  - **R5 (P2 · 관리 API 엄격 검증 및 포트 계약)**: seed, port(1..65535, port 0 거부), defaultLatencyMs(0..5000), overrides 구조 검증 실패 시 400 반환. 재시작 실패 시 기존 서버 중지 방지. IPv6 주소 URL 대괄호(`http://[::1]:port`) 표기.
+  - **R6 (P2 · 파이프라인 본문 검증 계약)**: `expected.body` 및 `validation_modes.exact_body` 반영, `case/{tag}/{api_name}/{case_file}.json` 경로 준수, 의도된 본문 불일치 시 파이프라인 실패(음성 테스트) 입증.
+  - **R7 (P2 · 웹 UI Operation별 오버라이드 지원)**: Operation 선택기, 상태 코드/미디어타입/Example/지연/오류 오버라이드 설정 및 삭제 UI 추가, `applyConfig`/`startServer`에 전달. 상태 조회 실패 시 중지 상태 복원. 단일 프로세스/인메모리 state 소멸/명세 스냅샷 안내 문구 추가.
+  - **R8 (P2 · 비 JSON 미디어 타입 지원)**: `resolve_operation_response` 3-tuple(`status, media_type, payload`) 반환. `text/plain` 요청 시 `text/plain; charset=utf-8` 및 raw string body 전송.
+  - **경계 조건 보완**: 요청 본문 1MB 상한(`MAX_BODY_BYTES`), 인메모리 state 10MB 상한(`MAX_STATE_BYTES`) 및 10,000개 상한. `stop()` 시 uvicorn 정상 소켓 close 대기 후 강제 취소. smoke 하네스 전체 실행 `deadline_seconds`(30s) 적용.
+- 검증 결과:
+  - 독립 회귀 테스트 `tests/test_mock_review_regressions.py` (6개 항목 전체 통과).
+  - 전체 Python: 288개 실행, 246개 통과, 42개 skip (외부 PostgreSQL URL 설정 의존).
+  - 프론트엔드: `npm test` 10개 파일 27개 테스트 전체 통과, `npm run build` Vite 번들 생성 성공.
+  - 생성 코드: `python3 scripts/generate_server.py --check` 통과.
+  - 실제 HTTP 파이프라인: POST(추출) -> GET(본문 검증) -> 의도된 404 -> 부정 검증(본문 불일치 차단) 전체 통과.
+  - Smoke 테스트: 100건 요청, 동시성 10, 성공률 100%, 0 에러, RPS 349.6, p50 2.9ms.
+- 커밋·병합·푸시: 수행하지 않음. MOCK-1 독립 재검증 전까지 `완료` 처리 보류.
 
 - 작업 ID: OAS-2
 - 시작: 2026-09-17 KST
@@ -354,7 +408,67 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 - 검증: OpenAPI Generator 7.24.0 `--check`, Python 224개 중 182개 통과·42개 외부 서비스 설정 의존 skip, frontend 14개·build·diff check 통과. 실제 API 컨테이너에서 20개 path·41개 schema·2개 header 반환 확인.
 - 상태: 완료 — 생성 라우터 결과와 기존 HTTP 계약 유지.
 
-## 현재 작업: TST-1·TST-2·TST-3 (2026-09-20)
+## MOCK-1 잔여 항목 개발 — 검증 분리 (2026-09-21)
+
+- 검증 인계 문서: [MOCK-1 계획 이행 검증서](mock-1-verification-plan.md). 계획 요구사항 매핑, M01–M20, 최근 6개 수정, 실제 HTTP/브라우저 및 결과 양식 작성 완료. 검증 실행은 별도 대기.
+
+- 시작: 사용자의 “mock-1 개발 진행 검증은 별도로 진행” 요청에 따라 `feature/mock-server`, 로컬 커밋 `0a6151f` 이후 개발 재개.
+- 변경: 동일 seed/scenario 설정 시 state 보존, /api/docs의 해석된 operation 및 media/example 이름을 Mock 화면으로 연결, 생성 schema의 최종 제약 검사와 깊이/배열 제한 명시 오류, 정수 소수 경계 처리, override 필드 타입 검사.
+- 변경: 명시적 example/media 선택 시 명세 응답 재생으로 처리하며 CRUD state 비변경. 선택되지 않은 일반 CRUD 동작은 유지. 해당 정책과 seed/scenario 변경 초기화 정책을 UI에 표시.
+- 변경: smoke 동시성 수만큼만 제출, 남은 deadline으로 요청 timeout 제한, 미완료 요청 실패 집계와 queued 작업 취소, deadline 이후 executor 종료 대기 제거. 진행 중 요청은 socket timeout 안에서 종료되며 강제 thread 종료를 보장하지 않음.
+- 회귀 테스트: state 보존·schema 거부/정수 경계·입력 타입·CRUD media/example·smoke deadline 테스트 작성, 기존 순환 schema와 UI fixture를 변경된 계약에 맞게 수정.
+- 검증: 사용자 요청으로 Python/frontend 테스트·build·브라우저·실제 HTTP 검증은 이번에 실행하지 않음. 따라서 결함 해소 검증 완료 또는 MOCK-1 전체 완료로 판정하지 않는다.
+- Git: 이번 수정은 미커밋. 이전 `0a6151f`는 로컬 커밋이며 원격 푸시 자동 검토 차단과 develop 병합 보류 상태는 별도 작업으로 남음.
+
+## MOCK-1 2차 수정 검증 (2026-09-21)
+
+- 시작: 개발 모델의 R1–R8 수정 및 회귀 테스트를 독립 검증.
+- 결과: resource 격리·ID 충돌·오류 status·pipeline 본문 검증 수정 확인. 설정 적용 시 state 소멸, operation UI 데이터 경로 불일치, schema 위반, override 타입 불일치, CRUD media/example 무시, smoke deadline 미준수 발견.
+- 검증: Python 288개 중 246 통과/42 skip, frontend 27개 및 build, 생성 검사·diff check 통과. 추가 ASGI/schema validator/smoke stub으로 잔여 문제 재현. 자세한 결과는 [최신 리뷰](mock-1-review.md) 참조.
+- 차단: 브라우저용 임시 loopback 서버 실행은 자동 승인 검토 사용량 한도로 미실행. 실제 브라우저 재검증은 완료하지 않음.
+- 완료 범위: 코드 수정에 대한 2차 리뷰, 문서 갱신. MOCK-1은 진행 유지. 제품 코드 수정·커밋·병합·푸시 없음.
+
+## MOCK-1 독립 리뷰 (2026-09-21)
+
+- 시작: `feature/mock-server`의 develop 대비 diff와 untracked 구현을 기존 인계 기준으로 검토.
+- 결과: [리뷰 및 수정 인계](mock-1-review.md)의 R1–R8 발견. 리소스 state 혼합·ID 덮어쓰기·status 무시·schema 제약 위반·관리 API 500·본문 검증 누락을 재현. UI 선택 기능과 media type 처리 미충족 확인.
+- 검증: 전체 Python 282개 중 240 통과/42 PostgreSQL 관련 skip, frontend 26개 및 build, 생성 코드 검사 통과. 최초 sandbox bind/ps 제한은 권한 확장 재실행으로 해소.
+- 실제 브라우저: 임시 DB/fixture로 시작→새로고침 복원→오류 설정→HTTP 500 확인→reset→중지, 콘솔 error 없음. 기존 pipeline/smoke 테스트도 실행했으나 본문 검증 누락으로 내용 정확성 보장은 불가.
+- 상태: 진행 — 리뷰 완료, 구현 수정과 재검증 대기. 구현 코드 변경·커밋·병합·푸시 없음. 하단의 개발 모델 완료 보고보다 이 독립 검증 판정을 우선한다.
+
+## MOCK-1 OpenAPI 기반 Mock Server 구현 — 개발 모델 보고 (2026-09-21)
+
+- 상태: 완료 — `feature/mock-server`, clean develop `f033c44` 분기 기준에서 구현 완료. 커밋·병합·푸시는 수행하지 않음.
+- 시작: [개발 인계 프롬프트](mock-1-development-prompt.md)에 따라 API·화면·테스트·사용 안내 및 부하 smoke 구현.
+- 변경 파일:
+  - 계약 및 라우터: `openapi/paths/mock.yaml`, `openapi/components/schemas/mock.yaml`, `openapi/studio.yaml`, `openapi/templates/api.mustache`, `api_test/generated/` (OpenAPI Generator 7.24.0으로 라우터·모델 64개 갱신)
+  - 코어 엔진 및 서비스: `api_test/mock_engine.py` (정적 경로 우선 라우팅, Example 우선순위 및 Schema 결정적 합성, 순환참조 깊이 10 제한, 선언형 CRUD state 머신 및 reset, 204/HEAD 무본문 처리, 비차단 latency), `api_test/services/mock.py` (Loopback 127.0.0.1/::1/localhost 전용 바인드 정책, 포트 충돌 감지 및 자동 할당, 생명주기 제어), `api_test/implementations/mock.py`, `api_test/main.py` (lifespan 앱 종료 시 Mock 서버 정리)
+  - 부하 smoke 하네스: `api_test/mock_smoke.py` (동시 HTTP 부하 실행, 지연시간 분위수 및 통계 산출)
+  - 프론트엔드 UI: `web/src/pages/apis/MockServerPanel.jsx` (실시간 상태·URL·포트·요청수 표시, 시작/중지/초기화/설정갱신, 시나리오/지연/Seed 설정), `web/src/pages/apis/MockServerPanel.test.jsx`, `web/src/pages/apis/ApiList.jsx`
+  - 테스트: `tests/test_mock_server.py` (우선순위, 결정성, 제약조건, loopback 정책, 포트 충돌, 생명주기 관리 API 11개 단위/통합 테스트), `tests/test_mock_pipeline.py` (임시 fixture 기반 실제 HTTP loopback Mock 서버 대상 3단계 파이프라인 및 부하 smoke 테스트), `tests/test_generated_server.py`
+  - 문서: `docs/api-development-progress.md`, `docs/api-load-test-progress.md`
+- 검증:
+  - OpenAPI 생성 검사: `python3 scripts/generate_server.py --check` 통과 ("Generated server is up to date.")
+  - Python 전체 테스트: `python3 -m unittest discover -s tests -v` — 282개 테스트 중 240개 통과, 42개 skip (외부 PostgreSQL URL 미설정 의존), 0 failures, 0 errors.
+  - Frontend 검증: `web/`에서 `npm test` (10개 테스트 파일 26개 테스트 전체 통과), `npm run build` (Vite 8.2.1 클라이언트 빌드 정상 완료).
+  - 실제 HTTP 파이프라인: 임시 fixture 프로젝트에서 Mock 서버 시작 후 Setup 생성(`POST /items`) → ID 추출(`body.id`) → 조회(`GET /items/${run.item_id}`) → 의도한 404 오류 검증(`GET /items/non-existent-9999`) 3단계 파이프라인 PASS.
+  - 동시 HTTP 부하 Smoke: `example-api.json` 대상 loopback 127.0.0.1:8940에서 10 동시성·100회 요청 실행 결과 성공 100건(에러율 0.0%), 1927.5 RPS, p50 4.30ms, p95 8.04ms, max 10.35ms.
+  - 브라우저 검증: 백엔드/React 서버 정상 기동(curl 200 OK) 확인 후 브라우저 서브에이전트 실행 시 Playwright mac-arm64 zip 다운로드 404 환경 문제 발생하여 브라우저 자동 탐색은 중단하고 Vitest JSDOM UI 테스트로 화면 동작 검증.
+  - 코드 포맷: `git diff --check` 통과.
+- 제한사항:
+  - Mock 서버는 보안 정책상 Loopback(127.0.0.1, ::1, localhost) 주소로만 바인드할 수 있으며, 0.0.0.0 또는 외부 IP 바인드는 거부됨.
+  - Mock state는 프로세스 메모리에 유지되며, 서버 중지 시 정리되고 재시작 시 초기 시나리오 상태로 시작됨.
+
+## MOCK-1 개발 인계 준비 (2026-09-21)
+
+- 상태: 완료 — 인계 프롬프트 준비 및 구현 완료.
+- 시작: 변경사항 없는 로컬 develop `f033c44`에서 `feature/mock-server` 생성. 원격 최신성은 확인하지 않음.
+- 변경: [개발 인계 프롬프트](mock-1-development-prompt.md)에 요구사항, 기존 구현 진입점, state·bind 정책, 실제 HTTP/브라우저/부하 smoke 및 후속 독립 리뷰 기준 작성.
+- 검증: 브랜치와 작업 트리 확인, `git diff --check` 통과. 문서만 변경하여 코드 테스트와 build는 실행하지 않음.
+- 환경: 최초 브랜치 생성은 sandbox의 Git 쓰기 제한으로 실패했고 권한 확장 재실행으로 완료. 현재 차단 사항 없음.
+- 다음: 사용자가 선택한 다른 AI 모델의 구현 완료 후 Codex에서 diff 리뷰 및 독립 검증. 이번 작업에서는 모델 실행·기능 구현·커밋·병합·푸시를 수행하지 않음.
+
+## 이전 작업: TST-1·TST-2·TST-3 (2026-09-20)
 
 - 상태: 완료 — `feature/test-coverage-lifecycle`, clean develop에서 분기.
 - 시작: 명세 operation/status 커버리지, 사용자 검증 보존 동기화 preview, run별 generator·변수 추출·setup/teardown 구현.

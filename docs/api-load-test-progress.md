@@ -1,5 +1,85 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## 테스트 기본 저장소 설정 검증 (2026-09-22)
+
+- PostgreSQL 15432/Redis 16379 전용 컨테이너 및 테스트 URL 기본값 도입. 프로젝트 가상환경으로 전체 **297개 통과, skip 0**. 기존 42개 저장소 통합 테스트와 Mock smoke 포함.
+- 테스트 서비스는 기동 상태 유지. 원격 CI는 설정만 반영했으며 실행하지 않음. 이 결과는 미실행 브라우저 검증이나 LT/DB 전체 계획 완료를 의미하지 않음.
+
+## MOCK-1 종료·state 경계 결함 수정 (2026-09-22)
+
+- 시작/변경: reset/seed 변경 전 대기 요청의 새 state 유입 차단(409), 종료 시 event loop/task 정리, 정수 및 JSON 입력 오류 거부.
+- 검증: Mock 테스트 28개 및 전체 Python 297개(255 통과/42 skip), diff 검사 통과. 실제 loopback에서 5초 지연 요청 중 중지해 4초 미만 반환과 thread·loop·socket 정리 확인. 종료 timeout 취소 로그는 예상 동작이며 요청 성공 보장은 아님.
+- 상태: 해당 결함 수정·관련 검증 완료. [최신 report](mock-1-verification-report.md) 갱신. 실제 브라우저 등 전체 계획 잔여 검증은 남아 있으며 MOCK-1/LT/DB 전체 완료로 판정하지 않음. 이번 변경 미커밋.
+
+## MOCK-1 report 지적 수정 및 재검증
+
+- 시작: 독립 report의 cold-start smoke 지연 및 생성 코드 개행 불일치 보완 요청.
+- 변경: schema 검증 의존성을 Mock 엔진 모듈 로딩 시 import하도록 이동. 요청 시 초기 import 제거. 생성기로 API 함수 사이 빈 줄 복원.
+- 검증: 새 Python 프로세스의 `test_mock_pipeline.py` 2개 통과. 50요청/동시성5 smoke의 실패 0·p95 < 200ms·RPS > 10 단언 유지 및 통과. 전체 Python 293개 중 251 통과/42 skip, 생성 검사·diff 검사 통과.
+- 상태: report Finding 1·2 해결. [최신 보고서](mock-1-verification-report.md) 참조. MOCK-1 전체 계획 및 LT/DB 단계 완료 판정은 아님.
+- 기록 정정: 하단의 deadline 테스트 통과는 queued 작업 취소와 반환 제한을 확인하는 stub 테스트다. 실행 중 worker의 즉시 강제 종료를 보장하지 않으며, 실제 지연 요청의 worker 종료 시각 검증은 후속이다. M17의 계획상 목적은 통계 출력이 아닌 deadline 동작 검증이다.
+
+## MOCK-1 부하 스모크 및 하네스 독립 검증 결과 (2026-09-21)
+
+- 상세 보고서: [MOCK-1 검증 결과](mock-1-verification-report.md)
+- 검증 기준: [MOCK-1 계획 이행 검증서](mock-1-verification-plan.md)의 M16(부하 스모크 수렴 및 p95 < 200ms) 및 M17(로그 및 지연/RPS 통계)
+- 검증 결과:
+  - `test_smoke_deadline_cancels_unsubmitted_work`: 통과. deadline 초과 시 미제출 작업 취소 및 worker 즉시 종료 검증 완료.
+  - `test_mock_concurrent_smoke_harness`: **실패** (p95 지연시간 초과).
+    - 50건 요청 / 동시성 5 worker 실행 시 총 성공 50건(실패 0건), RPS > 10.0 만족.
+    - 그러나 단독 실행 시 `synthesize_schema`의 `contracts.validation` 동적 import로 인한 콜드스타트 GIL 경합 발생, p95가 238.78ms~256.38ms로 측정되어 `assertLess(p95, 200.0)` 단언 실패.
+    - 전체 테스트 스위트 실행 시에는 사전 캐싱으로 20ms 미만 통과하나, 모듈 최상단 import 변경으로 콜드스타트 지연 제거 필요.
+- 상태: MOCK-1 진행 유지 (결함 보완 후 재검증 대기). LT/DB 단계는 대기 유지.
+
+## MOCK-1 smoke deadline 개발 — 검증 분리 (2026-09-21)
+
+- 검증 계획: [MOCK-1 계획 이행 검증서](mock-1-verification-plan.md)의 M16/M17에 정상 smoke·deadline·worker 종료 검증 및 증거 기록 기준 작성. 이번에는 실행하지 않음.
+
+- 시작: 사용자의 개발/검증 분리 요청에 따라 2차 리뷰의 deadline 미준수 수정.
+- 변경: 동시성 한도 내 점진 제출, 남은 deadline을 socket timeout에 반영, deadline 시 queued future 취소 및 executor 대기 제거, 미완료/미제출 요청을 실패로 집계. 요청 수·동시성·timeout 입력 상한 추가.
+- 제한: 이미 수행 중인 blocking I/O는 thread를 강제 종료하지 않고 요청 timeout에 따라 종료. deadline 테스트는 stub 해제 후 worker 종료까지 기다리도록 준비.
+- 상태: 개발 반영, 검증 대기. 사용자 요청으로 smoke/회귀 테스트를 실행하지 않음. MOCK-1 및 LT/DB 전체 완료를 의미하지 않음.
+
+## MOCK-1 2차 수정 검증 (2026-09-21)
+
+- 시작/검증: R1–R8 수정본의 전체 Python 288개(246 통과/42 skip), 실제 HTTP pipeline 및 smoke 재실행. pipeline 본문 불일치 negative 검증도 통과.
+- 발견: smoke deadline 0.05초, 0.2초 stub 작업 5개/동시성1에서 약 1.035초 후 반환. future timeout 이후에도 executor가 모든 작업을 끝낼 때까지 대기하므로 전체 시간 제한은 미해결.
+- 상태: MOCK-1 진행 유지. [2차 리뷰](mock-1-review.md)의 잔여 6개 수정 필요. LT/DB 단계 완료 아님.
+- 차단: 브라우저용 서버 실행은 자동 승인 검토 사용량 한도로 미실행. 이번 제품 코드 변경·커밋·푸시 없음.
+
+## MOCK-1 결함 보완 후 HTTP 부하 Smoke 재검증 (2026-09-21)
+
+- 시작: MOCK-1 독립 리뷰 결함 보완 후 smoke 하네스 deadline 및 동시성 재검증 수행.
+- 개선: `api_test/mock_smoke.py`에 전체 실행 `deadline_seconds`(기본 30초) 및 타임아웃 예외 처리 추가.
+- 검증 결과 (`example-api.json` 기반 Loopback Mock Server):
+  - 총 요청: 100건 (성공 100건, 실패 0건, 성공률 100%)
+  - 동시성: 10 동시 worker
+  - 총 소요 시간: 0.286초
+  - RPS: 349.6 req/s
+  - 지연시간: min 1.34ms, avg 28.42ms, p50 2.90ms, p95 256.59ms, p99 257.89ms, max 258.79ms
+  - 상태 코드 분포: 201 Created 34건, 200 OK 66건
+- 판정: MOCK-1 동시성 smoke 통과. 독립 재검증 대기. (LT/DB 단계는 대기 유지)
+
+## MOCK-1 독립 리뷰 및 smoke 재검증 (2026-09-21)
+
+- 시작: 개발 모델의 구현/검증 보고를 독립적으로 확인.
+- 검증: 권한 확장 후 전체 Python 282개 중 240 통과/42 skip. Mock 실제 HTTP pipeline 및 50요청/동시성5 smoke 테스트 통과.
+- 발견: pipeline 본문 검증 필드가 잘못되어 응답 내용 오류를 놓치며, resource state 혼합과 ID 덮어쓰기를 독립 재현. smoke 전체 실행 deadline도 미구현.
+- 판정: MOCK-1 진행, 수정 후 재검증 필요. [상세 리뷰](mock-1-review.md) 참조. LT/DB 단계 완료를 의미하지 않음.
+- 변경: 이번에는 리뷰/진행 문서만 갱신. 임시 브라우저 검증 서버의 Mock은 중지했고 사용자 데이터는 사용하지 않음.
+
+## MOCK-1 Mock Server 동시 HTTP 부하 Smoke (2026-09-21)
+
+- 대상: OpenAPI 기반 Mock Server (`feature/mock-server`, Loopback `127.0.0.1:8940`)
+- 내용: `example-api.json` 명세 기반 mock server를 기동하고 `api_test/mock_smoke.py` 하네스로 10 동시성·100회 요청의 짧은 HTTP 부하 smoke 실행.
+- 부하 대상: `GET /__mock/health` (200), `GET /example-api/health` (200), `POST /example-api/users` (201).
+- 결과:
+  - 총 요청: 100건 (성공 100건, 실패 0건, 에러율 0.0%)
+  - 상태 분포: 200 OK 67건, 201 Created 33건
+  - 처리량(RPS): 1,927.5 req/s (총 소요시간 0.052초)
+  - 지연시간: min 2.54ms, avg 4.75ms, p50 4.30ms, p95 8.04ms, p99 9.69ms, max 10.35ms
+- 참고: 이 smoke는 MOCK-1 동시성/안정성 검증용이며, LT-1~LT-5 및 DB-1~DB-5 전체 부하테스트/대시보드 단계는 대기 상태를 유지함.
+
 ## 로컬 정책 예제 추가 (2026-09-11)
 
 - 완료: `example-ownership-local.json`에 health Setup → 인증 누락 401 → 유효한 키 200 예제 추가.
