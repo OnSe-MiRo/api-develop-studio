@@ -1,4 +1,4 @@
-"""Run with FND4_TEST_DATABASE_URL and optional FND4_TEST_REDIS_URL.
+"""Uses docker-compose.test.yml defaults; FND4_TEST_* overrides take precedence.
 
 Each test creates and removes its own randomly named database. The supplied
 connection requires CREATEDB; no existing database tables are changed.
@@ -24,6 +24,11 @@ from api_test.database import LOCAL_CONTEXT, RequestContext, _pools, connect
 from api_test.execution_history import ExecutionHistory
 from api_test.migrate_postgres import migrate
 from api_test.ownership import OwnershipStore
+
+# Test-only defaults: never fall back to STUDIO_DATABASE_URL or production storage.
+# Explicit empty values retain an opt-out for intentionally SQLite-only runs.
+os.environ.setdefault('FND4_TEST_DATABASE_URL', 'postgresql://studio_test:studio_test_local@127.0.0.1:15432/postgres')
+os.environ.setdefault('FND4_TEST_REDIS_URL', 'redis://127.0.0.1:16379/0')
 
 
 class ProjectionRecoveryTest(unittest.TestCase):

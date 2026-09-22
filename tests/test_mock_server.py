@@ -271,10 +271,9 @@ class MockEngineUnitTest(unittest.TestCase):
 
     def test_circular_reference_does_not_infinite_loop(self):
         schema = SAMPLE_SPEC["components"]["schemas"]["CyclicNode"]
-        res = synthesize_schema(schema, SAMPLE_SPEC, random.Random(42))
-        # Cyclic node should cut off cleanly without RecursionError
-        self.assertIsInstance(res, dict)
-        self.assertIn("next", res)
+        # Recursive synthesis is explicitly unsupported; never emit invalid null/{}.
+        with self.assertRaises(MockEngineError):
+            synthesize_schema(schema, SAMPLE_SPEC, random.Random(42))
 
     def test_no_content_responses_have_empty_body(self):
         async def run_req(path, method="POST"):

@@ -97,19 +97,13 @@ it('stops running mock server and triggers reset', async () => {
 })
 
 it('configures operation overrides and sends them in config update', async () => {
-  const dummyDoc = {
-    paths: {
-      '/users': {
-        get: {
-          operationId: 'listUsers',
-          responses: {
-            '200': { description: 'OK', content: { 'application/json': {} } },
-            '500': { description: 'Error' },
-          },
-        },
-      },
-    },
-  }
+  const mockOperations = [{
+    id: 'GET /users', method: 'GET', path: '/users', editable: { operationId: 'listUsers' },
+    responses: [
+      { status: 200, mock_content: { 'application/json': { examples: [] } } },
+      { status: 500, mock_content: {} },
+    ],
+  }]
 
   api.mockResolvedValueOnce({
     status: 'running',
@@ -137,7 +131,7 @@ it('configures operation overrides and sends them in config update', async () =>
     },
   })
 
-  render(<MockServerPanel projectRef="test.json" project={{ document: dummyDoc, _storage: { revision: 1 } }} />)
+  render(<MockServerPanel projectRef="test.json" project={{ mockOperations, _storage: { revision: 1 } }} />)
 
   await screen.findByText('실행 중')
 

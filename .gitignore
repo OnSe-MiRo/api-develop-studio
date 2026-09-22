@@ -5,3 +5,4 @@ test-logs/
 data/
 .DS_Store
 .env
+.venv/

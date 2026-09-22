@@ -456,6 +456,11 @@ def openapi_operations(document: dict[str, object], *, for_case: bool = False) -
                     "description": response_item.get("description", "") if isinstance(response_item.get("description", ""), str) else "",
                     "has_body": item_body is not MISSING,
                     "body": None if item_body is MISSING else normalize_openapi_value(item_body),
+                    "mock_content": {
+                        media_type: {"examples": list(media.get("examples", {})) if isinstance(media.get("examples"), dict) else []}
+                        for media_type, media in (response_item.get("content") or {}).items()
+                        if isinstance(media, dict)
+                    },
                 })
             summary = operation.get("summary") or operation.get("operationId") or ""
             tags = operation.get("tags")
@@ -1650,4 +1655,3 @@ class StudioRequest:
         if WEB_DIST.resolve() not in path.parents or not path.is_file():
             path = WEB_DIST / "index.html"
         return Response(path.read_bytes(), media_type=mimetypes.guess_type(path.name)[0] or "application/octet-stream")
-

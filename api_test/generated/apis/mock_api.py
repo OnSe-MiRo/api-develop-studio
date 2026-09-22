@@ -27,6 +27,7 @@ async def get_mock_status(context=Depends(request_context)) -> Response:
         upload=False,
 
     )
+
 @router.post("/api/projects/{reference:path}/mock/start/", include_in_schema=False)
 @router.post(
     "/api/projects/{reference:path}/mock/start",

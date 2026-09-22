@@ -4,7 +4,7 @@ import asyncio
 import socket
 import threading
 import time
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 import uvicorn
 from api_test.mock_engine import MockApp
 
@@ -33,8 +33,10 @@ def find_available_port(host: str, start_port: int = 8880) -> int:
 
 
 def validate_loopback_host(host: Optional[str], studio) -> str:
-    if not host:
+    if host is None:
         return "127.0.0.1"
+    if not isinstance(host, str):
+        raise studio.ApiError("Mock bind host는 문자열이어야 합니다.", status_code=400)
     clean_host = host.strip()
     if clean_host not in LOOPBACK_HOSTS:
         raise studio.ApiError("Mock Server는 loopback 주소(127.0.0.1, ::1, localhost)로만 바인드할 수 있습니다.", status_code=400)
@@ -44,10 +46,9 @@ def validate_loopback_host(host: Optional[str], studio) -> str:
 def validate_port(port: Any, studio) -> Optional[int]:
     if port is None:
         return None
-    try:
-        val = int(port)
-    except (ValueError, TypeError):
+    if type(port) is not int:
         raise studio.ApiError("포트 번호는 1 이상 65535 이하의 유효한 정수여야 합니다.", status_code=400)
+    val = port
     if not (1 <= val <= 65535):
         raise studio.ApiError("포트 번호는 1 이상 65535 이하의 유효한 정수여야 합니다.", status_code=400)
     return val
@@ -56,12 +57,9 @@ def validate_port(port: Any, studio) -> Optional[int]:
 def validate_seed(seed: Any, studio) -> int:
     if seed is None:
         return 42
-    if isinstance(seed, bool):
+    if type(seed) is not int:
         raise studio.ApiError("시드 값은 정수여야 합니다.", status_code=400)
-    try:
-        return int(seed)
-    except (ValueError, TypeError):
-        raise studio.ApiError("시드 값은 정수여야 합니다.", status_code=400)
+    return seed
 
 
 def validate_scenario(scenario: Any, studio) -> str:
@@ -76,12 +74,9 @@ def validate_scenario(scenario: Any, studio) -> str:
 def validate_latency(latency: Any, studio) -> int:
     if latency is None:
         return 0
-    if isinstance(latency, bool):
+    if type(latency) is not int:
         raise studio.ApiError("지연 시간은 0 이상 5000 이하의 정수여야 합니다.", status_code=400)
-    try:
-        val = int(latency)
-    except (ValueError, TypeError):
-        raise studio.ApiError("지연 시간은 0 이상 5000 이하의 정수여야 합니다.", status_code=400)
+    val = latency
     if not (0 <= val <= 5000):
         raise studio.ApiError("지연 시간은 0 이상 5000 이하의 정수여야 합니다.", status_code=400)
     return val
@@ -96,19 +91,22 @@ def validate_overrides(overrides: Any, studio) -> dict:
         if not isinstance(op_val, dict):
             raise studio.ApiError(f"override '{op_key}'의 값은 객체여야 합니다.", status_code=400)
         if "status" in op_val:
-            try:
-                st = int(op_val["status"])
-            except (ValueError, TypeError):
+            st = op_val["status"]
+            if type(st) is not int:
                 raise studio.ApiError(f"override '{op_key}'의 status는 정수여야 합니다.", status_code=400)
-            if not (100 <= st <= 599):
-                raise studio.ApiError(f"override '{op_key}'의 status는 100~599 사이여야 합니다.", status_code=400)
+            if not (200 <= st <= 599):
+                raise studio.ApiError(f"override '{op_key}'의 status는 200~599 사이여야 합니다.", status_code=400)
         if "latencyMs" in op_val:
-            try:
-                lat = int(op_val["latencyMs"])
-            except (ValueError, TypeError):
+            lat = op_val["latencyMs"]
+            if type(lat) is not int:
                 raise studio.ApiError(f"override '{op_key}'의 latencyMs는 정수여야 합니다.", status_code=400)
             if not (0 <= lat <= 5000):
                 raise studio.ApiError(f"override '{op_key}'의 latencyMs는 0~5000 사이여야 합니다.", status_code=400)
+        for field in ("mediaType", "exampleKey"):
+            if field in op_val and (not isinstance(op_val[field], str) or not op_val[field].strip()):
+                raise studio.ApiError(f"override '{op_key}'의 {field}는 비어 있지 않은 문자열이어야 합니다.", status_code=400)
+        if "errorResponse" in op_val and type(op_val["errorResponse"]) is not bool:
+            raise studio.ApiError(f"override '{op_key}'의 errorResponse는 boolean이어야 합니다.", status_code=400)
     return overrides
 
 
@@ -153,6 +151,7 @@ class MockServerInstance:
             port=self.port,
             log_level="error",
             access_log=False,
+            timeout_graceful_shutdown=2,
         )
         server = uvicorn.Server(config)
         self.server = server
@@ -163,8 +162,15 @@ class MockServerInstance:
             self.loop = loop
             try:
                 loop.run_until_complete(server.serve())
-            except (asyncio.CancelledError, Exception):
-                pass
+            finally:
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                loop.run_until_complete(loop.shutdown_default_executor())
+                loop.close()
 
         self.thread = threading.Thread(target=run_server, daemon=True, name=f"mock-{self.project_ref}")
         self.thread.start()
@@ -179,8 +185,10 @@ class MockServerInstance:
 
         if not server.started or not self.thread.is_alive():
             self.stop()
-            err_cls = studio.ApiError if studio else RuntimeError
-            raise err_cls("Mock Server 시작에 실패했습니다 (바인드 실패 또는 타임아웃).", status_code=500)
+            message = "Mock Server 시작에 실패했습니다 (바인드 실패 또는 타임아웃)."
+            if studio:
+                raise studio.ApiError(message, status_code=500)
+            raise RuntimeError(message)
 
     def stop(self):
         if self.server:
@@ -193,12 +201,12 @@ class MockServerInstance:
                         task.cancel()
                 self.loop.call_soon_threadsafe(_force_cancel)
                 self.thread.join(timeout=2.0)
-        if self.loop and not self.loop.is_closed():
-            self.loop.call_soon_threadsafe(self.loop.stop)
+        if self.thread and self.thread.is_alive():
+            raise RuntimeError("Mock server did not stop within the shutdown limit")
 
     def reset_state(self):
         if self.loop and self.loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(self.mock_app.state_store.reset(), self.loop)
+            future = asyncio.run_coroutine_threadsafe(self.mock_app.reset_state(), self.loop)
             future.result(timeout=2.0)
 
     async def _async_update_config(self, seed: Optional[int], scenario: Optional[str], default_latency_ms: Optional[int], overrides: Optional[dict]):
@@ -359,7 +367,7 @@ def start_server(request, studio):
 
     body = request.read_body() if hasattr(request, "read_body") else {}
     if not isinstance(body, dict):
-        body = {}
+        raise studio.ApiError("Mock 설정은 JSON 객체여야 합니다.", status_code=400)
 
     host = validate_loopback_host(body.get("host", "127.0.0.1"), studio)
     port = validate_port(body.get("port"), studio)
@@ -407,7 +415,9 @@ def update_config(request, studio):
     if not instance:
         raise studio.ApiError("실행 중인 Mock Server가 없습니다.", status_code=400)
 
-    body = request.read_body() or {}
+    body = request.read_body()
+    if not isinstance(body, dict):
+        raise studio.ApiError("Mock 설정은 JSON 객체여야 합니다.", status_code=400)
     seed = validate_seed(body.get("seed"), studio) if "seed" in body and body.get("seed") is not None else None
     scenario = validate_scenario(body.get("scenario"), studio) if "scenario" in body and body.get("scenario") is not None else None
     default_latency_ms = validate_latency(body.get("defaultLatencyMs"), studio) if "defaultLatencyMs" in body and body.get("defaultLatencyMs") is not None else None

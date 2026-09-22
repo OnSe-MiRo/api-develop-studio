@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import math
 import random
 import re
 import urllib.parse
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
+from api_test.contracts.validation import schema_errors
 
 
 class MockEngineError(Exception):
@@ -49,23 +51,6 @@ def is_nullable(schema: dict) -> bool:
     return False
 
 
-def default_fallback_for_schema(schema: dict) -> Any:
-    if is_nullable(schema):
-        return None
-    stype = schema.get("type")
-    if stype == "object" or "properties" in schema:
-        return {}
-    if stype == "array":
-        return []
-    if stype == "string":
-        return ""
-    if stype in ("integer", "number"):
-        return 0
-    if stype == "boolean":
-        return False
-    return {}
-
-
 def synthesize_schema(
     schema: dict,
     document: dict,
@@ -74,11 +59,23 @@ def synthesize_schema(
     visited_refs: Optional[set] = None,
 ) -> Any:
     """Synthesize a deterministic response value from an OpenAPI schema adhering to constraints."""
+    value = _synthesize_schema(schema, document, prng, depth, visited_refs)
+    if depth == 0:
+        try:
+            errors = schema_errors({"openapi": "3.0.3", **document}, schema, value, "#")
+        except Exception as exc:
+            raise MockEngineError("Schema validation failed", code="UNSUPPORTED_SCHEMA") from exc
+        if errors:
+            raise MockEngineError("Cannot synthesize a value satisfying this schema", code="UNSUPPORTED_SCHEMA")
+    return value
+
+
+def _synthesize_schema(schema, document, prng, depth, visited_refs):
     if not isinstance(schema, dict):
-        return None
+        raise MockEngineError("Unsupported schema shape", code="UNSUPPORTED_SCHEMA")
 
     if depth > 10:
-        return default_fallback_for_schema(schema)
+        raise MockEngineError("Schema exceeds mock generation depth", code="UNSUPPORTED_SCHEMA")
 
     if "$ref" in schema:
         ref = schema["$ref"]
@@ -86,7 +83,7 @@ def synthesize_schema(
             raise MockEngineError(f"External reference '{ref}' is forbidden in mock engine", status_code=400, code="FORBIDDEN_REFERENCE")
         visited = set() if visited_refs is None else visited_refs
         if ref in visited:
-            return default_fallback_for_schema(schema)
+            raise MockEngineError("Recursive schema requires an explicit example", code="UNSUPPORTED_SCHEMA")
         resolved = resolve_local_ref(document, ref)
         return synthesize_schema(resolved, document, prng, depth=depth + 1, visited_refs=visited | {ref})
 
@@ -101,7 +98,7 @@ def synthesize_schema(
     if "oneOf" in schema or "anyOf" in schema:
         options = schema.get("oneOf") or schema.get("anyOf") or []
         if not options:
-            return default_fallback_for_schema(schema)
+            raise MockEngineError("Empty schema alternatives", code="UNSUPPORTED_SCHEMA")
         return synthesize_schema(options[0], document, prng, depth=depth + 1, visited_refs=visited_refs)
 
     if schema.get("enum"):
@@ -129,13 +126,17 @@ def synthesize_schema(
             target_count = max(target_count, min_items)
         if max_items is not None:
             target_count = min(target_count, max_items)
-        count = min(target_count, 100)
+        if target_count > 100:
+            raise MockEngineError("Array exceeds mock generation limit (100)", code="UNSUPPORTED_SCHEMA")
+        count = target_count
         return [synthesize_schema(items_schema, document, prng, depth=depth + 1, visited_refs=visited_refs) for _ in range(count)]
 
     # String synthesis
     if schema_type == "string":
         min_len = schema.get("minLength")
         max_len = schema.get("maxLength")
+        if min_len is not None and min_len > 65536:
+            raise MockEngineError("String exceeds mock generation limit", code="UNSUPPORTED_SCHEMA")
         if min_len is not None and max_len is not None and min_len > max_len:
             raise MockEngineError(f"Contradictory schema: minLength ({min_len}) > maxLength ({max_len})", status_code=500, code="INVALID_SCHEMA")
 
@@ -166,18 +167,21 @@ def synthesize_schema(
             ex_min = schema["exclusiveMinimum"]
             if isinstance(ex_min, bool):
                 if ex_min and min_val is not None:
-                    min_val = min_val + 1
+                    min_val = math.floor(min_val) + 1
             else:
-                min_val = ex_min + 1
+                min_val = math.floor(ex_min) + 1
 
         max_val = schema.get("maximum")
         if "exclusiveMaximum" in schema:
             ex_max = schema["exclusiveMaximum"]
             if isinstance(ex_max, bool):
                 if ex_max and max_val is not None:
-                    max_val = max_val - 1
+                    max_val = math.ceil(max_val) - 1
             else:
-                max_val = ex_max - 1
+                max_val = math.ceil(ex_max) - 1
+
+        min_val = math.ceil(min_val) if min_val is not None else None
+        max_val = math.floor(max_val) if max_val is not None else None
 
         if min_val is not None and max_val is not None and min_val > max_val:
             raise MockEngineError(f"Contradictory schema: minimum ({min_val}) > maximum ({max_val})", status_code=500, code="INVALID_SCHEMA")
@@ -311,6 +315,8 @@ def resolve_operation_response(
 
     # 1. Named examples in media_spec
     examples = media_spec.get("examples", {})
+    if example_key and (not isinstance(examples, dict) or example_key not in examples):
+        raise MockEngineError("Selected example is not declared for this response", 400, "INVALID_SELECTION")
     if isinstance(examples, dict) and examples:
         if example_key and example_key in examples:
             ex_val = examples[example_key]
@@ -520,6 +526,7 @@ class MockApp:
         self.overrides = copy.deepcopy(overrides or {})
         self.state_store = DeclarativeStateStore(seed=seed, scenario=scenario)
         self.request_count = 0
+        self.state_generation = 0
         self.lock = asyncio.Lock()
 
         # Compile and sort routes (static segments prioritized over params)
@@ -537,6 +544,7 @@ class MockApp:
         default_latency_ms: Optional[int] = None,
         overrides: Optional[dict] = None,
     ):
+        reset_required = (seed is not None and seed != self.seed) or (scenario is not None and scenario != self.scenario)
         if seed is not None:
             self.seed = seed
         if scenario is not None:
@@ -545,10 +553,22 @@ class MockApp:
             self.default_latency_ms = min(5000, max(0, default_latency_ms))
         if overrides is not None:
             self.overrides = copy.deepcopy(overrides)
-        if seed is not None or scenario is not None:
+        if reset_required:
+            self.state_generation += 1
             self.state_store = DeclarativeStateStore(seed=self.seed, scenario=self.scenario)
 
+    async def reset_state(self):
+        # Requests waiting on latency/body cannot populate the new state.
+        self.state_generation += 1
+        self.state_store = DeclarativeStateStore(seed=self.seed, scenario=self.scenario)
+
     async def __call__(self, scope, receive, send):
+        try:
+            await self._handle_request(scope, receive, send)
+        except MockEngineError as exc:
+            await self._send_json(send, exc.status_code, {"error": exc.message, "code": exc.code})
+
+    async def _handle_request(self, scope, receive, send):
         if scope["type"] != "http":
             return
 
@@ -557,13 +577,14 @@ class MockApp:
 
         path = scope["path"]
         method = scope["method"].upper()
+        generation = self.state_generation
 
         # Internal management endpoints
         if path == "/__mock/health":
             await self._send_json(send, 200, {"status": "ok", "mock": True, "scenario": self.scenario})
             return
         if path == "/__mock/reset" and method == "POST":
-            await self.state_store.reset()
+            await self.reset_state()
             await self._send_json(send, 200, {"status": "reset", "message": "State reset"})
             return
 
@@ -603,6 +624,8 @@ class MockApp:
         more_body = True
         while more_body:
             msg = await receive()
+            if msg.get("type") == "http.disconnect":
+                return
             chunk = msg.get("body", b"")
             if len(body_bytes) + len(chunk) > self.MAX_BODY_BYTES:
                 await self._send_json(send, 413, {"error": "Request body exceeds maximum size limit (1MB)", "code": "PAYLOAD_TOO_LARGE"})
@@ -610,12 +633,15 @@ class MockApp:
             body_bytes += chunk
             more_body = msg.get("more_body", False)
 
+        if generation != self.state_generation:
+            raise MockEngineError("Mock state changed while the request was pending; retry the request", 409, "STATE_CHANGED")
+
         req_body = {}
         if body_bytes:
             try:
                 req_body = json.loads(body_bytes.decode("utf-8"))
-            except Exception:
-                pass
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                raise MockEngineError("Invalid JSON request body", 400, "INVALID_BODY") from None
 
         # Parse client accept header
         accept_header = "application/json"
@@ -651,7 +677,26 @@ class MockApp:
                 preferred_media_type=preferred_media_type,
             )
             err_payload = payload or {"error": f"Mock error for '{op_id}'", "code": "MOCK_ERROR", "status": target_status}
-            await self._send_content(send, target_status, err_payload, mtype)
+            if method == "HEAD":
+                await self._send_response(send, target_status, b"", mtype)
+            else:
+                await self._send_content(send, target_status, err_payload, mtype)
+            return
+
+        # An explicit response selection uses the specification without CRUD mutation.
+        # This also permits replaying an example before a resource exists in state.
+        if override.get("exampleKey") or override.get("mediaType") or preferred_media_type not in ("application/json", "*/*"):
+            code, mtype, payload = resolve_operation_response(
+                op_spec, self.document, self.state_store.prng,
+                status_override=target_status, example_key=override.get("exampleKey"),
+                preferred_media_type=preferred_media_type,
+            )
+            if override.get("mediaType") and mtype != override["mediaType"]:
+                raise MockEngineError("Selected media type is not declared for this response", 400, "INVALID_SELECTION")
+            if method == "HEAD":
+                await self._send_response(send, code, b"", mtype)
+            else:
+                await self._send_content(send, code, payload, mtype)
             return
 
         # Declarative CRUD state machine handling
@@ -670,6 +715,8 @@ class MockApp:
                 await self._send_content(send, 404, err_resp or {"error": f"Item '{item_id}' not found in '{collection_key}'", "code": "NOT_FOUND"}, mtype)
                 return
             elif method in ("PUT", "PATCH"):
+                if not isinstance(req_body, dict):
+                    raise MockEngineError("CRUD request body must be a JSON object", 400, "INVALID_BODY")
                 updated = await self.state_store.update_item(collection_key, item_id, req_body)
                 if updated is not None:
                     code = target_status or 200
@@ -687,6 +734,8 @@ class MockApp:
                 return
 
         elif method == "POST" and not matched_route.is_item_route and has_detail_route:
+            if not isinstance(req_body, dict):
+                raise MockEngineError("CRUD request body must be a JSON object", 400, "INVALID_BODY")
             # Resolve default schema response to merge with req_body (R3, R6)
             code, mtype, synth = resolve_operation_response(
                 op_spec, self.document, self.state_store.prng,

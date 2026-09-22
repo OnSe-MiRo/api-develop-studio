@@ -2,6 +2,7 @@
 from __future__ import annotations
 import concurrent.futures
 import json
+import math
 import statistics
 import sys
 import time
@@ -48,11 +49,20 @@ def run_mock_smoke(
     """Execute concurrent HTTP smoke test against the mock server with per-request timeout and global deadline.
     endpoints: list of (method, path, body, expected_status)
     """
+    if type(total_requests) is not int or not 1 <= total_requests <= 10000:
+        raise ValueError("total_requests must be an integer between 1 and 10000")
+    if type(concurrency) is not int or not 1 <= concurrency <= 100:
+        raise ValueError("concurrency must be an integer between 1 and 100")
+    for value in (timeout_seconds, deadline_seconds):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 < value <= 60:
+            raise ValueError("Timeouts must be finite numbers between 0 and 60 seconds")
     clean_base = base_url.rstrip("/")
     if endpoints is None:
         endpoints = [
             ("GET", "/__mock/health", None, 200),
         ]
+    if not endpoints:
+        raise ValueError("At least one endpoint is required")
 
     start_all = time.perf_counter()
     latencies: List[float] = []
@@ -67,37 +77,52 @@ def run_mock_smoke(
         url = f"{clean_base}/{path.lstrip('/')}"
         tasks.append((method, url, body, expected_status))
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
-        futures = [
-            executor.submit(send_http_request, url, method, body, min(5.0, timeout_seconds))
-            for (method, url, body, _) in tasks
-        ]
+    deadline = start_all + deadline_seconds
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=concurrency)
+    pending = {}
+    submitted = 0
+    completed = 0
 
-        deadline = start_all + deadline_seconds
-        for future, (_, _, _, expected_status) in zip(futures, tasks):
-            remaining = max(0.001, deadline - time.perf_counter())
-            try:
-                status, latency_ms, error_msg = future.result(timeout=remaining)
-            except concurrent.futures.TimeoutError:
-                failure_count += 1
-                latencies.append(timeout_seconds * 1000.0)
-                if len(errors) < 10:
-                    errors.append(f"Global smoke deadline ({deadline_seconds}s) exceeded")
-                continue
+    def send_before_deadline(method, url, body):
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            return 0, 0.0, "Global smoke deadline exceeded"
+        return send_http_request(url, method, body, min(5.0, timeout_seconds, remaining))
 
-            latencies.append(latency_ms)
-            status_counts[status] = status_counts.get(status, 0) + 1
-
-            if error_msg:
-                failure_count += 1
-                if len(errors) < 10:
-                    errors.append(f"Connection error: {error_msg}")
-            elif expected_status is not None and status != expected_status:
-                failure_count += 1
-                if len(errors) < 10:
-                    errors.append(f"Expected status {expected_status}, got {status}")
-            else:
-                success_count += 1
+    try:
+        while completed < total_requests:
+            while submitted < total_requests and len(pending) < concurrency and time.perf_counter() < deadline:
+                method, url, body, expected = tasks[submitted]
+                pending[executor.submit(send_before_deadline, method, url, body)] = expected
+                submitted += 1
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0 or not pending:
+                break
+            done, _ = concurrent.futures.wait(pending, timeout=remaining, return_when=concurrent.futures.FIRST_COMPLETED)
+            if not done:
+                break
+            for future in done:
+                expected_status = pending.pop(future)
+                status, latency_ms, error_msg = future.result()
+                completed += 1
+                latencies.append(latency_ms)
+                status_counts[status] = status_counts.get(status, 0) + 1
+                if error_msg or (expected_status is not None and status != expected_status):
+                    failure_count += 1
+                    if len(errors) < 10:
+                        errors.append(error_msg or f"Expected status {expected_status}, got {status}")
+                else:
+                    success_count += 1
+        if completed < total_requests:
+            failure_count += total_requests - completed
+            if len(errors) < 10:
+                errors.append(f"Global smoke deadline ({deadline_seconds}s) exceeded; unfinished requests counted as failures")
+    finally:
+        for future in pending:
+            future.cancel()
+        # Do not wait for queued work after the deadline. In-flight requests have
+        # bounded socket timeouts and cannot submit further requests.
+        executor.shutdown(wait=False, cancel_futures=True)
 
     total_time = time.perf_counter() - start_all
     sorted_latencies = sorted(latencies) if latencies else [0.0]
@@ -120,6 +145,8 @@ def run_mock_smoke(
         "rps": round(rps, 2),
         "success_count": success_count,
         "failure_count": failure_count,
+        "completed_requests": completed,
+        "unfinished_requests": total_requests - completed,
         "status_distribution": status_counts,
         "latency_ms": {
             "min": round(sorted_latencies[0], 2) if sorted_latencies else 0.0,

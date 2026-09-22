@@ -35,58 +35,36 @@ export function MockServerPanel({ projectRef, project }) {
 
   const isRunning = data.status === 'running'
 
-  // Extract all operations from project OpenAPI spec
+  // ApiList resolves all supported specification sources via /api/docs.
   const operations = useMemo(() => {
-    const list = []
-    const paths = project?.document?.paths || {}
-    for (const [pathKey, pathItem] of Object.entries(paths)) {
-      if (!pathItem || typeof pathItem !== 'object') continue
-      for (const [methodKey, opSpec] of Object.entries(pathItem)) {
-        if (
-          ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'].includes(methodKey.toLowerCase()) &&
-          opSpec &&
-          typeof opSpec === 'object'
-        ) {
-          const opId = opSpec.operationId || `${methodKey.toUpperCase()} ${pathKey}`
-          const responses = Object.keys(opSpec.responses || {})
-          const responseSpecs = {}
-          for (const [code, resp] of Object.entries(opSpec.responses || {})) {
-            const content = resp?.content || {}
-            responseSpecs[code] = {
-              mediaTypes: Object.keys(content),
-              examples: {},
-            }
-            for (const [mType, mSpec] of Object.entries(content)) {
-              responseSpecs[code].examples[mType] = Object.keys(mSpec?.examples || {})
-            }
-          }
-          list.push({
-            key: opId,
-            path: pathKey,
-            method: methodKey.toUpperCase(),
-            operationId: opId,
-            responses,
-            responseSpecs,
-          })
-        }
-      }
-    }
-    return list
-  }, [project?.document])
+    return (project?.mockOperations || []).map(op => ({
+      key: op.editable?.operationId || op.id,
+      path: op.path,
+      method: op.method,
+      responses: (op.responses || []).map(response => String(response.status)),
+      responseSpecs: Object.fromEntries((op.responses || []).map(response => [String(response.status), {
+        mediaTypes: Object.keys(response.mock_content || {}),
+        examples: Object.fromEntries(Object.entries(response.mock_content || {}).map(([type, media]) => [type, media.examples || []])),
+      }])),
+    }))
+  }, [project?.mockOperations])
 
   const selectedOp = useMemo(() => {
     return operations.find(o => o.key === selectedOpKey) || null
   }, [operations, selectedOpKey])
 
   const availableMediaTypes = useMemo(() => {
-    if (!selectedOp || !overrideStatus) return []
-    return selectedOp.responseSpecs[overrideStatus]?.mediaTypes || []
+    if (!selectedOp) return []
+    const status = overrideStatus || selectedOp.responses.find(code => /^2\d\d$/.test(code)) || selectedOp.responses[0]
+    return selectedOp.responseSpecs[status]?.mediaTypes || []
   }, [selectedOp, overrideStatus])
 
   const availableExamples = useMemo(() => {
-    if (!selectedOp || !overrideStatus || !overrideMediaType) return []
-    return selectedOp.responseSpecs[overrideStatus]?.examples[overrideMediaType] || []
-  }, [selectedOp, overrideStatus, overrideMediaType])
+    if (!selectedOp) return []
+    const status = overrideStatus || selectedOp.responses.find(code => /^2\d\d$/.test(code)) || selectedOp.responses[0]
+    const media = overrideMediaType || (availableMediaTypes.includes('application/json') ? 'application/json' : availableMediaTypes[0])
+    return selectedOp.responseSpecs[status]?.examples[media] || []
+  }, [selectedOp, overrideStatus, overrideMediaType, availableMediaTypes])
 
   const loadStatus = async () => {
     if (!projectRef) return
@@ -109,7 +87,7 @@ export function MockServerPanel({ projectRef, project }) {
       if (sequence.current === id) {
         setError(err.message)
         // Reset to stopped on fetch failure so we don't display a stale running state
-        setData(prev => ({ ...prev, status: 'stopped' }))
+        setData(prev => ({ ...prev, status: 'error' }))
       }
     } finally {
       if (sequence.current === id) setBusy(false)
@@ -249,7 +227,7 @@ export function MockServerPanel({ projectRef, project }) {
                 background: isRunning ? '#dcfce7' : '#f1f5f9',
               }}
             >
-              {isRunning ? '실행 중' : '중지됨'}
+              {isRunning ? '실행 중' : data.status === 'error' ? '상태 확인 실패' : '중지됨'}
             </span>
           </h2>
         </div>
@@ -305,6 +283,8 @@ export function MockServerPanel({ projectRef, project }) {
         <ul style={{ margin: 0, paddingLeft: 18 }}>
           <li><strong>단일 프로세스 인메모리 실행:</strong> Mock Server는 Studio 내부 백그라운드 이벤트 루프에서 실행되며, 서버 중지 또는 Studio 재시작 시 CRUD State는 소멸됩니다.</li>
           <li><strong>명세 스냅샷 정책:</strong> 서버 시작 시점의 OpenAPI 명세를 기준으로 동작합니다. 명세 변경 후에는 Mock Server를 재시작해야 최신 명세가 반영됩니다.</li>
+          <li>Seed 또는 시나리오 값을 변경하면 State가 초기화됩니다. 지연·응답 설정만 변경하면 유지됩니다.</li>
+          <li>Example 또는 미디어 타입을 직접 선택하면 명세 응답을 재생하며 CRUD State를 변경하지 않습니다.</li>
           <li><strong>Loopback 전용 바인드:</strong> 127.0.0.1, ::1 등 로컬 루프백 주소로만 안전하게 바인드됩니다.</li>
         </ul>
       </div>
@@ -424,13 +404,9 @@ export function MockServerPanel({ projectRef, project }) {
               disabled={!selectedOpKey}
             >
               <option value="">-- 기본값 (명세 우선순위) --</option>
-              {selectedOp?.responses.map(code => (
+              {[...new Set([...(selectedOp?.responses || []).filter(code => /^\d{3}$/.test(code)), '400', '404', '500', '503'])].map(code => (
                 <option key={code} value={code}>{code}</option>
               ))}
-              <option value="400">400 Bad Request</option>
-              <option value="404">404 Not Found</option>
-              <option value="500">500 Internal Server Error</option>
-              <option value="503">503 Service Unavailable</option>
             </select>
           </Field>
 
@@ -444,8 +420,6 @@ export function MockServerPanel({ projectRef, project }) {
               {availableMediaTypes.map(mt => (
                 <option key={mt} value={mt}>{mt}</option>
               ))}
-              <option value="application/json">application/json</option>
-              <option value="text/plain">text/plain</option>
             </select>
           </Field>
 

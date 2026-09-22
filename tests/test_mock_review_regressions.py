@@ -7,15 +7,80 @@ from fastapi.testclient import TestClient
 from api_test.main import app, studio
 from api_test.mock_engine import (
     MockApp,
+    MockEngineError,
     DeclarativeStateStore,
     synthesize_schema,
     resolve_operation_response,
 )
-from api_test.services.mock import MockServerInstance
+from api_test.services.mock import MockServerInstance, validate_overrides
 import jsonschema
 
 
 class TestMockReviewRegressions(unittest.IsolatedAsyncioTestCase):
+
+    async def test_unchanged_seed_and_scenario_preserve_state(self):
+        instance = MockApp({'paths': {}}, seed=42)
+        created = await instance.state_store.create_item('/items', {'name': 'kept'})
+        instance.update_config(seed=42, scenario='default', default_latency_ms=5, overrides={})
+        self.assertEqual(await instance.state_store.get_item('/items', created['id']), created)
+        instance.update_config(seed=43)
+        self.assertIsNone(await instance.state_store.get_item('/items', created['id']))
+
+    def test_unsupported_schema_is_rejected_instead_of_invalid_response(self):
+        for schema in (
+            {'type': 'array', 'minItems': 101, 'items': {'type': 'integer'}},
+            {'type': 'string', 'pattern': '^[0-9]+$'},
+        ):
+            with self.subTest(schema=schema), self.assertRaises(MockEngineError):
+                synthesize_schema(schema, {}, random.Random(1))
+        schema = {'type': 'integer', 'minimum': 1.5, 'maximum': 3.5}
+        jsonschema.validate(synthesize_schema(schema, {}, random.Random(1)), schema)
+
+    def test_override_types_are_rejected_before_execution(self):
+        for override in ({'latencyMs': '10'}, {'latencyMs': True}, {'status': 200.5},
+                         {'mediaType': []}, {'exampleKey': 1}, {'errorResponse': 'false'}):
+            with self.subTest(override=override), self.assertRaises(studio.ApiError):
+                validate_overrides({'GET /items': override}, studio)
+
+    async def test_crud_explicit_example_uses_selected_media_without_mutation(self):
+        operation = {'responses': {'200': {'description': 'OK', 'content': {
+            'text/plain': {'examples': {'chosen': {'value': 'selected'}}},
+        }}}}
+        instance = MockApp({'paths': {'/items/{id}': {'get': operation, 'put': operation}}},
+                           overrides={'/items/{id}': {'mediaType': 'text/plain', 'exampleKey': 'chosen'}})
+        created = await instance.state_store.create_item('/items', {'id': '1', 'name': 'original'})
+        sent = []
+        async def receive():
+            return {'type': 'http.request', 'body': b'{"name":"changed"}', 'more_body': False}
+        async def send(message):
+            sent.append(message)
+        await instance({'type': 'http', 'method': 'PUT', 'path': '/items/1'}, receive, send)
+        self.assertTrue(dict(sent[0]['headers'])[b'content-type'].startswith(b'text/plain'))
+        self.assertEqual(sent[1]['body'], b'selected')
+        self.assertEqual(await instance.state_store.get_item('/items', '1'), created)
+
+    def test_smoke_deadline_cancels_unsubmitted_work(self):
+        import threading
+        import time
+        from unittest.mock import patch
+        from api_test.mock_smoke import run_mock_smoke
+        release = threading.Event()
+        finished = threading.Event()
+        def stalled(*args):
+            release.wait(2)
+            finished.set()
+            return 200, 1.0, None
+        try:
+            with patch('api_test.mock_smoke.send_http_request', side_effect=stalled) as request:
+                start = time.monotonic()
+                result = run_mock_smoke('http://127.0.0.1', total_requests=5, concurrency=1, deadline_seconds=.05)
+                self.assertLess(time.monotonic() - start, 1)
+                self.assertLessEqual(request.call_count, 1)
+                self.assertEqual(result['failure_count'], 5)
+                self.assertEqual(result['unfinished_requests'], 5)
+        finally:
+            release.set()
+            finished.wait(2)
 
     async def test_r1_state_isolation_between_different_resources(self):
         """R1: State from /api/users must not leak into /api/orders."""
@@ -259,8 +324,8 @@ class TestMockReviewRegressions(unittest.IsolatedAsyncioTestCase):
                 }
             }
         }
-        val_cycle = synthesize_schema(schema_cycle, cycle_doc, prng, depth=11)
-        self.assertIsNotNone(val_cycle, "Non-nullable schema at depth cutoff must not return None")
+        with self.assertRaises(MockEngineError):
+            synthesize_schema(schema_cycle, cycle_doc, prng, depth=11)
 
     def test_r8_non_json_media_types(self):
         """R8: text/plain response must return text/plain Content-Type and raw string body, not json."""
