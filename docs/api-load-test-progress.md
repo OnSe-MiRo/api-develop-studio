@@ -1,5 +1,17 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## MOCK-1 완료 보완 (2026-09-25)
+
+- 시작/변경: gpt-6-sol xhigh 서브에이전트가 응답 크기·HEAD·관리 경합 및 UI 종속 선택을 보완. 기존 문서 archive 정리 변경 보존.
+- 검증: 전체 Python 300개 skip 없이 통과. 실제 HTTP pipeline·50요청/동시성5 smoke, parent/project state 격리, 지연 종료 회귀 포함. 브라우저 명세 소스 3종·응답 대조와 reset/stop 확인.
+- 판정: MOCK-1 완료. [최종 증거](archive/mock-1/completion-report.md). LT/DB 부하 대시보드 전체 계획은 별도이며 기존 상태 유지.
+- Git: `fix/mock-completion` 미커밋 작업 트리. 이번 원격 반영 없음.
+
+## 완료 문서 정리 (2026-09-22)
+
+- MOCK-1 개발 과정 문서를 `docs/archive/mock-1/`에 보관하고 현재 사용 기준을 [Mock Server](mock-server.md)로 분리했다.
+- 기존 smoke 결과와 LT/DB 단계의 대기 상태는 그대로 유지한다. 문서 위치만 정리했으며 부하테스트 전체 완료 판정은 변경하지 않았다.
+
 ## 테스트 기본 저장소 설정 검증 (2026-09-22)
 
 - PostgreSQL 15432/Redis 16379 전용 컨테이너 및 테스트 URL 기본값 도입. 프로젝트 가상환경으로 전체 **297개 통과, skip 0**. 기존 42개 저장소 통합 테스트와 Mock smoke 포함.
@@ -9,20 +21,20 @@
 
 - 시작/변경: reset/seed 변경 전 대기 요청의 새 state 유입 차단(409), 종료 시 event loop/task 정리, 정수 및 JSON 입력 오류 거부.
 - 검증: Mock 테스트 28개 및 전체 Python 297개(255 통과/42 skip), diff 검사 통과. 실제 loopback에서 5초 지연 요청 중 중지해 4초 미만 반환과 thread·loop·socket 정리 확인. 종료 timeout 취소 로그는 예상 동작이며 요청 성공 보장은 아님.
-- 상태: 해당 결함 수정·관련 검증 완료. [최신 report](mock-1-verification-report.md) 갱신. 실제 브라우저 등 전체 계획 잔여 검증은 남아 있으며 MOCK-1/LT/DB 전체 완료로 판정하지 않음. 이번 변경 미커밋.
+- 상태: 해당 결함 수정·관련 검증 완료. [당시 report](archive/mock-1/verification-report.md) 갱신. 실제 브라우저 등 전체 계획 잔여 검증은 남아 있으며 MOCK-1/LT/DB 전체 완료로 판정하지 않음. 이번 변경 미커밋.
 
 ## MOCK-1 report 지적 수정 및 재검증
 
 - 시작: 독립 report의 cold-start smoke 지연 및 생성 코드 개행 불일치 보완 요청.
 - 변경: schema 검증 의존성을 Mock 엔진 모듈 로딩 시 import하도록 이동. 요청 시 초기 import 제거. 생성기로 API 함수 사이 빈 줄 복원.
 - 검증: 새 Python 프로세스의 `test_mock_pipeline.py` 2개 통과. 50요청/동시성5 smoke의 실패 0·p95 < 200ms·RPS > 10 단언 유지 및 통과. 전체 Python 293개 중 251 통과/42 skip, 생성 검사·diff 검사 통과.
-- 상태: report Finding 1·2 해결. [최신 보고서](mock-1-verification-report.md) 참조. MOCK-1 전체 계획 및 LT/DB 단계 완료 판정은 아님.
+- 상태: report Finding 1·2 해결. [당시 보고서](archive/mock-1/verification-report.md) 참조. MOCK-1 전체 계획 및 LT/DB 단계 완료 판정은 아님.
 - 기록 정정: 하단의 deadline 테스트 통과는 queued 작업 취소와 반환 제한을 확인하는 stub 테스트다. 실행 중 worker의 즉시 강제 종료를 보장하지 않으며, 실제 지연 요청의 worker 종료 시각 검증은 후속이다. M17의 계획상 목적은 통계 출력이 아닌 deadline 동작 검증이다.
 
 ## MOCK-1 부하 스모크 및 하네스 독립 검증 결과 (2026-09-21)
 
-- 상세 보고서: [MOCK-1 검증 결과](mock-1-verification-report.md)
-- 검증 기준: [MOCK-1 계획 이행 검증서](mock-1-verification-plan.md)의 M16(부하 스모크 수렴 및 p95 < 200ms) 및 M17(로그 및 지연/RPS 통계)
+- 상세 보고서: [MOCK-1 검증 결과](archive/mock-1/verification-report.md)
+- 검증 기준: [MOCK-1 계획 이행 검증서](archive/mock-1/verification-plan.md)의 M16(부하 스모크 수렴 및 p95 < 200ms) 및 M17(로그 및 지연/RPS 통계)
 - 검증 결과:
   - `test_smoke_deadline_cancels_unsubmitted_work`: 통과. deadline 초과 시 미제출 작업 취소 및 worker 즉시 종료 검증 완료.
   - `test_mock_concurrent_smoke_harness`: **실패** (p95 지연시간 초과).
@@ -33,7 +45,7 @@
 
 ## MOCK-1 smoke deadline 개발 — 검증 분리 (2026-09-21)
 
-- 검증 계획: [MOCK-1 계획 이행 검증서](mock-1-verification-plan.md)의 M16/M17에 정상 smoke·deadline·worker 종료 검증 및 증거 기록 기준 작성. 이번에는 실행하지 않음.
+- 검증 계획: [MOCK-1 계획 이행 검증서](archive/mock-1/verification-plan.md)의 M16/M17에 정상 smoke·deadline·worker 종료 검증 및 증거 기록 기준 작성. 이번에는 실행하지 않음.
 
 - 시작: 사용자의 개발/검증 분리 요청에 따라 2차 리뷰의 deadline 미준수 수정.
 - 변경: 동시성 한도 내 점진 제출, 남은 deadline을 socket timeout에 반영, deadline 시 queued future 취소 및 executor 대기 제거, 미완료/미제출 요청을 실패로 집계. 요청 수·동시성·timeout 입력 상한 추가.
@@ -44,7 +56,7 @@
 
 - 시작/검증: R1–R8 수정본의 전체 Python 288개(246 통과/42 skip), 실제 HTTP pipeline 및 smoke 재실행. pipeline 본문 불일치 negative 검증도 통과.
 - 발견: smoke deadline 0.05초, 0.2초 stub 작업 5개/동시성1에서 약 1.035초 후 반환. future timeout 이후에도 executor가 모든 작업을 끝낼 때까지 대기하므로 전체 시간 제한은 미해결.
-- 상태: MOCK-1 진행 유지. [2차 리뷰](mock-1-review.md)의 잔여 6개 수정 필요. LT/DB 단계 완료 아님.
+- 상태: MOCK-1 진행 유지. [2차 리뷰](archive/mock-1/review.md)의 잔여 6개 수정 필요. LT/DB 단계 완료 아님.
 - 차단: 브라우저용 서버 실행은 자동 승인 검토 사용량 한도로 미실행. 이번 제품 코드 변경·커밋·푸시 없음.
 
 ## MOCK-1 결함 보완 후 HTTP 부하 Smoke 재검증 (2026-09-21)
@@ -65,7 +77,7 @@
 - 시작: 개발 모델의 구현/검증 보고를 독립적으로 확인.
 - 검증: 권한 확장 후 전체 Python 282개 중 240 통과/42 skip. Mock 실제 HTTP pipeline 및 50요청/동시성5 smoke 테스트 통과.
 - 발견: pipeline 본문 검증 필드가 잘못되어 응답 내용 오류를 놓치며, resource state 혼합과 ID 덮어쓰기를 독립 재현. smoke 전체 실행 deadline도 미구현.
-- 판정: MOCK-1 진행, 수정 후 재검증 필요. [상세 리뷰](mock-1-review.md) 참조. LT/DB 단계 완료를 의미하지 않음.
+- 판정: MOCK-1 진행, 수정 후 재검증 필요. [상세 리뷰](archive/mock-1/review.md) 참조. LT/DB 단계 완료를 의미하지 않음.
 - 변경: 이번에는 리뷰/진행 문서만 갱신. 임시 브라우저 검증 서버의 Mock은 중지했고 사용자 데이터는 사용하지 않음.
 
 ## MOCK-1 Mock Server 동시 HTTP 부하 Smoke (2026-09-21)
@@ -99,10 +111,10 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-07
-- 현재 단계: 계획 수립
+- 최종 갱신일: 2026-09-22
+- 현재 단계: MOCK-1 smoke 기반은 통합됨. LT-1~LT-5 및 DB-1~DB-5 착수 대기
 - 전체 상태: 대기
-- 작업 브랜치: `feature/developer-docs`
+- 작업 브랜치: `develop` (`d63007a`, `origin/develop`과 동일)
 - 다음 작업: 부하테스트 결과 JSON schema와 예제 fixture 설계
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.

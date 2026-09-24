@@ -1,8 +1,10 @@
-"""Regression tests reproducing findings R1-R8 from docs/mock-1-review.md."""
+"""Regression tests reproducing findings R1-R8 from the archived MOCK-1 review."""
 import asyncio
 import json
 import random
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from api_test.main import app, studio
 from api_test.mock_engine import (
@@ -373,8 +375,12 @@ class TestMockReviewRegressions(unittest.IsolatedAsyncioTestCase):
         body_bytes = b"".join(m.get("body", b"") for m in messages if m["type"] == "http.response.body")
         self.assertEqual(body_bytes, b"OK healthy", f"Expected b'OK healthy', got {body_bytes}")
 
-    def test_r5_admin_api_validation(self):
+    @patch.object(studio, 'collaboration_store')
+    def test_r5_admin_api_validation(self, mock_store):
         """R5: Management API must reject invalid port/seed/latency with 400 instead of 500, reject port 0, and not kill running server on failed restart."""
+        mock_store.return_value.get.return_value = SimpleNamespace(
+            document={'docs_file': {'document': studio.example_openapi_document()}}
+        )
         client = TestClient(app)
         proj_ref = "example-api.json"
 

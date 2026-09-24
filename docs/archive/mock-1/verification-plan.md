@@ -1,5 +1,7 @@
 # MOCK-1 계획 이행 검증서
 
+> 보관 문서: MOCK-1 개발 당시의 독립 검증 계획이다. 현재 사용법과 상태는 [`../../mock-server.md`](../../mock-server.md) 및 [`../../api-development-progress.md`](../../api-development-progress.md)를 따른다.
+
 - 작성일: 2026-09-21
 - 상태: **검증 계획 작성 완료 / 검증 실행 대기**
 - 대상: `feature/mock-server`의 현재 작업 트리. 로컬 커밋 `0a6151f` 이후 미커밋 수정까지 포함한다.
@@ -8,10 +10,10 @@
 
 ## 1. 기준 문서 및 완료 조건
 
-- 원래 계획: [API 개발 기능 계획 — MOCK-1](api-development-plan.md#mock-1-mock-server)
-- 상세 개발 범위: [개발 인계 프롬프트](mock-1-development-prompt.md)
-- 기존 결함과 수정 이력: [독립 리뷰](mock-1-review.md)
-- 상태 기록: [개발 진행](api-development-progress.md), [부하테스트 진행](api-load-test-progress.md)
+- 원래 계획: [API 개발 기능 계획 — MOCK-1](../../api-development-plan.md#mock-1-mock-server)
+- 상세 개발 범위: [개발 인계 프롬프트](development-prompt.md)
+- 기존 결함과 수정 이력: [독립 리뷰](review.md)
+- 상태 기록: [개발 진행](../../api-development-progress.md), [부하테스트 진행](../../api-load-test-progress.md)
 
 원래 완료 조건은 **실제 외부 API 없이 생성·조회·오류 파이프라인과 부하테스트 smoke를 재현할 수 있음**이다. 이를 다음 요구사항으로 나누어 검증한다.
 
@@ -172,4 +174,4 @@ npm run build
 
 ## 9. 다른 AI에 전달할 검증 요청
 
-> `docs/mock-1-verification-plan.md`에 따라 현재 MOCK-1 작업 트리를 독립 검증해 주세요. `AGENTS.md`, 개발 계획, 리뷰 이력을 읽고 M01–M20 및 최근 6개 수정의 해소 여부를 판정하세요. 기존 테스트 보고를 재사용하지 말고 실제 명령·HTTP·브라우저 증거를 수집하세요. 사용자 데이터와 기존 변경을 보존하고 임시 loopback 환경을 사용하세요. 코드는 수정하지 말고 결함과 실행 제한을 구분해 보고하세요. 결과를 별도 Markdown 문서로 작성하고 두 진행 문서를 갱신하세요. 커밋·푸시·병합은 하지 마세요.
+> 이 문서에 따라 당시 MOCK-1 작업 트리를 독립 검증한다. `AGENTS.md`, 개발 계획, 리뷰 이력을 읽고 M01–M20 및 최근 6개 수정의 해소 여부를 판정한다. 기존 테스트 보고를 재사용하지 않고 실제 명령·HTTP·브라우저 증거를 수집한다. 사용자 데이터와 기존 변경을 보존하고 임시 loopback 환경을 사용한다. 코드는 수정하지 않고 결함과 실행 제한을 구분해 보고한다. 결과를 별도 Markdown 문서로 작성하고 두 진행 문서를 갱신한다. 커밋·푸시·병합은 하지 않는다.

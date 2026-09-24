@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import socket
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from api_test.main import app, studio
 from api_test.mock_engine import MockApp, MockEngineError, resolve_local_ref, synthesize_schema, resolve_operation_response
@@ -397,7 +399,11 @@ class MockServerManagementTest(unittest.TestCase):
             time.sleep(0.1)
         self.assertTrue(port_released, f"Port {port} was not released in time")
 
-    def test_management_api_endpoints(self):
+    @patch.object(studio, 'collaboration_store')
+    def test_management_api_endpoints(self, mock_store):
+        mock_store.return_value.get.return_value = SimpleNamespace(
+            document={'docs_file': {'document': studio.example_openapi_document()}}
+        )
         # 1. Get status for example-api.json
         res = self.client.get("/api/projects/example-api.json/mock")
         self.assertEqual(res.status_code, 200)

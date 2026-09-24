@@ -1,5 +1,7 @@
 # MOCK-1 개발 인계 프롬프트
 
+> 보관 문서: MOCK-1 개발 당시 사용한 인계 기준이다. 현재 사용법과 상태는 [`../../mock-server.md`](../../mock-server.md) 및 [`../../api-development-progress.md`](../../api-development-progress.md)를 따른다.
+
 아래 내용을 개발할 AI 모델에 전달한다. 구현 완료 후 현재 Codex 작업에서 별도로 코드 리뷰와 검증을 수행한다.
 
 ---
