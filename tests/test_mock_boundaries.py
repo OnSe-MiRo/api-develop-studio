@@ -8,7 +8,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 from api_test.main import studio
-from api_test.mock_engine import MockApp
+from api_test.mock_engine import DeclarativeStateStore, MockApp, MockEngineError
 from api_test.services.mock import (
     MockServerManager, is_port_available, validate_latency,
     validate_loopback_host, validate_port, validate_seed,
@@ -21,6 +21,41 @@ SPEC = {'paths': {
 
 
 class MockStateBoundaryTest(unittest.IsolatedAsyncioTestCase):
+    async def test_oversized_response_and_item_are_rejected_without_state_change(self):
+        store = DeclarativeStateStore()
+        with self.assertRaises(MockEngineError) as rejected:
+            await store.create_item('/items', {'name': 'x' * store.MAX_ITEM_BYTES})
+        self.assertEqual(rejected.exception.code, 'RESPONSE_TOO_LARGE')
+        self.assertEqual(await store.list_items('/items'), [])
+
+        item = await store.create_item('/items', {'name': 'original'})
+        with self.assertRaises(MockEngineError):
+            await store.update_item('/items', item['id'], {'name': 'x' * store.MAX_ITEM_BYTES})
+        self.assertEqual(await store.get_item('/items', item['id']), item)
+
+        large_spec = {'paths': {'/large': {'get': {'responses': {'200': {'content': {
+            'text/plain': {'example': 'x' * (MockApp.MAX_RESPONSE_BYTES + 1)},
+        }}}}}}}
+        sent = []
+        async def receive():
+            return {'type': 'http.request', 'body': b'', 'more_body': False}
+        async def send(message):
+            sent.append(message)
+        await MockApp(large_spec)({'type': 'http', 'path': '/large', 'method': 'GET'}, receive, send)
+        self.assertEqual(sent[0]['status'], 413)
+        self.assertEqual(json.loads(sent[1]['body'])['code'], 'RESPONSE_TOO_LARGE')
+
+    async def test_head_requires_get_or_head_and_never_sends_body(self):
+        app = MockApp({'paths': {'/write': {'post': {'responses': {'201': {}}}}}})
+        sent = []
+        async def receive():
+            return {'type': 'http.request', 'body': b'', 'more_body': False}
+        async def send(message):
+            sent.append(message)
+        await app({'type': 'http', 'path': '/write', 'method': 'HEAD'}, receive, send)
+        self.assertEqual(sent[0]['status'], 405)
+        self.assertEqual(sent[1]['body'], b'')
+
     async def test_reset_and_seed_change_reject_pending_mutation(self):
         for action in ('reset', 'seed'):
             with self.subTest(action=action):
@@ -65,6 +100,33 @@ class MockStateBoundaryTest(unittest.IsolatedAsyncioTestCase):
 
 
 class MockServerBoundaryTest(unittest.TestCase):
+    def test_nested_parent_and_project_state_isolation_over_http(self):
+        spec = {'paths': {
+            '/teams/{teamId}/items': {'post': {'responses': {'201': {}}}},
+            '/teams/{teamId}/items/{id}': {'get': {'responses': {'200': {}, '404': {}}}},
+        }}
+        manager = MockServerManager()
+        def call(instance, method, path, body=None):
+            data = json.dumps(body).encode() if body is not None else None
+            request = urllib.request.Request(instance.base_url + path, data=data, method=method)
+            try:
+                with urllib.request.urlopen(request, timeout=3) as response:
+                    return response.status, json.loads(response.read())
+            except urllib.error.HTTPError as error:
+                return error.code, json.loads(error.read())
+        try:
+            first = manager.start_server('project-a', spec, studio=studio)
+            second = manager.start_server('project-b', spec, studio=studio)
+            self.assertEqual(call(first, 'POST', '/teams/A/items', {'name': 'alpha'})[1]['id'], '1')
+            self.assertEqual(call(first, 'POST', '/teams/B/items', {'name': 'beta'})[1]['id'], '1')
+            self.assertEqual(call(second, 'POST', '/teams/A/items', {'name': 'other project'})[1]['id'], '1')
+            self.assertEqual(call(first, 'GET', '/teams/A/items/1')[1]['name'], 'alpha')
+            self.assertEqual(call(first, 'GET', '/teams/B/items/1')[1]['name'], 'beta')
+            self.assertEqual(call(second, 'GET', '/teams/A/items/1')[1]['name'], 'other project')
+            self.assertEqual(call(first, 'GET', '/teams/C/items/1')[0], 404)
+        finally:
+            manager.stop_all()
+
     def test_integer_inputs_reject_coercion(self):
         for validate in (validate_port, validate_seed, validate_latency):
             for value in (True, 1.5, '10', float('inf')):

@@ -1,5 +1,7 @@
 # MOCK-1 검증 결과
 
+> 보관 문서: MOCK-1 개발 과정의 검증 증거와 결함 해소 기록이다. 현재 사용법과 상태는 [`../../mock-server.md`](../../mock-server.md) 및 [`../../api-development-progress.md`](../../api-development-progress.md)를 따른다.
+
 ## PostgreSQL·Redis 기본 설정 후 전체 회귀 (2026-09-22)
 
 - 테스트 전용 기본 URL과 Docker 서비스를 구성하고 프로젝트 `.venv`에 누락된 PostgreSQL·Redis 의존성을 설치했다.
@@ -31,7 +33,7 @@
   - 이번에는 React를 추가 수정하지 않아 frontend/build를 반복하지 않았다. 아래 27개 frontend 테스트 및 build 결과는 원 검증자의 기록이다.
 - 판정: **report에 명시된 코드 결함 2건 수정·재검증 완료. MOCK-1 전체 계획 검증 완료는 보류**.
 - 근거 보정: 아래 최초 report의 M06/M11은 주로 코드 확인, M18/M19는 소스·JSDOM/로딩 로직 확인으로 실제 브라우저 검증 증거가 아니다. M09의 users/orders 분리는 중첩 parent·프로젝트 격리 전체를 입증하지 않는다. M14의 유휴 서버 종료는 지연 요청 중 종료·동시 reset/config의 정리를 입증하지 않는다. M17은 통계 확인 대신 `test_smoke_deadline_cancels_unsubmitted_work`의 stub deadline 검증으로 읽어야 하며 실제 지연 HTTP의 worker 종료 시각 증거는 추가 필요하다.
-- 후속: [검증 계획](mock-1-verification-plan.md)의 해당 잔여 절차를 실제 실행하고 증거를 기록한 뒤 전체 완료를 판단한다. 기존 코드 변경과 report 원문은 보존했다. 이번 수정은 `feature/mock-server` 작업 트리이며 커밋·푸시·병합은 수행하지 않았다.
+- 후속: [검증 계획](verification-plan.md)의 해당 잔여 절차를 실제 실행하고 증거를 기록한 뒤 전체 완료를 판단한다. 기존 코드 변경과 report 원문은 보존했다. 이번 수정은 `feature/mock-server` 작업 트리이며 커밋·푸시·병합은 수행하지 않았다.
 
 아래 내용은 후속 수정 전의 원 검증 기록이다. 충돌하는 판정은 위 최신 상태를 따른다.
 

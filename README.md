@@ -2,6 +2,8 @@
 
 JSON으로 HTTP 요청과 기대 응답을 정의하고, 응답 데이터가 정확히 같은지 검증하는 Python API 테스트 도구입니다.
 
+기능별 사용법, 운영 계약, 개발 계획과 보관 기록은 [문서 안내](docs/README.md)에서 찾을 수 있습니다.
+
 API 실행에는 기본적으로 프로젝트의 소유권 확인이 필요합니다. 프로젝트 설정의 `API 소유권 확인`에서
 검증하고, 외부 인증 API는 승인된 `Setup · 외부 1회` 단계로 실행할 수 있습니다.
 개인 PC에서 생략하려면 `LOCAL_SERVER=true`와 `SKIP_OWNERSHIP_VERIFICATION=true`를 함께 설정하세요.

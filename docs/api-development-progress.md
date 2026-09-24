@@ -1,5 +1,19 @@
 # API 개발 기능 진행 기록
 
+## MOCK-1 완료 보완 및 독립 검증 (2026-09-25)
+
+- 시작: 사용자 요청으로 미완료 항목을 확인하고 `gpt-6-sol / xhigh` 서브에이전트에 개발 위임. 기존 archive 정리 변경을 보존해 `fix/mock-completion`에서 작업.
+- 변경: 응답/항목 1MiB 제한, HEAD method/body 처리, config/reset/stop 경합 직렬화, status/media 변경 시 종속 example 초기화, 테스트 fixture 격리.
+- 검증: 주 에이전트 전체 Python 300개 통과(skip 0), 생성 검사·diff 검사 통과. 서브에이전트 Mock 31개·frontend 28개·build 통과. 실제 브라우저 명세 소스 3종의 선택→시작→HTTP 응답, refresh/reset/error/stop, UI 결함 수정 재현 확인.
+- 완료: MOCK-1 개발 및 로컬 검증 완료. [완료 보고서](archive/mock-1/completion-report.md). 기존 보류 기록은 과거 이력이며 최신 판정은 이 기록을 따른다.
+- Git: 이번 보완은 미커밋·미푸시·미병합. 테스트 전용 DB는 유지하고 임시 브라우저 서버는 종료.
+
+## 완료 문서 정리 (2026-09-22)
+
+- MOCK-1 개발 인계·리뷰·검증 계획·검증 보고서를 `docs/archive/mock-1/`로 이동해 당시 증거를 보존했다.
+- 현재 사용 기준은 [Mock Server](mock-server.md), 전체 문서 탐색 기준은 [문서 안내](README.md)로 분리했다.
+- 상태 기준을 현재 `develop` 통합 상태로 갱신했다. 문서 정리만 수행했으며 제품 코드·테스트 결과·MOCK-1 잔여 검증 판정은 변경하지 않았다.
+
 ## 테스트 PostgreSQL·Redis 기본 설정 (2026-09-22)
 
 - 시작: 사용자 요청으로 테스트 전용 접속 설정을 기본값으로 적용.
@@ -41,11 +55,11 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-22
-- 현재 단계: MOCK-1 report 및 reset·종료·입력 경계 결함 수정·관련 검증 완료, 브라우저 등 잔여 검증 대기
+- 최종 갱신일: 2026-09-25
+- 현재 단계: MOCK-1 잔여 개발 및 실제 브라우저·HTTP 완료 검증 완료
 - 전체 상태: 진행
-- 반영 브랜치: `feature/mock-server`, clean develop `f033c44`에서 분기. 독립 검증 작업으로 커밋·병합·푸시는 수행하지 않음.
-- 다음 작업: 검증 report 최신 상태에 기재한 실제 브라우저·동시성·지연 종료 증거 보완 후 전체 완료 판정.
+- 반영 브랜치: `fix/mock-completion` 작업 트리. 기반 `develop`은 `d63007a`; 이번 보완은 미커밋·미푸시·미병합.
+- 다음 작업: 다음 로드맵 항목 선정. MOCK-1 추가 보완의 Git 반영은 별도 승인 작업.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -67,7 +81,7 @@
 | TST-1 | 명세–케이스 커버리지 | P1 | 완료 | operation/status 연결 수·최근 성공, 미검증 응답 표시 |
 | TST-2 | 명세 변경과 케이스 동기화 | P1 | 완료 | field preview·선택 갱신·revision 충돌·assertion/secret 보존 |
 | TST-3 | 테스트 데이터 setup·teardown | P1 | 완료 | UUID/시각/정수·seed·run 변수 추출·정리 결과 분리 |
-| MOCK-1 | OpenAPI 기반 Mock Server | P1 | 진행 | 추가 경계 수정 후 Python 255 통과/42 skip. 실제 지연 종료·reset 회귀 통과, 브라우저 등 계획 잔여 검증 필요 |
+| MOCK-1 | OpenAPI 기반 Mock Server | P1 | 완료 | Python 300개 skip 없이 통과, frontend 28개·build·생성 검사 및 실제 브라우저 명세 3종 검증 완료 |
 | OBS-1 | 기능 테스트 실행 이력 | P1 | 대기 | RUN-1 공통 metadata |
 | OBS-2 | 부하테스트 결과 대시보드 | P1 | 대기 | 별도 진행 기록 참조 |
 | IOP-1 | cURL·Postman·HAR 연동 | P1 | 대기 | 지원 형식과 round trip 기준 |
@@ -85,8 +99,8 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 - 작업 ID: MOCK-1 (독립 검증 결과)
 - 일시: 2026-09-21 23:36 KST
-- 검증 기준: `docs/mock-1-verification-plan.md` (M01~M20 전수 및 최근 6개 수정 검증)
-- 상세 보고서: `docs/mock-1-verification-report.md`
+- 검증 기준: `docs/archive/mock-1/verification-plan.md` (M01~M20 전수 및 최근 6개 수정 검증)
+- 상세 보고서: `docs/archive/mock-1/verification-report.md`
 - 최종 판정: **진행** (핵심 기능 M01~M15, M17~M20 통과, M16 경미 지연 및 생성기 개행 2건 보완 필요)
 - 검증 내역:
   - 기능 매트릭스: M01~M15, M17~M20 (총 19개 항목) 통과.
@@ -410,7 +424,7 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 ## MOCK-1 잔여 항목 개발 — 검증 분리 (2026-09-21)
 
-- 검증 인계 문서: [MOCK-1 계획 이행 검증서](mock-1-verification-plan.md). 계획 요구사항 매핑, M01–M20, 최근 6개 수정, 실제 HTTP/브라우저 및 결과 양식 작성 완료. 검증 실행은 별도 대기.
+- 검증 인계 문서: [MOCK-1 계획 이행 검증서](archive/mock-1/verification-plan.md). 계획 요구사항 매핑, M01–M20, 최근 6개 수정, 실제 HTTP/브라우저 및 결과 양식 작성 완료. 검증 실행은 별도 대기.
 
 - 시작: 사용자의 “mock-1 개발 진행 검증은 별도로 진행” 요청에 따라 `feature/mock-server`, 로컬 커밋 `0a6151f` 이후 개발 재개.
 - 변경: 동일 seed/scenario 설정 시 state 보존, /api/docs의 해석된 operation 및 media/example 이름을 Mock 화면으로 연결, 생성 schema의 최종 제약 검사와 깊이/배열 제한 명시 오류, 정수 소수 경계 처리, override 필드 타입 검사.
@@ -424,14 +438,14 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 - 시작: 개발 모델의 R1–R8 수정 및 회귀 테스트를 독립 검증.
 - 결과: resource 격리·ID 충돌·오류 status·pipeline 본문 검증 수정 확인. 설정 적용 시 state 소멸, operation UI 데이터 경로 불일치, schema 위반, override 타입 불일치, CRUD media/example 무시, smoke deadline 미준수 발견.
-- 검증: Python 288개 중 246 통과/42 skip, frontend 27개 및 build, 생성 검사·diff check 통과. 추가 ASGI/schema validator/smoke stub으로 잔여 문제 재현. 자세한 결과는 [최신 리뷰](mock-1-review.md) 참조.
+- 검증: Python 288개 중 246 통과/42 skip, frontend 27개 및 build, 생성 검사·diff check 통과. 추가 ASGI/schema validator/smoke stub으로 잔여 문제 재현. 자세한 결과는 [당시 리뷰](archive/mock-1/review.md) 참조.
 - 차단: 브라우저용 임시 loopback 서버 실행은 자동 승인 검토 사용량 한도로 미실행. 실제 브라우저 재검증은 완료하지 않음.
 - 완료 범위: 코드 수정에 대한 2차 리뷰, 문서 갱신. MOCK-1은 진행 유지. 제품 코드 수정·커밋·병합·푸시 없음.
 
 ## MOCK-1 독립 리뷰 (2026-09-21)
 
 - 시작: `feature/mock-server`의 develop 대비 diff와 untracked 구현을 기존 인계 기준으로 검토.
-- 결과: [리뷰 및 수정 인계](mock-1-review.md)의 R1–R8 발견. 리소스 state 혼합·ID 덮어쓰기·status 무시·schema 제약 위반·관리 API 500·본문 검증 누락을 재현. UI 선택 기능과 media type 처리 미충족 확인.
+- 결과: [리뷰 및 수정 인계](archive/mock-1/review.md)의 R1–R8 발견. 리소스 state 혼합·ID 덮어쓰기·status 무시·schema 제약 위반·관리 API 500·본문 검증 누락을 재현. UI 선택 기능과 media type 처리 미충족 확인.
 - 검증: 전체 Python 282개 중 240 통과/42 PostgreSQL 관련 skip, frontend 26개 및 build, 생성 코드 검사 통과. 최초 sandbox bind/ps 제한은 권한 확장 재실행으로 해소.
 - 실제 브라우저: 임시 DB/fixture로 시작→새로고침 복원→오류 설정→HTTP 500 확인→reset→중지, 콘솔 error 없음. 기존 pipeline/smoke 테스트도 실행했으나 본문 검증 누락으로 내용 정확성 보장은 불가.
 - 상태: 진행 — 리뷰 완료, 구현 수정과 재검증 대기. 구현 코드 변경·커밋·병합·푸시 없음. 하단의 개발 모델 완료 보고보다 이 독립 검증 판정을 우선한다.
@@ -439,7 +453,7 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 ## MOCK-1 OpenAPI 기반 Mock Server 구현 — 개발 모델 보고 (2026-09-21)
 
 - 상태: 완료 — `feature/mock-server`, clean develop `f033c44` 분기 기준에서 구현 완료. 커밋·병합·푸시는 수행하지 않음.
-- 시작: [개발 인계 프롬프트](mock-1-development-prompt.md)에 따라 API·화면·테스트·사용 안내 및 부하 smoke 구현.
+- 시작: [개발 인계 프롬프트](archive/mock-1/development-prompt.md)에 따라 API·화면·테스트·사용 안내 및 부하 smoke 구현.
 - 변경 파일:
   - 계약 및 라우터: `openapi/paths/mock.yaml`, `openapi/components/schemas/mock.yaml`, `openapi/studio.yaml`, `openapi/templates/api.mustache`, `api_test/generated/` (OpenAPI Generator 7.24.0으로 라우터·모델 64개 갱신)
   - 코어 엔진 및 서비스: `api_test/mock_engine.py` (정적 경로 우선 라우팅, Example 우선순위 및 Schema 결정적 합성, 순환참조 깊이 10 제한, 선언형 CRUD state 머신 및 reset, 204/HEAD 무본문 처리, 비차단 latency), `api_test/services/mock.py` (Loopback 127.0.0.1/::1/localhost 전용 바인드 정책, 포트 충돌 감지 및 자동 할당, 생명주기 제어), `api_test/implementations/mock.py`, `api_test/main.py` (lifespan 앱 종료 시 Mock 서버 정리)
@@ -463,7 +477,7 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 - 상태: 완료 — 인계 프롬프트 준비 및 구현 완료.
 - 시작: 변경사항 없는 로컬 develop `f033c44`에서 `feature/mock-server` 생성. 원격 최신성은 확인하지 않음.
-- 변경: [개발 인계 프롬프트](mock-1-development-prompt.md)에 요구사항, 기존 구현 진입점, state·bind 정책, 실제 HTTP/브라우저/부하 smoke 및 후속 독립 리뷰 기준 작성.
+- 변경: [개발 인계 프롬프트](archive/mock-1/development-prompt.md)에 요구사항, 기존 구현 진입점, state·bind 정책, 실제 HTTP/브라우저/부하 smoke 및 후속 독립 리뷰 기준 작성.
 - 검증: 브랜치와 작업 트리 확인, `git diff --check` 통과. 문서만 변경하여 코드 테스트와 build는 실행하지 않음.
 - 환경: 최초 브랜치 생성은 sandbox의 Git 쓰기 제한으로 실패했고 권한 확장 재실행으로 완료. 현재 차단 사항 없음.
 - 다음: 사용자가 선택한 다른 AI 모델의 구현 완료 후 Codex에서 diff 리뷰 및 독립 검증. 이번 작업에서는 모델 실행·기능 구현·커밋·병합·푸시를 수행하지 않음.

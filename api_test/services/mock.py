@@ -313,19 +313,28 @@ class MockServerManager:
 
     def stop_server(self, project_ref: str) -> bool:
         with self._lock:
-            instance = self._instances.pop(project_ref, None)
+            instance = self._instances.get(project_ref)
             if instance:
                 instance.stop()
+                del self._instances[project_ref]
                 return True
             return False
 
     def reset_server(self, project_ref: str) -> bool:
         with self._lock:
             instance = self._instances.get(project_ref)
-            if instance:
+            if instance and instance.status_dict()["status"] == "running":
                 instance.reset_state()
                 return True
             return False
+
+    def update_server_config(self, project_ref: str, *, seed=None, scenario=None, default_latency_ms=None, overrides=None) -> Optional[dict]:
+        with self._lock:
+            instance = self._instances.get(project_ref)
+            if not instance or instance.status_dict()["status"] != "running":
+                return None
+            instance.update_config(seed, scenario, default_latency_ms, overrides)
+            return instance.status_dict()
 
     def stop_all(self):
         with self._lock:
@@ -401,20 +410,14 @@ def stop_server(request, studio):
 def reset_server(request, studio):
     reference = request.request.path_params["reference"]
     studio.ensure_example_project_enabled(reference)
-    instance = manager.get_instance(reference)
-    if not instance:
+    if not manager.reset_server(reference):
         raise studio.ApiError("실행 중인 Mock Server가 없습니다.", status_code=400)
-    instance.reset_state()
     return request.json_response(200, {"status": "reset", "message": "Mock server state reset"})
 
 
 def update_config(request, studio):
     reference = request.request.path_params["reference"]
     studio.ensure_example_project_enabled(reference)
-    instance = manager.get_instance(reference)
-    if not instance:
-        raise studio.ApiError("실행 중인 Mock Server가 없습니다.", status_code=400)
-
     body = request.read_body()
     if not isinstance(body, dict):
         raise studio.ApiError("Mock 설정은 JSON 객체여야 합니다.", status_code=400)
@@ -423,10 +426,13 @@ def update_config(request, studio):
     default_latency_ms = validate_latency(body.get("defaultLatencyMs"), studio) if "defaultLatencyMs" in body and body.get("defaultLatencyMs") is not None else None
     overrides = validate_overrides(body.get("overrides"), studio) if "overrides" in body and body.get("overrides") is not None else None
 
-    instance.update_config(
+    status = manager.update_server_config(
+        reference,
         seed=seed,
         scenario=scenario,
         default_latency_ms=default_latency_ms,
         overrides=overrides,
     )
-    return request.json_response(200, instance.status_dict())
+    if status is None:
+        raise studio.ApiError("실행 중인 Mock Server가 없습니다.", status_code=400)
+    return request.json_response(200, status)

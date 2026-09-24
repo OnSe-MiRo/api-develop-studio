@@ -164,3 +164,47 @@ it('configures operation overrides and sends them in config update', async () =>
     )
   })
 })
+
+it('clears an example when its media type or status changes', async () => {
+  const mockOperations = [{
+    id: 'GET /health', method: 'GET', path: '/health', editable: { operationId: 'health' },
+    responses: [
+      { status: 200, mock_content: {
+        'application/json': { examples: ['second'] },
+        'text/plain': { examples: ['plain'] },
+      } },
+      { status: 500, mock_content: { 'application/json': { examples: ['failure'] } } },
+    ],
+  }]
+  api.mockResolvedValue({
+    status: 'running', host: '127.0.0.1', port: 8880, url: 'http://127.0.0.1:8880',
+    seed: 42, scenario: 'default', defaultLatencyMs: 0, activeOperations: 1,
+    requestCount: 0, overrides: {},
+  })
+
+  render(<MockServerPanel projectRef="test.json" project={{ mockOperations }} />)
+  await screen.findByText('실행 중')
+  fireEvent.change(screen.getByRole('combobox', { name: '대상 Operation' }), { target: { value: 'health' } })
+  const status = screen.getByRole('combobox', { name: '상태 코드 (Status)' })
+  const media = screen.getByRole('combobox', { name: '미디어 타입 (Media Type)' })
+  const example = screen.getByRole('combobox', { name: 'Example 이름' })
+
+  fireEvent.change(media, { target: { value: 'application/json' } })
+  fireEvent.change(example, { target: { value: 'second' } })
+  fireEvent.change(media, { target: { value: 'text/plain' } })
+  expect(example).toHaveValue('')
+  fireEvent.click(screen.getByRole('button', { name: '오버라이드 적용' }))
+  fireEvent.click(screen.getByRole('button', { name: '설정 적용' }))
+  await waitFor(() => {
+    const configCall = api.mock.calls.find(([path]) => path.endsWith('/mock/config'))
+    expect(JSON.parse(configCall[1].body).overrides.health).toEqual({ mediaType: 'text/plain' })
+  })
+
+  fireEvent.change(media, { target: { value: 'application/json' } })
+  fireEvent.change(example, { target: { value: 'second' } })
+  fireEvent.change(status, { target: { value: '500' } })
+  expect(media).toHaveValue('')
+  expect(example).toHaveValue('')
+  fireEvent.click(screen.getByRole('button', { name: '오버라이드 적용' }))
+  expect(screen.getByRole('row', { name: /health 500 기본 -/ })).toBeInTheDocument()
+})

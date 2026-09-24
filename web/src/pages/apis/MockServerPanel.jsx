@@ -190,8 +190,8 @@ export function MockServerPanel({ projectRef, project }) {
     if (!selectedOpKey) return
     const newOv = {}
     if (overrideStatus) newOv.status = Number(overrideStatus)
-    if (overrideExampleKey) newOv.exampleKey = overrideExampleKey
-    if (overrideMediaType) newOv.mediaType = overrideMediaType
+    if (overrideExampleKey && availableExamples.includes(overrideExampleKey)) newOv.exampleKey = overrideExampleKey
+    if (overrideMediaType && availableMediaTypes.includes(overrideMediaType)) newOv.mediaType = overrideMediaType
     if (overrideLatency !== '') newOv.latencyMs = Number(overrideLatency)
     if (overrideError) newOv.errorResponse = true
 
@@ -400,7 +400,11 @@ export function MockServerPanel({ projectRef, project }) {
           <Field label="상태 코드 (Status)">
             <select
               value={overrideStatus}
-              onChange={e => setOverrideStatus(e.target.value)}
+              onChange={e => {
+                setOverrideStatus(e.target.value)
+                setOverrideMediaType('')
+                setOverrideExampleKey('')
+              }}
               disabled={!selectedOpKey}
             >
               <option value="">-- 기본값 (명세 우선순위) --</option>
@@ -413,7 +417,10 @@ export function MockServerPanel({ projectRef, project }) {
           <Field label="미디어 타입 (Media Type)">
             <select
               value={overrideMediaType}
-              onChange={e => setOverrideMediaType(e.target.value)}
+              onChange={e => {
+                setOverrideMediaType(e.target.value)
+                setOverrideExampleKey('')
+              }}
               disabled={!selectedOpKey}
             >
               <option value="">-- 기본값 --</option>

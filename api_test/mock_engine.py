@@ -408,6 +408,7 @@ class DeclarativeStateStore:
     MAX_ITEMS_PER_COLLECTION = 1000
     MAX_TOTAL_ITEMS = 10000
     MAX_STATE_BYTES = 10 * 1024 * 1024  # 10MB limit
+    MAX_ITEM_BYTES = 1024 * 1024
 
     def __init__(self, seed: int = 42, scenario: str = "default"):
         self.seed = seed
@@ -439,9 +440,7 @@ class DeclarativeStateStore:
 
     async def create_item(self, collection: str, body: dict) -> dict:
         async with self.lock:
-            if collection not in self.collections:
-                self.collections[collection] = {}
-            col = self.collections[collection]
+            col = self.collections.get(collection, {})
 
             total_items = sum(len(c) for c in self.collections.values())
             if len(col) >= self.MAX_ITEMS_PER_COLLECTION or total_items >= self.MAX_TOTAL_ITEMS:
@@ -449,28 +448,33 @@ class DeclarativeStateStore:
 
             item = copy.deepcopy(body)
             explicit_id = item.get("id") or item.get("uuid")
+            next_id = self._next_ids.get(collection, 1)
             if explicit_id is not None:
                 str_id = str(explicit_id)
                 if str_id in col:
                     raise MockEngineError(f"Item with ID '{str_id}' already exists in collection '{collection}'", status_code=409, code="CONFLICT")
                 item_id = str_id
                 if item_id.isdigit():
-                    curr_max = self._next_ids.get(collection, 1)
-                    self._next_ids[collection] = max(curr_max, int(item_id) + 1)
+                    next_id = max(next_id, int(item_id) + 1)
             else:
-                curr = self._next_ids.get(collection, 1)
+                curr = next_id
                 while str(curr) in col:
                     curr += 1
                 item_id = str(curr)
-                self._next_ids[collection] = curr + 1
+                next_id = curr + 1
 
             item["id"] = item_id
 
             item_bytes = len(json.dumps(item, default=str).encode("utf-8"))
+            if item_bytes > self.MAX_ITEM_BYTES:
+                raise MockEngineError("Mock item exceeds maximum response size (1MB)", status_code=413, code="RESPONSE_TOO_LARGE")
             if self._total_bytes + item_bytes > self.MAX_STATE_BYTES:
                 raise MockEngineError("Mock server total state byte limit exceeded (10MB)", status_code=413, code="STATE_LIMIT_EXCEEDED")
 
             self._total_bytes += item_bytes
+            self._next_ids[collection] = next_id
+            if collection not in self.collections:
+                self.collections[collection] = col
             col[item_id] = item
             return copy.deepcopy(item)
 
@@ -488,6 +492,8 @@ class DeclarativeStateStore:
             new_item["id"] = str_id
 
             new_bytes = len(json.dumps(new_item, default=str).encode("utf-8"))
+            if new_bytes > self.MAX_ITEM_BYTES:
+                raise MockEngineError("Mock item exceeds maximum response size (1MB)", status_code=413, code="RESPONSE_TOO_LARGE")
             if self._total_bytes - old_bytes + new_bytes > self.MAX_STATE_BYTES:
                 raise MockEngineError("Mock server total state byte limit exceeded (10MB)", status_code=413, code="STATE_LIMIT_EXCEEDED")
 
@@ -510,6 +516,7 @@ class DeclarativeStateStore:
 class MockApp:
     """ASGI application serving project OpenAPI mock endpoints."""
     MAX_BODY_BYTES = 1024 * 1024  # 1MB limit for incoming requests
+    MAX_RESPONSE_BYTES = 1024 * 1024
 
     def __init__(
         self,
@@ -563,6 +570,13 @@ class MockApp:
         self.state_store = DeclarativeStateStore(seed=self.seed, scenario=self.scenario)
 
     async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"].upper() == "HEAD":
+            original_send = send
+            async def send_head(message):
+                if message["type"] == "http.response.body":
+                    message = {**message, "body": b""}
+                await original_send(message)
+            send = send_head
         try:
             await self._handle_request(scope, receive, send)
         except MockEngineError as exc:
@@ -604,7 +618,7 @@ class MockApp:
 
         # Check HTTP method
         method_lower = method.lower()
-        if method != "HEAD" and method_lower not in matched_route.path_spec:
+        if method_lower not in matched_route.path_spec and not (method == "HEAD" and "get" in matched_route.path_spec):
             allowed = [m.upper() for m in matched_route.path_spec if m in ("get", "post", "put", "delete", "patch", "options", "head")]
             headers = [("allow", ", ".join(allowed))]
             await self._send_json(send, 405, {"error": f"Method '{method}' not allowed for path '{path}'", "code": "METHOD_NOT_ALLOWED"}, headers=headers)
@@ -808,10 +822,12 @@ class MockApp:
         await self._send_content(send, status, payload, "application/json", headers=headers)
 
     async def _send_response(self, send, status: int, body: bytes, content_type: str, headers: Optional[List[Tuple[str, str]]] = None):
-        response_headers = [(b"content-type", content_type.encode("utf-8"))]
         if status in (204, 205, 304):
             body = b""
-        else:
+        if len(body) > self.MAX_RESPONSE_BYTES:
+            raise MockEngineError("Mock response exceeds maximum size (1MB)", status_code=413, code="RESPONSE_TOO_LARGE")
+        response_headers = [(b"content-type", content_type.encode("utf-8"))]
+        if status not in (204, 205, 304):
             response_headers.append((b"content-length", str(len(body)).encode("utf-8")))
         if headers:
             for k, v in headers:
