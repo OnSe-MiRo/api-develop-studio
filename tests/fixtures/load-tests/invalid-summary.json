@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "run": {
+    "id": "run_invalid",
+    "project": "example-api.json",
+    "startedAt": "2026-09-26T00:00:00Z",
+    "endedAt": "2026-09-26T00:00:10Z",
+    "status": "passed",
+    "environment": {
+      "os": "linux",
+      "cpu": "4 vCPU",
+      "memoryMb": 8192,
+      "executionMode": "local"
+    }
+  }
+}

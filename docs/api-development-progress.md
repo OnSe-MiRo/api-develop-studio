@@ -1,5 +1,15 @@
 # API 개발 기능 진행 기록
 
+## OBS-2 / DB-1 결과 계약·importer 완료 (2026-09-26)
+
+- 시작: MOCK-1이 `develop`에 통합된 상태에서 다음 명시 작업인 DB-1을 `feature/load-test-results`에서 시작.
+- 범위: 부하테스트 결과 JSON schema, k6 summary·원본 JSON importer, 정상·오류 fixture, 집계·보안 경계 단위 테스트와 사용 문서.
+- 비범위: 결과 저장소·조회 API(DB-2), React 대시보드(DB-3), 실제 장시간 부하 실행(LT-1~LT-5), 커밋·푸시·병합.
+- 변경: `schemaVersion: 1` 계약, 줄 단위 k6 importer, `handleSummary` manifest helper, Smoke·Target·오류 fixture와 운영 문서를 추가. query/origin 제거, 동적 path 정규화, 원문 미노출 오류 경계를 적용.
+- 최종 검증: DB-1 단위 테스트 10개, 권한 확장 전체 Python 310개(skip 0), Python compile, Node helper 실행, 생성 코드 검사와 `git diff --check` 통과. 제한된 sandbox의 최초 전체 실행은 loopback·PostgreSQL·process 접근 제한으로 실패했고 같은 코드의 승인된 재실행으로 환경 원인임을 확인. Node의 제거된 `--experimental-default-type=module` 옵션 사용도 1회 실패했고 `--input-type=module` 직접 로드로 helper 동작을 재검증.
+- 완료 기준: Smoke·Target fixture가 schema를 통과하고 요청 수·RPS·오류율·percentile·시간 bucket이 수작업 기준과 일치하며 비밀값과 동적 URL 식별자가 결과에 남지 않는다.
+- 완료: DB-1 계약·importer의 로컬 구현과 검증 완료. 실제 k6 부하 실행과 DB 저장·API·UI는 각각 LT 단계와 DB-2 이후 범위로 유지.
+
 ## MOCK-1 완료 보완 및 독립 검증 (2026-09-25)
 
 - 시작: 사용자 요청으로 미완료 항목을 확인하고 `gpt-6-sol / xhigh` 서브에이전트에 개발 위임. 기존 archive 정리 변경을 보존해 `fix/mock-completion`에서 작업.
@@ -55,11 +65,11 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-25
-- 현재 단계: MOCK-1 잔여 개발 및 실제 브라우저·HTTP 완료 검증 완료
+- 최종 갱신일: 2026-09-26
+- 현재 단계: OBS-2의 DB-1 결과 계약·importer 완료
 - 전체 상태: 진행
-- 반영 브랜치: `fix/mock-completion` 작업 트리. 기반 `develop`은 `d63007a`; 이번 보완은 미커밋·미푸시·미병합.
-- 다음 작업: 다음 로드맵 항목 선정. MOCK-1 추가 보완의 Git 반영은 별도 승인 작업.
+- 반영 브랜치: `feature/load-test-results` (기반 `develop` `d77e0d1`)
+- 다음 작업: DB-2 전용 migration·repository와 atomic import·조회 API 설계 및 구현.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -83,7 +93,7 @@
 | TST-3 | 테스트 데이터 setup·teardown | P1 | 완료 | UUID/시각/정수·seed·run 변수 추출·정리 결과 분리 |
 | MOCK-1 | OpenAPI 기반 Mock Server | P1 | 완료 | Python 300개 skip 없이 통과, frontend 28개·build·생성 검사 및 실제 브라우저 명세 3종 검증 완료 |
 | OBS-1 | 기능 테스트 실행 이력 | P1 | 대기 | RUN-1 공통 metadata |
-| OBS-2 | 부하테스트 결과 대시보드 | P1 | 대기 | 별도 진행 기록 참조 |
+| OBS-2 | 부하테스트 결과 대시보드 | P1 | 진행 | DB-1 완료. 다음은 DB-2 저장소·조회 API |
 | IOP-1 | cURL·Postman·HAR 연동 | P1 | 대기 | 지원 형식과 round trip 기준 |
 | COL-1 | Java WAS 로그인 BFF와 RBAC | P2 | 대기 | 사내 SSO·Spring Security 표준과 OIDC provider 확정 |
 | COL-2 | Workspace 데이터 격리 | P2 | 대기 | COL-1 전에 migration과 권한 query 경계 구현 |

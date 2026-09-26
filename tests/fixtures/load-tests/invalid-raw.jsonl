@@ -1,0 +1,2 @@
+{"type":"Metric","metric":"http_reqs","data":{"type":"counter","contains":"default","tainted":null,"thresholds":[]}}
+{"type":"Point","metric":"http_reqs","data":{"time":"2026-09-26T00:00:01Z","value":1,"tags":{"method":"GET","url":"https://api.test/private?token=PRIVATE"}}

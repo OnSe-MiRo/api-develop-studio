@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-develop-studio.local/schemas/load-test-result-v1.json",
+  "title": "API Develop Studio load test result bundle",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "run",
+    "summary",
+    "thresholds",
+    "endpointMetrics",
+    "series"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "run": {
+      "$ref": "#/$defs/run"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "thresholds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/threshold"
+      }
+    },
+    "endpointMetrics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/endpointMetric"
+      }
+    },
+    "series": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/seriesPoint"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 240
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "nonNegativeNumber": {
+      "type": "number",
+      "minimum": 0
+    },
+    "ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "nullableNonNegativeNumber": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "latency": {
+      "type": "object",
+      "required": ["p50", "p90", "p95", "p99", "max"],
+      "properties": {
+        "p50": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "p90": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "p95": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "p99": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "max": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        }
+      },
+      "additionalProperties": true
+    },
+    "environment": {
+      "type": "object",
+      "required": ["os", "cpu", "memoryMb", "executionMode"],
+      "properties": {
+        "os": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "memoryMb": {
+          "$ref": "#/$defs/nullableNonNegativeNumber"
+        },
+        "executionMode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "k6Version": {
+          "type": ["string", "null"],
+          "maxLength": 80
+        }
+      },
+      "additionalProperties": true
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "id",
+        "project",
+        "scenario",
+        "startedAt",
+        "endedAt",
+        "status",
+        "appVersion",
+        "commitSha",
+        "environment"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "scenario": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "enum": ["passed", "failed", "aborted", "error"]
+        },
+        "appVersion": {
+          "type": ["string", "null"],
+          "maxLength": 120
+        },
+        "commitSha": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9A-Fa-f]{7,64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "environment": {
+          "$ref": "#/$defs/environment"
+        }
+      },
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "requests",
+        "rps",
+        "errorRate",
+        "latencyMs",
+        "vusMax",
+        "thresholdsPassed"
+      ],
+      "properties": {
+        "requests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rps": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "errorRate": {
+          "$ref": "#/$defs/ratio"
+        },
+        "latencyMs": {
+          "$ref": "#/$defs/latency"
+        },
+        "vusMax": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "thresholdsPassed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "threshold": {
+      "type": "object",
+      "required": ["metric", "condition", "actualValue", "passed"],
+      "properties": {
+        "metric": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "condition": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "actualValue": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "passed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "endpointMetric": {
+      "type": "object",
+      "required": ["method", "endpoint", "requestCount", "errorRate", "latencyMs"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "pattern": "^[A-Z]+$",
+          "maxLength": 20
+        },
+        "endpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "requestCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "errorRate": {
+          "$ref": "#/$defs/ratio"
+        },
+        "latencyMs": {
+          "$ref": "#/$defs/latency"
+        }
+      },
+      "additionalProperties": true
+    },
+    "seriesPoint": {
+      "type": "object",
+      "required": [
+        "bucketAt",
+        "rps",
+        "activeVus",
+        "errorRate",
+        "p95Ms",
+        "cpuPercent",
+        "memoryMb",
+        "childProcesses"
+      ],
+      "properties": {
+        "bucketAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rps": {
+          "$ref": "#/$defs/nonNegativeNumber"
+        },
+        "activeVus": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errorRate": {
+          "$ref": "#/$defs/ratio"
+        },
+        "p95Ms": {
+          "$ref": "#/$defs/nullableNonNegativeNumber"
+        },
+        "cpuPercent": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "memoryMb": {
+          "$ref": "#/$defs/nullableNonNegativeNumber"
+        },
+        "childProcesses": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
