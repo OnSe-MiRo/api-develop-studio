@@ -1,5 +1,15 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## DB-1 결과 계약·importer 완료 (2026-09-26)
+
+- 시작: MOCK-1 통합 후 문서에 지정된 다음 작업인 결과 JSON schema와 fixture 설계를 `feature/load-test-results`에서 시작.
+- 범위: k6 `handleSummary`·원본 JSON 출력을 정규화 bundle로 변환하고 endpoint 정규화, 비밀값 제거, percentile·오류율·시간 bucket의 결정적 집계를 검증.
+- 비범위: DB migration/API/UI와 실제 Baseline·Target·Stress·Spike·Soak 실행.
+- 변경: JSON Schema 2020-12, streaming JSON Lines importer/CLI, k6 manifest helper, Smoke·Target·오류 fixture, 사용·보안 문서를 추가. gzip 원본, 현재/이전 summary threshold 판정, server metric 선택 입력을 지원.
+- 최종 검증: DB-1 단위 테스트 10개, 권한 확장 전체 Python 310개(skip 0), Python compile, Node helper 실행, 생성 코드·diff 검사 통과. 제한된 sandbox 최초 전체 실행은 loopback·PostgreSQL·process 차단으로 실패했고 승인된 동일 명령에서 전부 통과. 미지원 Node 옵션으로 helper 실행 방식도 1회 실패했으나 호환되는 ES module 직접 로드로 같은 동작을 통과 확인.
+- 완료 기준: Smoke·Target 고정 입력의 요청 수·RPS·오류율·p50/p90/p95/p99/max가 수작업 계산과 일치하고 schema 정상/오류 fixture 및 동일 입력 결정성 테스트를 통과.
+- 판정: DB-1 완료. 실제 k6 Smoke·Target 실행은 LT 단계, PostgreSQL 저장과 API는 DB-2로 유지.
+
 ## MOCK-1 완료 보완 (2026-09-25)
 
 - 시작/변경: gpt-6-sol xhigh 서브에이전트가 응답 크기·HEAD·관리 경합 및 UI 종속 선택을 보완. 기존 문서 archive 정리 변경 보존.
@@ -111,11 +121,11 @@
 
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-22
-- 현재 단계: MOCK-1 smoke 기반은 통합됨. LT-1~LT-5 및 DB-1~DB-5 착수 대기
-- 전체 상태: 대기
-- 작업 브랜치: `develop` (`d63007a`, `origin/develop`과 동일)
-- 다음 작업: 부하테스트 결과 JSON schema와 예제 fixture 설계
+- 최종 갱신일: 2026-09-26
+- 현재 단계: DB-1 결과 schema·importer 완료
+- 전체 상태: 진행
+- 작업 브랜치: `feature/load-test-results` (`develop` `d77e0d1` 기준)
+- 다음 작업: DB-2 migration·repository, atomic import와 목록·상세·series API
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -128,7 +138,7 @@
 | LT-3 | Target 혼합 및 저장 경합 시나리오 | 대기 | 혼합 비율, 고유 저장, 예상 `409` 검증 | - |
 | LT-4 | Stress·Spike·Soak 및 `/api/run` 시험 | 대기 | 중단 조건과 회복 측정을 포함한 결과 생성 | - |
 | LT-5 | 기준선 보고서 | 대기 | 최대 안정 RPS, 안정 동시 실행 수, 병목 기록 | - |
-| DB-1 | 결과 schema와 importer | 대기 | 고정 fixture의 집계값과 importer 결과 일치 | - |
+| DB-1 | 결과 schema와 importer | 완료 | 고정 fixture의 집계값과 importer 결과 일치 | 단위 10개·전체 Python 310개·helper·생성·diff 검사 통과 |
 | DB-2 | 저장소와 결과 조회 API | 대기 | migration, atomic import, 목록·상세·series API 테스트 통과 | - |
 | DB-3 | 결과 목록과 상세 대시보드 | 대기 | 필터, KPI, 표, 차트와 상태 화면 구현 | - |
 | DB-4 | 실행 비교와 regression 판정 | 대기 | 기준 대비 증감률과 endpoint 악화 순위 검증 | - |
@@ -143,7 +153,7 @@
 - 변경 예정 파일: 없음
 - 시작 시각: 없음
 - 상태: 대기
-- 확인이 필요한 사항: 없음
+- 확인이 필요한 사항: 다음 DB-2 시작 전 PostgreSQL 기준 저장 경계와 bundle body 상한 재확인
 
 ## 검증 기록
 
@@ -151,12 +161,21 @@
 
 | 일시 | 작업 ID | 명령 또는 확인 방법 | 결과 | 비고 |
 | --- | --- | --- | --- | --- |
+| 2026-09-26 | DB-1 | `.venv/bin/python -m unittest tests/test_load_results.py -v` | 통과 | 10개: Smoke·Target 수작업 수치, gzip·결정성, threshold fallback, 오류·schema·CLI·secret 제거 |
+| 2026-09-26 | DB-1 | `.venv/bin/python -m py_compile api_test/load_results.py tests/test_load_results.py` | 통과 | importer와 테스트 syntax 확인 |
+| 2026-09-26 | DB-1 | `node --experimental-default-type=module ...` | 실패 | 현재 Node에서 제거된 option. 제품 코드 실패가 아니라 검증 명령 호환 문제 |
+| 2026-09-26 | DB-1 | `node --input-type=module`로 helper source 직접 import·manifest assertion | 통과 | memory/threshold/k6 version 변환 확인 |
+| 2026-09-26 | DB-1 | 제한된 sandbox에서 `.venv/bin/python -m unittest discover -s tests -v` | 실패 | 309개 중 loopback·PostgreSQL·process 접근 차단으로 2 failure·50 error. DB-1 9개는 통과 |
+| 2026-09-26 | DB-1 | 권한 확장 `.venv/bin/python -m unittest discover -s tests -v` 최종 재실행 | 통과 | 최종 310개, skip 0 (15.744초) |
+| 2026-09-26 | DB-1 | `.venv/bin/python scripts/generate_server.py --check` | 통과 | `Generated server is up to date.` |
+| 2026-09-26 | DB-1 | `git diff --check` | 통과 | whitespace 오류 없음 |
 | 2026-09-07 | PLAN | 문서 구조, 링크, trailing whitespace, `git diff --check` 확인 | 통과 | 구현 테스트는 아직 실행하지 않음 |
 
 ## 결정 기록
 
 | 일자 | 결정 | 이유 | 영향 |
 | --- | --- | --- | --- |
+| 2026-09-26 | DB-1은 원본 이벤트를 streaming 처리하고 최종 bundle만 저장 계약으로 노출 | 원본 크기에 비례한 메모리 사용과 민감 URL 보존을 피하기 위함 | importer는 JSON Lines를 순차 처리하고 query·동적 ID를 제거한 endpoint만 출력 |
 | 2026-09-07 | 1차 대시보드는 완료된 결과의 가져오기와 분석에 집중 | 실시간 실행 제어와 임의 프로세스 관리 위험을 초기 범위에서 분리 | 실시간 스트리밍과 웹 실행 제어는 후속 범위 |
 | 2026-09-07 | 원본 k6 이벤트 대신 구간 집계값을 조회 | 원본 크기에 따른 메모리와 응답 시간 증가 방지 | importer와 schema가 먼저 필요 |
 | 2026-09-07 | 결과 데이터는 기존 문서 리비전과 별도 테이블에 저장 | 데이터 수명주기와 조회 패턴이 다름 | migration과 전용 repository 필요 |
@@ -164,6 +183,13 @@
 ## 변경 이력
 
 최신 기록을 위에 추가한다. 각 기록에는 작업 ID, 실제 변경, 검증 결과와 다음 작업을 포함한다.
+
+### 2026-09-26 — DB-1 — 결과 계약·importer 완료
+
+- 변경: schemaVersion 1 계약, 고정 k6 입력/오류 fixture, summary manifest·JSON Lines importer, k6 helper, 사용 문서와 단위 테스트 추가.
+- 현재 결과: 고정 입력의 요청 수·RPS·오류율·percentile·bucket 수치와 schema/결정성/secret 제거를 전용 10개 및 전체 310개 테스트로 확인. 생성 코드와 diff 검사도 통과.
+- 제한: 실제 k6 실행, 장시간 결과의 bounded-memory 집계, 저장소/API/UI는 수행하지 않음.
+- 다음: DB-2 결과 저장소·조회 API.
 
 ### 2026-09-07 — PLAN — 진행 기록 체계 추가
 

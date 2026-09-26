@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "run": {
+    "id": "run_20260926_000100_target",
+    "project": "example-api.json",
+    "scenario": "target-mixed",
+    "startedAt": "2026-09-26T00:01:00Z",
+    "endedAt": "2026-09-26T00:01:15Z",
+    "status": "failed",
+    "appVersion": "1.0.1",
+    "commitSha": "abcdef1",
+    "environment": {
+      "os": "linux",
+      "cpu": "4 vCPU",
+      "memoryMb": 8192,
+      "executionMode": "docker-compose",
+      "k6Version": "2.0.0"
+    }
+  },
+  "thresholds": [
+    {
+      "metric": "http_req_duration",
+      "condition": "p(95)<550",
+      "passed": false
+    },
+    {
+      "metric": "http_req_failed",
+      "condition": "rate<0.4",
+      "passed": true
+    }
+  ]
+}

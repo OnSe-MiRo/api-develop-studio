@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "run": {
+    "id": "run_20260926_000000_smoke",
+    "project": "example-api.json",
+    "scenario": "smoke",
+    "startedAt": "2026-09-26T00:00:00Z",
+    "endedAt": "2026-09-26T00:00:10Z",
+    "status": "passed",
+    "appVersion": "1.0.1",
+    "commitSha": "abcdef1",
+    "environment": {
+      "os": "linux",
+      "cpu": "4 vCPU",
+      "memoryMb": 8192,
+      "executionMode": "docker-compose",
+      "k6Version": "2.0.0"
+    }
+  },
+  "thresholds": [
+    {
+      "metric": "http_req_duration",
+      "condition": "p(95)<250",
+      "passed": true
+    },
+    {
+      "metric": "http_req_failed",
+      "condition": "rate<0.3",
+      "passed": true
+    }
+  ]
+}

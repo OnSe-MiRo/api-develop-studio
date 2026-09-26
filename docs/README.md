@@ -11,6 +11,7 @@
 
 ## 기능 및 운영 문서
 
+- [부하테스트 결과 계약과 importer](load-test-results.md)
 - [Mock Server](mock-server.md)
 - [비동기 실행](async-runs.md)
 - [실행 보고서](run-reports.md)
