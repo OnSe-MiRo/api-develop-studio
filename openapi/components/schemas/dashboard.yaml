@@ -17,3 +17,21 @@ DashboardResponse:
       type: integer
     pageSize:
       type: integer
+ExecutionDetail:
+  type: object
+  required: [runId, status, targets, detail]
+  properties:
+    runId:
+      type: string
+    status:
+      type: string
+    targets:
+      type: array
+      items:
+        type: object
+    detail:
+      type: object
+      nullable: true
+    rerunRequest:
+      type: object
+      nullable: true

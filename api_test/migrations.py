@@ -168,11 +168,16 @@ def _create_load_test_schema(connection):
         connection.execute(statement)
 
 
+def _execution_details(connection):
+    connection.execute("ALTER TABLE executions ADD COLUMN detail_json TEXT")
+
+
 STUDIO_MIGRATIONS = (
     Migration(1, "collaboration schema", _create_collaboration_schema),
     Migration(2, "execution history schema", _create_execution_schema),
     Migration(3, "request context and projection recovery", _create_context_schema),
     Migration(4, "load test results", _create_load_test_schema),
+    Migration(5, "functional execution details", _execution_details),
 )
 
 

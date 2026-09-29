@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ExecutionDashboard } from './ExecutionDashboard.jsx'
 import { api } from '../../utils/studio.js'
 
-vi.mock('../../utils/studio.js', () => ({ api: vi.fn() }))
+vi.mock('../../utils/studio.js', () => ({ api: vi.fn(), asText: value => value == null ? '' : String(value) }))
 
 const props = {
   projects: [], projectDetails: {}, projectRef: '',

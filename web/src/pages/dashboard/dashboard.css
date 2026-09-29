@@ -53,3 +53,13 @@
   .dashboard-metrics { gap: 10px; }
   .dashboard-metrics strong { overflow-wrap: anywhere; font-size: 23px; }
 }
+
+.dashboard-search { display: flex; align-items: end; gap: 12px; }
+.dashboard-search .field { flex: 1; min-width: 0; }
+.execution-detail { overflow-wrap: anywhere; }
+.execution-metadata { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.execution-metadata dt { color: #64748b; font-size: 12px; }
+.execution-metadata dd { margin: 4px 0 0; font-size: 13px; }
+.execution-outcomes { padding-left: 20px; }
+.execution-outcomes li { margin: 12px 0; }
+.execution-outcomes p { margin: 5px 0; font-size: 12px; }

@@ -12,7 +12,7 @@ class RequestContext:
         self.transport.check_request_origin()
 
     async def call(self, implementation, arguments=(), *, upload=False):
-        if self.request.url.path in ("/api/runs", "/api/load-tests/runs") and self.request.method == "POST":
+        if self.request.method == "POST" and (self.request.url.path in ("/api/runs", "/api/load-tests/runs") or (self.request.url.path.startswith("/api/executions/") and self.request.url.path.endswith("/rerun"))):
             chunks, size = [], 0
             async for chunk in self.request.stream():
                 size += len(chunk)

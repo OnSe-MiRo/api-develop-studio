@@ -138,6 +138,17 @@ def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[st
     return sorted(projects), targets
 
 
+def execution_environments(projects, environment):
+    values = {}
+    for reference in projects:
+        try:
+            project = read_studio_document(PROJECT_ROOT, reference)
+            values[reference] = environment or project.get("default_environment") or ""
+        except (ApiError, OSError, ValueError, AttributeError):
+            values[reference] = environment or None
+    return values
+
+
 def ensure_run_ready():
     if postgres_enabled():
         store = collaboration_store()
@@ -151,6 +162,7 @@ def ensure_run_ready():
 def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str, object]:
     ensure_run_ready()
     projects, targets = execution_metadata(body)
+    environments = execution_environments(projects, body.get("environment"))
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
     started = perf_counter()
@@ -187,6 +199,8 @@ def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str,
                 exit_code=exit_code,
                 projects=projects,
                 targets=history_targets(targets, response.get('result')),
+                report=response.get('result'), environment=body.get('environment'),
+                project_environments=environments,
             )
         except (OSError, ValueError, *DATABASE_ERRORS):
             response["historyWarning"] = "실행 이력을 저장하지 못했습니다. 저장소 상태를 확인하세요."

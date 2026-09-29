@@ -47,14 +47,21 @@ class ExecutionHistory:
         exit_code: int | None,
         projects: list[str],
         targets: list[dict],
+        report: dict | None = None,
+        environment: str | None = None,
+        project_environments: dict | None = None,
     ) -> None:
         if status not in ALLOWED_STATUSES:
             raise ValueError("지원하지 않는 실행 상태입니다.")
+        from api_test.reports import execution_detail
+        detail = execution_detail(targets, report, environment, self.context.user_id)
+        detail["projectEnvironments"] = dict(project_environments or {})
+        projects = sorted(set(projects) | {o["project"] for o in detail["outcomes"] if isinstance(o.get("project"), str) and o["project"]})
         with self.connect() as connection:
             connection.execute(
                 """INSERT INTO executions
-                   (run_id, started_at, finished_at, duration_ms, status, exit_code, projects, targets, workspace_id, requested_by)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (run_id, started_at, finished_at, duration_ms, status, exit_code, projects, targets, workspace_id, requested_by, detail_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     run_id,
                     started_at,
@@ -64,7 +71,7 @@ class ExecutionHistory:
                     exit_code,
                     json.dumps(sorted(set(projects))),
                     json.dumps(targets, ensure_ascii=False),
-                    self.context.workspace_id, self.context.user_id,
+                    self.context.workspace_id, self.context.user_id, json.dumps(detail, ensure_ascii=False),
                 ),
             )
 
@@ -86,9 +93,12 @@ class ExecutionHistory:
         status: str = "",
         page: int = 1,
         now: datetime | None = None,
+        search: str = "",
     ) -> dict:
         if days not in (7, 30, 90) or status not in ("", *ALLOWED_STATUSES) or not 1 <= page <= 1_000_000:
             raise ValueError("대시보드 조회 조건이 올바르지 않습니다.")
+        if not isinstance(search, str) or len(search) > 200:
+            raise ValueError("검색어는 200자 이하로 입력하세요.")
         now = now or datetime.now(timezone.utc)
         start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
         where = "workspace_id = ? AND started_at >= ? AND started_at <= ?"
@@ -131,6 +141,15 @@ class ExecutionHistory:
             if status:
                 item_where += " AND status = ?"
                 item_parameters.append(status)
+            if search:
+                table = "json_each(executions.targets)"
+                reference = "json_extract(value, '$.reference')"
+                if getattr(connection, "dialect", "") == "postgresql":
+                    table = "jsonb_array_elements(executions.targets::jsonb)"
+                    reference = "value->>'reference'"
+                item_where += f" AND (LOWER(run_id) LIKE ? ESCAPE '!' OR EXISTS (SELECT 1 FROM {table} WHERE LOWER({reference}) LIKE ? ESCAPE '!'))"
+                pattern = "%" + search.lower().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
+                item_parameters.extend([pattern, pattern])
             total = connection.execute(
                 f"SELECT COUNT(*) FROM executions WHERE {item_where}", item_parameters
             ).fetchone()[0]
@@ -139,19 +158,7 @@ class ExecutionHistory:
                     ORDER BY started_at DESC, run_id DESC LIMIT 20 OFFSET ?""",
                 [*item_parameters, (page - 1) * 20],
             )
-            items = [
-                {
-                    "runId": row["run_id"],
-                    "startedAt": row["started_at"],
-                    "finishedAt": row["finished_at"],
-                    "durationMs": row["duration_ms"],
-                    "status": row["status"],
-                    "exitCode": row["exit_code"],
-                    "projects": json.loads(row["projects"]),
-                    "targets": json.loads(row["targets"]),
-                }
-                for row in rows
-            ]
+            items = [self._item(row) for row in rows]
 
         trend = []
         for offset in range(days):
@@ -165,3 +172,24 @@ class ExecutionHistory:
             "page": page,
             "pageSize": 20,
         }
+
+    @staticmethod
+    def _item(row):
+        detail = json.loads(row["detail_json"]) if row["detail_json"] else None
+        return {
+            "runId": row["run_id"], "startedAt": row["started_at"],
+            "finishedAt": row["finished_at"], "durationMs": row["duration_ms"],
+            "status": row["status"], "exitCode": row["exit_code"],
+            "projects": json.loads(row["projects"]),
+            "targets": [t for t in json.loads(row["targets"]) if t.get("kind")],
+            "actor": row["requested_by"],
+            **{key: (detail or {}).get(key) for key in ("environment", "appVersion", "commit")},
+        }
+
+    def detail(self, run_id):
+        with self.connect() as connection:
+            row = connection.execute("SELECT * FROM executions WHERE workspace_id = ? AND run_id = ?",
+                                     (self.context.workspace_id, run_id)).fetchone()
+        if row is None:
+            return None
+        return {**self._item(row), "detail": json.loads(row["detail_json"]) if row["detail_json"] else None}

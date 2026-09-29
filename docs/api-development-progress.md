@@ -1,5 +1,27 @@
 # API 개발 기능 진행 기록
 
+## OBS-1 develop 반영 (2026-09-29)
+
+- 시작: 사용자가 main 요청을 develop 병합으로 정정했다. main 병합·푸시는 실행되지 않았으며 기존 0e1d278을 유지한다.
+- 범위: OBS-1 관련 25개 파일을 feature/functional-test-history에서 커밋하여 develop에 병합하고 origin/develop에 게시한다. LT-1 미커밋 작업은 기존 폴더에 보존한다.
+- 검증: 원격 fetch 후 develop과 origin/develop 모두 4832615, main과 origin/main 모두 0e1d278 확인. 기존 전체 Python 350개·frontend 48개/build·생성 검사 기록과 병합 전 이력 17개 재검증 통과, diff 검사 통과.
+- 게시 절차: feature 커밋 → develop 병합 → origin/develop push → 로컬/원격 SHA 일치 확인. 브랜치 삭제 없음.
+
+## OBS-1 기능 테스트 실행 이력 완료 (2026-09-29)
+
+- 시작: `develop` 4832615 기준 `feature/functional-test-history` 전용 worktree에서 진행. LT-1 작업 폴더와 분리한다.
+- 범위: 영구 실행 상세, Run ID·대상 검색, 환경·버전·commit·서버 실행자, 실패 assertion index, 저장된 실패 대상 재실행.
+- 경계: 본문·헤더·인증정보·출력·assertion 기대값/실제값은 저장하지 않는다. 과거 metadata는 미수집으로 표시하며 preview는 재실행하지 않는다. 파이프라인은 setup/teardown을 보존하도록 전체 단위로 재실행한다.
+- 검증 예정: migration/SQLite/PostgreSQL·API·frontend 테스트, build와 실제 브라우저 확인. 커밋·푸시·병합은 별도다.
+
+
+- 의미 있는 변경: migration 5로 metadata allowlist 상세 저장, `/api/executions/{runId}` 조회·`/rerun` 비동기 제출, 목록 literal 검색과 상세 React UI 구현. 서버 소유 actor, 현재 저장본 재실행, preview·과거 상세 미수집·삭제 대상 차단.
+- 중간 검증: 이력 Python 15개·프런트엔드 전체 48개·build 통과. 전체 Python 1차는 sandbox ps/loopback/PostgreSQL 접근 제한으로 실패하여 허용 환경에서 재검증한다. OpenAPI 생성기의 추가 object import 문제는 소유 schema 수정 후 재생성으로 해결했다.
+
+- 최종 검증: 전체 Python 350개(skip 0, 126.392초) 통과. 중첩 파이프라인 이름 재실행 보완 후 이력 17개 추가 재검증 통과(최종 suite에는 새 회귀 1개 추가). PostgreSQL 영구 상세·literal 검색 포함. frontend 전체 48개(14파일), production build, OpenAPI 생성 `--check`, `git diff --check` 통과.
+- 실제 브라우저: 목록→실패 assertion 상세→재실행 202→새 Run ID 완료→검색→영구 상세 재조회 확인. 실제 subprocess는 테스트용 미등록 환경에 대해 configuration_error를 생성했고 새 이력으로 보존했다. 별도 서버 프로세스에서 동일 임시 DB 상세 복원 확인. 390px viewport에서 document 폭 375px으로 가로 넘침 없음, 최종 화면 콘솔 error 없음.
+- 완료: OBS-1 로컬 구현·검증 완료. 계약과 범위는 [기능 테스트 이력](functional-test-history.md)에 기록. 큐 진입 전 취소 ledger·CLI import·과거 revision replay·분산 worker는 범위 밖이다. 커밋·푸시·병합·삭제 없음.
+
 ## DB-2~DB-5 develop 통합·원격 반영 (2026-09-29)
 
 - 시작: 사용자 요청으로 `feature/load-test-operations`의 DB-2~DB-5 변경을 커밋하고 `origin/develop`에 통합·푸시한다. 선행 DB-2~DB-4 변경을 포함하며 브랜치는 삭제하지 않는다.
@@ -131,10 +153,10 @@
 ## 현재 요약
 
 - 최종 갱신일: 2026-09-29
-- 현재 단계: OBS-2/DB-1~DB-5 결과 대시보드 완료
+- 현재 단계: OBS-1 기능 테스트 실행 이력 로컬 완료; OBS-2/DB-1~DB-5 완료
 - 전체 상태: 진행
-- 반영 브랜치: `develop` (기능 커밋 `99b7821` 통합, 원격 게시 대상 `origin/develop`)
-- 다음 작업: LT-1 k6 실행 구조와 전용 fixture 준비.
+- 반영 브랜치: OBS-1은 `feature/functional-test-history` 전용 worktree의 미커밋 변경. OBS-2는 `develop` 4832615에 통합.
+- 다음 작업: OBS-1 변경 검토 및 별도 승인된 Git 반영. LT-1은 다른 작업 폴더에서 독립 진행하며 해당 폴더의 최신 기록을 따른다.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -157,7 +179,7 @@
 | TST-2 | 명세 변경과 케이스 동기화 | P1 | 완료 | field preview·선택 갱신·revision 충돌·assertion/secret 보존 |
 | TST-3 | 테스트 데이터 setup·teardown | P1 | 완료 | UUID/시각/정수·seed·run 변수 추출·정리 결과 분리 |
 | MOCK-1 | OpenAPI 기반 Mock Server | P1 | 완료 | Python 300개 skip 없이 통과, frontend 28개·build·생성 검사 및 실제 브라우저 명세 3종 검증 완료 |
-| OBS-1 | 기능 테스트 실행 이력 | P1 | 대기 | RUN-1 공통 metadata |
+| OBS-1 | 기능 테스트 실행 이력 | P1 | 완료 | 영구 상세·검색·환경·실패 재실행; 전체 Python 350개 + 최종 이력 17개·frontend 48개/build·실제 브라우저 |
 | OBS-2 | 부하테스트 결과 대시보드 | P1 | 완료 | DB-1~DB-5 완료; Python 341개·frontend 45개/build·양 backend HTTP·CLI 보존/복원. LT 실제 실행은 별도 대기 |
 | IOP-1 | cURL·Postman·HAR 연동 | P1 | 대기 | 지원 형식과 round trip 기준 |
 | COL-1 | Java WAS 로그인 BFF와 RBAC | P2 | 대기 | 사내 SSO·Spring Security 표준과 OIDC provider 확정 |
@@ -169,6 +191,12 @@
 OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 기록`](api-load-test-progress.md)에서도 관리한다. 두 문서의 상태가 다르면 실제 검증 기록이 최신인 문서를 확인하고 같은 작업 안에서 동기화한다.
 
 ## 직전 작업
+
+### OBS-1 기능 테스트 실행 이력 완료 (2026-09-29)
+
+- 상태: 완료 — `feature/functional-test-history`, 전용 worktree의 미커밋 변경.
+- 검증: 전체 Python 350개와 최종 경계 이력 17개, frontend 48개/build, 생성 검사, 실제 브라우저·모바일·새 프로세스 영구 조회.
+- 다음: 별도 Git 승인 후 반영. LT-1 작업 폴더와 변경을 혼합하지 않는다.
 
 ### DB-5 운영 보강 완료 (2026-09-29)
 
