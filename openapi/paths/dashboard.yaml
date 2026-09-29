@@ -61,3 +61,82 @@
       required: false
       schema:
         type: string
+    - name: search
+      in: query
+      schema:
+        type: string
+        maxLength: 200
+/api/executions/{runId}:
+  get:
+    operationId: get_execution
+    tags:
+    - dashboard
+    summary: get execution
+    parameters:
+    - name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/dashboard.yaml#/ExecutionDetail
+      '400':
+        description: Request rejected
+      '403':
+        description: Request rejected
+      '404':
+        description: Request rejected
+      '409':
+        description: Request rejected
+      '429':
+        description: Request rejected
+      '503':
+        description: Request rejected
+    x-studio-handler: dashboard.get_execution
+    x-studio-parts: '[context.request.path_params["runId"]]'
+    x-studio-route: /api/executions/{runId}
+    x-studio-upload: false
+    x-studio-alias: false
+/api/executions/{runId}/rerun:
+  post:
+    operationId: rerun_execution
+    tags:
+    - dashboard
+    summary: rerun execution
+    parameters:
+    - name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '202':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunJob
+      '413':
+        description: Request exceeds 1 MiB
+      '400':
+        description: Request rejected
+      '403':
+        description: Request rejected
+      '404':
+        description: Request rejected
+      '409':
+        description: Request rejected
+      '429':
+        description: Request rejected
+      '503':
+        description: Request rejected
+    x-studio-handler: dashboard.rerun_execution
+    x-studio-parts: '[context.request.path_params["runId"]]'
+    x-studio-route: /api/executions/{runId}/rerun
+    x-studio-upload: false
+    x-studio-alias: false

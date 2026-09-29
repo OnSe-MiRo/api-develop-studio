@@ -50,13 +50,13 @@ export function useRunJob(scope) {
     return () => { disposed = true; clearTimeout(timer); controller.abort() }
   }, [runId, key])
 
-  const start = async body => {
+  const start = async (body, endpoint = '/api/runs') => {
     if (submitting.current || busy) return
     submitting.current = true
     setBusy(true)
     const current = generation.current
     try {
-      const job = await api('/api/runs', { method: 'POST', body: JSON.stringify(body) })
+      const job = await api(endpoint, { method: 'POST', body: JSON.stringify(body) })
       remember(key, job.runId)
       if (generation.current === current) { setResult(job); setRunId(job.runId) }
     } catch (error) {

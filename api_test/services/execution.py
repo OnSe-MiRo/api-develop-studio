@@ -84,8 +84,8 @@ def run_tests(request, studio):
     return request.json_response(200, response)
 
 
-def submit_run(request, studio):
-    body = deepcopy(request.read_body())
+def submit_run(request, studio, body=None):
+    body = deepcopy(request.read_body() if body is None else body)
     validate_run(body, studio)
     projects, targets = studio.execution_metadata(body)
     # Include projects of pipeline cases, including pipelines without a project field.
@@ -109,7 +109,7 @@ def submit_run(request, studio):
     def task(job):
         studio.ensure_run_ready()
         with run_command(body, studio) as command:
-            return execute_job(job, command, studio, projects, targets)
+            return execute_job(job, command, studio, projects, targets, body.get("environment"))
     return request.json_response(202, manager.submit(task, owner=LOCAL_CONTEXT, projects=projects))
 
 

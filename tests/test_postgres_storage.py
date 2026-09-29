@@ -82,6 +82,23 @@ class PostgresStorageTest(unittest.TestCase):
         store.initialize(False)
         return store
 
+    def test_functional_history_details_search_and_restart(self):
+        history = ExecutionHistory(self.root / 'unused')
+        stamp = datetime.now(timezone.utc).isoformat()
+        history.record(run_id='functional_100%', started_at=stamp, finished_at=stamp,
+                       duration_ms=5, status='failed', exit_code=1, projects=['a.json'],
+                       targets=[{'kind': 'case', 'reference': 'tag/api/a.json'}], environment='qa',
+                       report={'targets': [{'target': 'tag/api/a.json', 'status': 'failed',
+                               'assertions': [{'index': 1, 'passed': False, 'actual': 'secret-marker'}]}]})
+        reopened = ExecutionHistory(self.root / 'unused')
+        result = reopened.detail('functional_100%')
+        self.assertEqual(result['environment'], 'qa')
+        self.assertEqual(result['detail']['outcomes'][0]['assertions'], [{'index': 1, 'passed': False}])
+        self.assertNotIn('secret-marker', json.dumps(result))
+        self.assertEqual(reopened.dashboard(search='100%')['total'], 1)
+        self.assertEqual(reopened.dashboard(search='missing')['total'], 0)
+        self.assertEqual(reopened.dashboard(project='a.json')['total'], 1)
+
     def test_load_results_postgres_import(self):
         fixtures = Path(__file__).parent / 'fixtures' / 'load-tests'
         result = import_k6_result(fixtures / 'smoke-summary.json', fixtures / 'smoke-raw.jsonl')
