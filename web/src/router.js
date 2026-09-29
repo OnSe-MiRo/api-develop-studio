@@ -15,6 +15,21 @@ export function parseLocation() {
   const rawProject = query.get('project') || ''
   const project = restoreJson(rawProject)
   const ref = query.get('ref') || ''
+  const loadFilters = {
+    project: query.get('project') || '',
+    scenario: query.get('scenario') || '',
+    status: query.get('status') || '',
+    from: query.get('from') || '',
+    to: query.get('to') || '',
+    cursor: query.get('cursor') || '',
+  }
+
+  if (pathname === '/load-tests/compare') {
+    return { tab: 'load-test-compare', activeProject: '', loadFilters, baselineId: query.get('baseline') || '', candidateId: query.get('candidate') || '' }
+  }
+  if (pathname === '/load-tests' || pathname === '/load-tests/results') {
+    return { tab: pathname === '/load-tests' ? 'load-tests' : 'load-test-result', activeProject: '', loadFilters, runId: query.get('run') || '' }
+  }
 
   if (pathname === '/api-call') {
     return { tab: 'api-call', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
@@ -64,7 +79,7 @@ export function parseLocation() {
   return { tab: 'api-call', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
 }
 
-export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference }) {
+export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, runId, baselineId, candidateId }) {
   const query = new URLSearchParams()
   const projectSlug = stripJson(activeProject)
   let pathname = '/api-call'
@@ -76,6 +91,20 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
     case 'dashboard':
       pathname = '/dashboard'
       if (projectSlug) query.set('project', projectSlug)
+      break
+    case 'load-tests':
+    case 'load-test-result':
+    case 'load-test-compare':
+      pathname = tab === 'load-tests' ? '/load-tests' : tab === 'load-test-compare' ? '/load-tests/compare' : '/load-tests/results'
+      if (tab === 'load-test-result' && runId) query.set('run', runId)
+      if (tab === 'load-test-compare') {
+        if (baselineId) query.set('baseline', baselineId)
+        if (candidateId) query.set('candidate', candidateId)
+      }
+      if (loadFilters.project) query.set('project', loadFilters.project)
+      for (const name of ['scenario', 'status', 'from', 'to', 'cursor']) {
+        if (loadFilters[name]) query.set(name, loadFilters[name])
+      }
       break
     case 'project-settings':
       if (projectSettingsReference) {

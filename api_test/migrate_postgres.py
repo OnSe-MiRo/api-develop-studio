@@ -16,7 +16,8 @@ from api_test.database import connect, database_url
 from api_test.migrations import migrate_studio_database, migrate_ownership_database
 
 STUDIO_TABLES = ("workspaces", "users", "memberships", "user_identities", "documents",
-                 "document_revisions", "audit_events", "executions")
+                 "document_revisions", "audit_events", "executions", "load_test_runs",
+                 "load_test_thresholds", "load_test_endpoint_metrics", "load_test_series")
 OWNERSHIP_TABLES = ("proofs", "grants")
 BOOTSTRAP_CONTEXT = {
     "workspaces": [("default", "Local workspace")],
@@ -50,7 +51,7 @@ def clear_bootstrap_context(target) -> None:
     context different from the fixed local bootstrap is a real destination and
     must retain the strict conflict check below.
     """
-    for table in ("user_identities", "documents", "document_revisions", "audit_events", "executions", *OWNERSHIP_TABLES):
+    for table in ("user_identities", "documents", "document_revisions", "audit_events", "executions", "load_test_runs", *OWNERSHIP_TABLES):
         if target.execute(f'SELECT 1 FROM "{table}" LIMIT 1').fetchone() is not None:
             return
     workspaces = [(row["id"], row["name"]) for row in target.execute("SELECT id, name FROM workspaces ORDER BY id")]

@@ -1,0 +1,77 @@
+{
+  "measuredAt": "2026-09-29",
+  "environment": "local macOS, loopback HTTP, isolated SQLite and PostgreSQL test databases",
+  "model": "30 days / 20000 metadata rows / one detailed run with 500 endpoints and 2500 series points",
+  "limitations": [
+    "Metadata scale and one detailed fixture; not 20000 fully materialized runs or raw artifact volume.",
+    "Local benchmark; not production, remote network, or LT-1 through LT-5."
+  ],
+  "results": [
+    {
+      "backend": "sqlite",
+      "modelDays": 30,
+      "metadataRuns": 20000,
+      "detailedRuns": 1,
+      "endpoints": 500,
+      "sourceSeriesPoints": 2500,
+      "requestsPerApi": 60,
+      "concurrency": 8,
+      "errors": 0,
+      "elapsedSeconds": 0.8,
+      "apis": {
+        "list": {
+          "p50Ms": 7.292,
+          "p95Ms": 10.524,
+          "maxMs": 11.418,
+          "maxBytes": 9044
+        },
+        "detail": {
+          "p50Ms": 42.598,
+          "p95Ms": 53.287,
+          "maxMs": 57.334,
+          "maxBytes": 89181
+        },
+        "series": {
+          "p50Ms": 56.807,
+          "p95Ms": 65.11,
+          "maxMs": 71.737,
+          "maxBytes": 38149
+        }
+      },
+      "passed": true
+    },
+    {
+      "backend": "postgresql",
+      "modelDays": 30,
+      "metadataRuns": 20000,
+      "detailedRuns": 1,
+      "endpoints": 500,
+      "sourceSeriesPoints": 2500,
+      "requestsPerApi": 60,
+      "concurrency": 8,
+      "errors": 0,
+      "elapsedSeconds": 0.532,
+      "apis": {
+        "list": {
+          "p50Ms": 18.386,
+          "p95Ms": 24.898,
+          "maxMs": 32.119,
+          "maxBytes": 9044
+        },
+        "detail": {
+          "p50Ms": 24.781,
+          "p95Ms": 31.595,
+          "maxMs": 37.583,
+          "maxBytes": 89181
+        },
+        "series": {
+          "p50Ms": 24.52,
+          "p95Ms": 32.338,
+          "maxMs": 35.187,
+          "maxBytes": 38149
+        }
+      },
+      "passed": true
+    }
+  ]
+}

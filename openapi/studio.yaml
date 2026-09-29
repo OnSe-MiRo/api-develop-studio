@@ -45,6 +45,14 @@ paths:
     $ref: ./paths/execution.yaml#/~1api~1runs~1{runId}~1cancel
   /api/dashboard:
     $ref: ./paths/dashboard.yaml#/~1api~1dashboard
+  /api/load-tests/runs:
+    $ref: ./paths/load-tests.yaml#/~1api~1load-tests~1runs
+  /api/load-tests/runs/{runId}:
+    $ref: ./paths/load-tests.yaml#/~1api~1load-tests~1runs~1{runId}
+  /api/load-tests/runs/{runId}/series:
+    $ref: ./paths/load-tests.yaml#/~1api~1load-tests~1runs~1{runId}~1series
+  /api/load-tests/compare:
+    $ref: ./paths/load-tests.yaml#/~1api~1load-tests~1compare
   /api/ownership:
     $ref: ./paths/ownership.yaml#/~1api~1ownership
   /api/ownership/{action}:

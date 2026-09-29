@@ -1,5 +1,60 @@
 # API 개발 기능 진행 기록
 
+## DB-2~DB-5 develop 통합·원격 반영 (2026-09-29)
+
+- 시작: 사용자 요청으로 `feature/load-test-operations`의 DB-2~DB-5 변경을 커밋하고 `origin/develop`에 통합·푸시한다. 선행 DB-2~DB-4 변경을 포함하며 브랜치는 삭제하지 않는다.
+- 원격 확인: `git fetch origin` 후 기능 브랜치 기준과 `origin/develop`이 모두 `6fe85d2`여서 추가 선행 변경은 없다.
+- 검증: 게시 전 전체 Python 341개(skip 0, 46.170초), 프런트엔드 45개, production build·생성 코드 검사가 통과했다. 스테이징 검사에서 새 생성 라우터의 EOF 빈 줄을 발견해 형식만 보완하고 재확인한다. 단계별 과거 미커밋 기록은 당시 상태로 보존하며 최신 반영 상태는 이 기록과 Git 이력을 따른다.
+
+## OBS-2 / DB-5 운영 보강 완료 (2026-09-29)
+
+- 시작: `feature/load-test-operations`에서 선행 DB-2~DB-4 미커밋 변경을 보존하고 SQL series 축소·응답 크기 예산·보존 preview/apply·격리 백업/복원·실제 HTTP API 성능 검증을 구현한다.
+- 범위: 30일 모델 20,000 run metadata, 상세 endpoint 500개/series 2,500 point 검증. 실제 LT-1~LT-5 부하 실행 및 커밋·푸시·병합·브랜치 삭제는 포함하지 않는다.
+- 운영 경계: 기존 DB 정리·백업은 owner/admin만 허용하고 복원은 명시한 trusted context로 새 격리 DB만 생성한다. 종료 시각 기준 기본 30일 보존, manifest 해시로 명시 적용하며 stale preview는 거부한다. DB 4개 테이블은 같은 transaction에서 정리하고 원본 artifact는 승인된 root에서 별도 preview/apply로 처리한다. 새 격리 DB에만 복원한다.
+- 의미 있는 변경: SQL window/group series 축소·consistent read snapshot·실제 UTF-8 1 MiB GET 응답 예산을 적용했다. 종료 시각 기준 30일 preview와 원본 DB identity/4개 테이블 hash를 검증하는 owner/admin 명시 apply, private quarantine 원본 파일 정리, checksum/schema/workspace를 검증하는 새 격리 DB portable 복원을 구현했다. 기존 4 MiB bundle과 12,000-point legacy 결과의 완전 백업을 유지한다.
+- 중간 검증: DB-5 운영 SQLite/ASGI 15개 통과(12.072초), 선행 저장소/importer 21개 독립 통과, 실제 SQLite/PostgreSQL HTTP 각 180건·동시성 8·오류 0. 목록 p95 10.524/24.898ms, 상세 p95 53.287/31.595ms, series p95 65.110/32.338ms로 조회 기준을 만족했다. 결과 범위·본문 크기는 [측정 JSON](load-test-db5-benchmark.json)에 기록한다.
+- CLI 검증: 격리 임시 DB에서 backup→DB/artifact preview→artifact apply→DB apply→새 DB restore를 실제 subprocess 명령으로 수행했다. run 1건·원본 파일 1개 정리, 복원 1건의 summary와 전체 series 원본 일치를 확인했다. 사용자 데이터는 사용하지 않았다.
+- 검증 실패/보완: 첫 운영 테스트 2건은 Unicode fixture가 예산보다 작았던 기대값과 기존 local bootstrap 범위를 잘못 단언한 테스트를 수정해 통과했다. OpenAPI 수정 직후 생성 `--check` 차이는 owning generator 재생성 후 통과했다. 첫 전체 Python 341개 중 PostgreSQL 복원 guard 2건에서 `%` SQL문자와 parameter 문법 충돌을 발견해 문자 없는 `LEFT(...,3)` 접두사 비교로 수정한 후 최종 전체 재검증에서 모두 통과했다.
+- 제한: 원본 파일 삭제는 POSIX no-follow descriptor에서만 제공하고 Windows는 명시적으로 거부한다. filesystem은 SQL과 별도이며 writer 중지·private quarantine 복구 절차가 필요하다. portable 백업은 정규화 결과 전용이며 전체 Studio/identity/artifact 백업은 별도다. 실제 LT-1~LT-5·production·전체 20,000건 상세 저장 용량 검증은 포함하지 않는다.
+- 최종 독립 검증: `.venv/bin/python -m unittest discover -s tests -v` 341개 전부 통과(skip 0, 46.820초). PostgreSQL SQL 축소·stale retention·4개 테이블 정리·portable 복원·다른 사용자 schema 보호 2개 통합 테스트를 포함한다. `web/` 프런트엔드 45개(13파일), `npm run build`, 생성 코드 `--check`, `git diff --check` 통과. DB-5 React 코드 변경은 없으며 표시 계약·수치·unknown/p95 의미를 유지한다.
+- 완료: DB-5 로컬 구현·독립 검증 완료. DB-1~DB-5/OBS-2 결과 대시보드 완료이며 실제 LT-1~LT-5는 대기다. `feature/load-test-operations`의 선행 DB-2~DB-4와 DB-5 모두 미커밋·미푸시·미병합이고 브랜치 삭제도 수행하지 않았다. 다음은 LT-1 k6 실행 구조·전용 fixture 준비다.
+
+
+
+## OBS-2 / DB-4 실행 비교 완료 (2026-09-29)
+
+- 시작: `feature/load-test-comparison`에서 DB-2·DB-3 선행 미커밋 변경을 보존하고 실행 비교를 구현한다.
+- 범위: 같은 프로젝트·시나리오 이전 실행 추천, 기준·비교 URL 상태, 지표와 endpoint 증감·악화순 정렬, 경과 시간 정렬 추이, 임시 기준·사용자 threshold, 조건 불일치 경고.
+- 검증 계획: golden 수치·0 기준·신규/제거 endpoint·추천 시간/tie·workspace 경계·추이 정렬·비동기 선택 경합 테스트, frontend build 및 주 에이전트 독립 브라우저 검증.
+- 제한: DB-5 보존·운영 성능·실제 LT 부하 실행과 Git 게시 작업은 범위 밖이다. 실제 브라우저 증거 확보 전 완료로 표시하지 않는다.
+- 의미 있는 변경: `/load-tests/compare` 기준·비교 URL과 이전 실행 추천을 추가했다. 저장소에서 candidate 이전 `(startedAt,id)` 순서·workspace 경계를 보장하고 summary 7개 지표, endpoint p95 악화순·%p/상대% 구분, 조건 경고·버전 참고정보, 경과 시간 정렬 6개 추이와 동등한 표를 구현했다.
+- 기준 처리: 허용치 0의 수치 악화 후보를 표시하되 0 기준·신규/제거 endpoint는 판정 불가다. 임시 기준은 Target/read/write/비예상 오류 등의 적용 의미가 현재 bundle에 없어 참고용·판정 불가로 표시하고 실제 사용자 threshold와 함께 제공한다.
+- 중간 검증: frontend 44개(13파일), production build, 저장소/API·importer Python 21개, 생성 코드 `--check` 통과. 새 테스트의 중복 text query와 synthetic endpoint 요청 합계·commit 형식 오류를 수정한 뒤 통과했다. 당시 독립 검증 대기로 완료 판정을 보류했으며, 최신 판정은 아래 DB-4 최종 검증·완료 기록을 따른다.
+
+
+## OBS-2 / DB-3 결과 대시보드 완료 (2026-09-28)
+
+- 시작: `feature/load-test-dashboard`에서 DB-2 결과 API를 사용하는 목록·상세 화면, URL 상태, 모바일·키보드 접근성을 구현한다. DB-4 비교 UI와 LT 실행, 커밋·푸시·병합은 범위 밖이다.
+- 예정 검증: React 화면 테스트, `web/` 빌드, 실제 브라우저의 필터·상세·차트·반응형 확인. 부하테스트 진행 기록과 같은 작업 안에서 상태를 동기화한다.
+- 의미 있는 변경: URL에 목록 필터·cursor와 선택 run을 보존하고, 결과 KPI·threshold·endpoint·환경 및 접근 가능한 SVG 추이+데이터 표를 구현했다. 축소 p95와 단순 변화 비교의 제한을 화면·사용 문서에 표시한다.
+- 중간 검증: 타깃 React/라우터 7개와 전체 프런트엔드 34개(11파일), `npm run build`, `git diff --check` 통과. 추가 테스트 첫 실행의 프로젝트 datalist label 접근성 실패는 `htmlFor`/`id`로 수정해 재실행 통과. 실제 브라우저 검증을 이어서 진행한다.
+- 브라우저 중간 검증: 임시 격리 데이터 26개로 20건→6건 keyset 페이지 이동과 데스크톱 가로 넘침 없음을 확인했다. 최근 변화 카드의 내부 단계명 안내를 사용자 문구로 수정했다. 상세·모바일·키보드 검증은 진행 중이다.
+- 접근성 보완·검증 (2026-09-28): 목록·상세 표 스크롤 영역을 이름 있는 region으로 만들고 `tabIndex=0`과 초점 표시를 추가했다. 상세 표 3종의 초점 접근성 테스트 포함 전체 프런트엔드 35개(11파일), build, diff check 통과. 최종 브라우저·Python 검증 후 완료 판정을 갱신한다.
+- 최종 검증: 전체 Python 322개(skip 0, 16.635초), 프런트엔드 35개(11파일), production build 통과. 실제 브라우저에서 cursor 20→6건, 프로젝트·상태·날짜 필터, reload·back URL 보존, 상세 KPI·실패 threshold·endpoint 수치와 미수집 지표, missing run 오류·재시도·목록 복귀를 확인했다. 390px 페이지 scrollWidth 375px, 표 초점·테두리·ArrowRight 가로 스크롤, 콘솔 오류·경고 없음도 확인했다.
+- 환경 참고: IAB 날짜 팝업 클릭 중 호스트 탭 종료는 새 탭의 native 날짜 입력·URL reload로 복구 검증했다. 제품 JavaScript 결함으로 분류하지 않았다.
+- 완료: DB-3 로컬 구현·검증 완료. `feature/load-test-dashboard`는 선행 DB-2 미커밋 변경을 그대로 보존하며 DB-3도 미커밋이다. 커밋·푸시·병합·삭제 없음. OBS-2 전체는 DB-4 비교·DB-5 운영 보강이 남아 진행이며 다음은 DB-4다.
+- 최종 정리: 주 에이전트 독립 프런트엔드 35개 재실행과 생성 코드 `--check` 통과. 사용자 데이터 없이 사용한 임시 QA 서버를 정상 종료하고 브라우저 탭·viewport를 정리했다.
+
+## OBS-2 / DB-2 저장소·조회 API 완료 (2026-09-27)
+
+- 시작: `feature/load-test-storage`에서 전용 migration, 원자적 결과 저장, 목록·상세·시계열·비교 API를 구현한다. DB-3 UI와 실제 LT 실행, 커밋·푸시·병합은 포함하지 않는다.
+- 예정 검증: Python API·저장소 테스트, PostgreSQL/SQLite migration, 2만 건 목록 성능·계획, 문서 쓰기 경합, 실제 HTTP, 생성 코드 검사와 diff 검사. 부하테스트 진행 기록과 동기화한다.
+- 의미 있는 변경: 결과 전용 schema v4, 정규화 bundle 원자적 저장, workspace 범위의 cursor 목록·상세·series·비교 API와 본문 상한을 OpenAPI 생성 경로에 연결했다. SQLite→PostgreSQL 이관 테이블도 확장했다.
+- 중간 검증: DB-2 저장소/API 7개 통과. ASGI POST/GET와 201·400·404·409·413, 2만 건 인덱스 계획·p95 단언, 문서 쓰기 경합을 확인했다. PostgreSQL·전체 회귀를 이어서 검증한다.
+- 최종 변경: SQLite/PostgreSQL schema v4와 이관, 정규화 bundle 원자적 저장·경계 검사, workspace 조회, cursor 목록·상세·축소 series·endpoint 포함 비교를 구현했다. DB-3 화면은 변경하지 않았다.
+- 검증: DB-2 SQLite/ASGI 9개, PostgreSQL 2개, migration 4개와 전체 Python 322개(skip 0) 통과. 실제 Uvicorn HTTP POST/GET·중복 409, 생성 코드 `--check`, diff check 통과. 2만 건 목록 인덱스 사용, 20회 로컬 측정 p95 0.6 ms. 초기 전체 3건은 오래된 migration 버전·OpenAPI 파일 목록 단언으로 확인 후 수정했다.
+- 완료: DB-2 로컬 코드·검증 완료. 다음은 DB-3 목록·상세 화면이며 커밋·푸시·병합은 하지 않았다.
+
 ## OBS-2 / DB-1 결과 계약·importer 완료 (2026-09-26)
 
 - 시작: MOCK-1이 `develop`에 통합된 상태에서 다음 명시 작업인 DB-1을 `feature/load-test-results`에서 시작.
@@ -63,13 +118,21 @@
 
 이 문서는 [`API 개발 기능 로드맵`](api-development-plan.md)의 구현 상태를 기록하는 단일 기준 문서다. 코드 변경과 진행 기록 갱신은 같은 작업 범위에서 수행한다.
 
+## DB-4 최종 검증·완료 (2026-09-29)
+
+- GPT-6 Sol high 구현 후 주 에이전트가 전체 Python 324개(skip 0, 17.295초), 프런트엔드 45개(13파일), production build, 생성 코드 `--check`, `git diff --check` 통과를 확인했다. 마지막 보완은 기록된 VU 0을 미수집으로 표시하지 않는 회귀 수정이다.
+- 실제 브라우저: candidate 직전 실행 추천(더 최신 실행 제외), p95 +38.5 ms/+20%, 오류율 +25 %p/+100%, POST +39 ms → GET +29 ms 악화순, 0·5초 추이 정렬, 조건 경고와 사용자 threshold를 확인했다. 목록→상세→비교, 새로고침·뒤로 가기, 시나리오 불일치 거부와 추천 없음 안내도 통과했다.
+- 390px 화면에서 페이지 너비 375px, 표의 키보드 초점과 방향키 스크롤 0→40px, 콘솔 오류·경고 없음을 확인했다. 임시 검증 서버 정상 종료, 탭 정리와 viewport 복원을 완료했다.
+- 판정: DB-4 로컬 구현·검증 완료. 표시하는 회귀 후보는 수치 악화이며 통계적 유의성 판정이 아니다. 적용 의미가 없는 임시 SLO는 참고용·판정 불가로 유지한다.
+- Git: `feature/load-test-comparison`에 DB-2·DB-3 선행 변경을 보존한 미커밋 상태. 커밋·푸시·병합 없음. 다음 DB-5 운영 보강과 실제 LT 실행은 후속 범위다.
+
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-26
-- 현재 단계: OBS-2의 DB-1 결과 계약·importer 완료
+- 최종 갱신일: 2026-09-29
+- 현재 단계: OBS-2/DB-1~DB-5 결과 대시보드 완료
 - 전체 상태: 진행
-- 반영 브랜치: `feature/load-test-results` (기반 `develop` `d77e0d1`)
-- 다음 작업: DB-2 전용 migration·repository와 atomic import·조회 API 설계 및 구현.
+- 반영 브랜치: `feature/load-test-operations` (기반 `develop`, DB-2~DB-4 선행 미커밋 변경 보존, 미커밋·미병합)
+- 다음 작업: LT-1 k6 실행 구조와 전용 fixture 준비.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -93,7 +156,7 @@
 | TST-3 | 테스트 데이터 setup·teardown | P1 | 완료 | UUID/시각/정수·seed·run 변수 추출·정리 결과 분리 |
 | MOCK-1 | OpenAPI 기반 Mock Server | P1 | 완료 | Python 300개 skip 없이 통과, frontend 28개·build·생성 검사 및 실제 브라우저 명세 3종 검증 완료 |
 | OBS-1 | 기능 테스트 실행 이력 | P1 | 대기 | RUN-1 공통 metadata |
-| OBS-2 | 부하테스트 결과 대시보드 | P1 | 진행 | DB-1 완료. 다음은 DB-2 저장소·조회 API |
+| OBS-2 | 부하테스트 결과 대시보드 | P1 | 완료 | DB-1~DB-5 완료; Python 341개·frontend 45개/build·양 backend HTTP·CLI 보존/복원. LT 실제 실행은 별도 대기 |
 | IOP-1 | cURL·Postman·HAR 연동 | P1 | 대기 | 지원 형식과 round trip 기준 |
 | COL-1 | Java WAS 로그인 BFF와 RBAC | P2 | 대기 | 사내 SSO·Spring Security 표준과 OIDC provider 확정 |
 | COL-2 | Workspace 데이터 격리 | P2 | 대기 | COL-1 전에 migration과 권한 query 경계 구현 |
@@ -104,6 +167,21 @@
 OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 기록`](api-load-test-progress.md)에서도 관리한다. 두 문서의 상태가 다르면 실제 검증 기록이 최신인 문서를 확인하고 같은 작업 안에서 동기화한다.
 
 ## 직전 작업
+
+### DB-5 운영 보강 완료 (2026-09-29)
+
+- 작업 ID: OBS-2 / DB-5
+- 상태: 완료 — `feature/load-test-operations`, 선행 DB-2~DB-4 미커밋 변경 보존, 커밋·푸시·병합·삭제 없음.
+- 검증: Python 341개(skip 0), frontend 45개/build·생성·diff, 격리 CLI 정리/복원, SQLite/PostgreSQL 실제 HTTP 각 180건·동시성 8·오류 0 및 조회 SLO 통과.
+- 경계: metadata 20,000 + 상세 1건(500 endpoint/2,500 series)의 로컬 모델. 원본 파일 정리는 POSIX 전용이며 DB 삭제와 별도, portable 백업은 정규화 결과 전용.
+- 다음: 실제 LT-1 k6 실행 구조와 전용 fixture 준비. OBS-2 대시보드 완료가 LT 실행 완료를 의미하지 않는다.
+
+### DB-3 목록·상세 대시보드 완료 (2026-09-28)
+
+- 작업 ID: OBS-2 / DB-3
+- 상태: 완료 — `feature/load-test-dashboard`, 선행 DB-2 미커밋 변경 보존, 커밋·푸시·병합 없음.
+- 검증: Python 322개(skip 0), 프런트엔드 35개·build와 실제 브라우저 목록·상세·URL·390px·키보드·오류 복구 확인 통과.
+- 다음: DB-4 실행 비교. OBS-2 전체·실제 LT 실행 완료를 의미하지 않는다.
 
 ### MOCK-1 독립 검증 결과 (2026-09-21)
 
@@ -211,6 +289,19 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 
 | 일시 | 작업 ID | 명령 또는 확인 방법 | 결과 | 비고 |
 | --- | --- | --- | --- | --- |
+| 2026-09-29 | DB-5 | `.venv/bin/python -m unittest discover -s tests -v` (수정 후 독립 재실행) | 통과 | 341개, skip 0, 46.820초; PG guard·복원·정리 포함 |
+| 2026-09-29 | DB-5 | `web/`의 `npm test`, `npm run build`, generator `--check`, `git diff --check` | 통과 | frontend 45개/13파일; 생성 최신; React DB-5 수정 없음 |
+| 2026-09-29 | DB-5 | 실제 Uvicorn HTTP `.venv/bin/python -m api_test.load_test_benchmark --requests 60 --concurrency 8` 및 `--postgres` | 통과 | 각 180건/오류 0; SQLite 목록/상세 p95 10.524/53.287ms, PG 24.898/31.595ms; metadata 20,000 + 상세 1건(500 endpoint/2,500 series) |
+| 2026-09-29 | DB-5 | 격리 CLI backup→DB/artifact preview→artifact apply→DB apply→new DB restore | 통과 | run 1건/파일 1개; summary·전체 series 복원 원본 일치; 사용자 데이터 비사용 |
+| 2026-09-29 | DB-5 | 첫 전체 Python 341개 검증 | 실패 후 해소 | PostgreSQL 2건 guard SQL `%` literal/parameter 충돌; `LEFT(...,3)` 접두사 비교로 수정 후 전체 통과 |
+| 2026-09-29 | DB-5 | 운영 SQLite/ASGI 15개, wrong-source DB·stale·rollback·symlink·quarantine 교체·backup checksum·12,000-point legacy·UTF-8 예산 | 통과 | 12.072초; 명시 적용과 새 격리 복원 경계 확인 |
+| 2026-09-29 | DB-4 | 최종 증거 확인·진행 기록 동기화 | 통과 | Python 324개, 프런트엔드 45개, build·생성·diff 검사 및 실제 브라우저 비교 수치·URL·390px·키보드 검증 완료 |
+| 2026-09-28 | DB-3 | 주 에이전트 독립 프런트엔드·생성 코드·diff 검사 | 통과 | 프런트엔드 35개·생성 코드 최신, 임시 QA 서버·브라우저 정리 완료 |
+| 2026-09-28 | DB-3 | `.venv/bin/python -m unittest discover -s tests -v` | 통과 | 322개, skip 0, 16.635초 |
+| 2026-09-28 | DB-3 | `cd web && npm test`, `npm run build`, `git diff --check` | 통과 | 35개(11파일), 표 키보드 초점 접근성 포함 |
+| 2026-09-28 | DB-3 | 실제 브라우저 목록·상세·URL·390px·오류·키보드 | 통과 | 26개 격리 fixture, cursor·필터·reload·back·지표 수치, 표 가로 스크롤 0→40px, 콘솔 오류·경고 없음 |
+| 2026-09-28 | DB-3 | IAB 날짜 팝업 호스트 탭 종료 후 native 날짜 입력·reload | 복구 검증 통과 | 도구 환경 문제. 새 탭 native 입력과 필터 URL 보존 확인 |
+| 2026-09-27 | DB-3 | 추가 프런트엔드 테스트 첫 실행 | 실패 후 해소 | datalist 내부 프로젝트 label 연계 실패. `htmlFor`/`id` 수정 후 전체 통과 |
 | 2026-09-17 | OAS-2 | Python 259개, frontend 22개, build, 생성 --check, diff check | 통과 (Python 42 skip) | 구조·중첩/재귀 참조·방향별 diff·응답·revision workspace 경계 검증 |
 | 2026-09-17 | OAS-2 | CLI 실제 develop 비교 및 breaking/승인 fixture | 통과 | 실제 명세 호환, breaking exit 1, 승인 exit 0, stale 승인 exit 2 |
 | 2026-09-17 | OAS-2 | 실제 HTTP·브라우저 8883 | 통과 | lint·revision 필수 parameter 변경 차단·실제 응답 schema 통과/실패 |
@@ -259,6 +350,19 @@ OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 �
 ## 변경 이력
 
 최신 항목을 위에 추가하고 작업 ID, 변경 파일, 검증 결과, 알려진 제한과 다음 작업을 기록한다.
+
+### 2026-09-29 — DB-5 운영 보강 완료
+
+- 변경: SQL bounded series와 GET 1 MiB 본문 예산, source/workspace/hash에 묶인 retention manifest, 승인 root의 private quarantine artifact 정리, 결과 JSONL 백업·새 격리 SQLite/빈 PostgreSQL 복원, 실제 HTTP benchmark를 추가했다. 전체 결과 요약·endpoint·원본 series는 보존한다.
+- 검증: Python 341개(skip 0, 46.820초), frontend 45개/build·생성·diff, 격리 CLI 및 SQLite/PostgreSQL HTTP 각 180건·오류 0 통과. 첫 전체 PG guard 2건 실패는 접두사 SQL 수정 후 재검증에서 해소했다. [측정 결과](load-test-db5-benchmark.json).
+- 범위·다음: 로컬 metadata 20,000 + 상세 1건의 모델, POSIX 원본 정리·정규화 결과 전용 백업. DB-1~DB-5 완료, 실제 LT-1~LT-5 대기. 다음은 LT-1 fixture/k6 실행 구조다. `feature/load-test-operations` 미커밋·미푸시·미병합.
+
+### 2026-09-28 — OBS-2 / DB-3 결과 대시보드 완료
+
+- 변경: React 라우터·상단 메뉴·`pages/load-tests/`, URL 필터·cursor·상세 run, KPI·threshold·endpoint·환경·경고, SVG 추이와 동등한 데이터 표, 모바일·키보드 초점과 상태 화면을 구현했다.
+- 검증: Python 322개(skip 0), 프런트엔드 35개·build, 실제 브라우저 필터·페이지·수치·URL·오류 복구·390px·표 키보드 스크롤 확인 통과.
+- Git·제한: `feature/load-test-dashboard`에 DB-2 선행 미커밋 변경 보존, 이번 변경 미커밋. DB-4 비교·회귀 판정과 DB-5 운영 보강·LT 실제 실행은 후속 범위다.
+- 다음: DB-4 실행 비교와 regression 판정.
 
 ### 2026-09-17 — OAS-2 계약 검사 완료
 
