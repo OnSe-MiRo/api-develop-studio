@@ -17,13 +17,13 @@ class MigrationRunnerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, closing(self.connect(directory)) as connection:
             version = migrate_studio_database(connection)
 
-            self.assertEqual(version, 3)
+            self.assertEqual(version, 4)
             self.assertEqual(
                 [row[0] for row in connection.execute("SELECT version FROM schema_migrations ORDER BY version")],
-                [1, 2, 3],
+                [1, 2, 3, 4],
             )
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            self.assertTrue({"documents", "document_revisions", "executions"}.issubset(tables))
+            self.assertTrue({"documents", "document_revisions", "executions", "load_test_runs", "load_test_series"}.issubset(tables))
 
     def test_existing_unversioned_database_is_adopted_without_data_loss(self) -> None:
         with tempfile.TemporaryDirectory() as directory, closing(self.connect(directory)) as connection:
@@ -41,7 +41,7 @@ class MigrationRunnerTest(unittest.TestCase):
             migrate_studio_database(connection)
 
             self.assertEqual(connection.execute("SELECT run_id FROM executions").fetchone()[0], "run-1")
-            self.assertEqual(connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0], 3)
+            self.assertEqual(connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0], 4)
 
     def test_failure_rolls_back_schema_and_version_rows(self) -> None:
         def first(connection: sqlite3.Connection) -> None:

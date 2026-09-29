@@ -137,10 +137,42 @@ def _create_context_schema(connection):
 
 
 
+def _create_load_test_schema(connection):
+    for statement in (
+        """CREATE TABLE load_test_runs (
+            id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+            schema_version INTEGER NOT NULL, project_reference TEXT NOT NULL,
+            scenario TEXT NOT NULL, status TEXT NOT NULL, started_at TEXT NOT NULL,
+            ended_at TEXT NOT NULL, app_version TEXT, commit_sha TEXT,
+            environment_json TEXT NOT NULL, summary_json TEXT NOT NULL,
+            warnings_json TEXT NOT NULL, created_by TEXT NOT NULL REFERENCES users(id))""",
+        """CREATE TABLE load_test_thresholds (
+            run_id TEXT NOT NULL REFERENCES load_test_runs(id), ordinal INTEGER NOT NULL,
+            metric TEXT NOT NULL, condition TEXT NOT NULL, actual_value REAL,
+            passed INTEGER NOT NULL, PRIMARY KEY(run_id, ordinal))""",
+        """CREATE TABLE load_test_endpoint_metrics (
+            run_id TEXT NOT NULL REFERENCES load_test_runs(id), ordinal INTEGER NOT NULL,
+            method TEXT NOT NULL, endpoint TEXT NOT NULL, request_count BIGINT NOT NULL,
+            error_rate REAL NOT NULL, latency_json TEXT NOT NULL,
+            PRIMARY KEY(run_id, ordinal))""",
+        """CREATE TABLE load_test_series (
+            run_id TEXT NOT NULL REFERENCES load_test_runs(id), bucket_at TEXT NOT NULL,
+            rps REAL NOT NULL, active_vus BIGINT NOT NULL, error_rate REAL NOT NULL,
+            p95_ms REAL, cpu_percent REAL, memory_mb REAL, child_processes BIGINT,
+            PRIMARY KEY(run_id, bucket_at))""",
+        "CREATE INDEX load_test_runs_project_started ON load_test_runs(workspace_id, project_reference, started_at DESC, id DESC)",
+        "CREATE INDEX load_test_runs_started ON load_test_runs(workspace_id, started_at DESC, id DESC)",
+        "CREATE INDEX load_test_runs_scenario_started ON load_test_runs(workspace_id, scenario, started_at DESC, id DESC)",
+        "CREATE INDEX load_test_runs_status_started ON load_test_runs(workspace_id, status, started_at DESC, id DESC)",
+    ):
+        connection.execute(statement)
+
+
 STUDIO_MIGRATIONS = (
     Migration(1, "collaboration schema", _create_collaboration_schema),
     Migration(2, "execution history schema", _create_execution_schema),
     Migration(3, "request context and projection recovery", _create_context_schema),
+    Migration(4, "load test results", _create_load_test_schema),
 )
 
 

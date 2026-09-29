@@ -1,5 +1,63 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## DB-2~DB-5 develop 통합·원격 반영 (2026-09-29)
+
+- 시작: 사용자 요청으로 `feature/load-test-operations`의 DB-2~DB-5 변경을 커밋하고 `origin/develop`에 통합·푸시한다. 선행 DB-2~DB-4 변경을 포함하며 브랜치는 삭제하지 않는다.
+- 원격 확인: `git fetch origin` 후 기능 브랜치 기준과 `origin/develop`이 모두 `6fe85d2`여서 추가 선행 변경은 없다.
+- 검증: 게시 전 전체 Python 341개(skip 0, 46.170초), 프런트엔드 45개, production build·생성 코드 검사가 통과했다. 새 생성 라우터의 EOF 빈 줄을 형식만 보완한 뒤 생성 정합성·스테이징 공백 검사도 통과했다.
+- 반영: 기능 커밋 `99b7821`을 `origin/feature/load-test-operations`에 푸시하고 로컬·원격 일치를 확인했다. 해당 커밋을 충돌 없이 `develop`에 통합하며, 이 기록을 포함한 merge commit의 게시 대상은 `origin/develop`이다. 병합 과정의 제품 코드는 검증된 기능 커밋과 동일하고 두 진행 문서만 통합 상태로 갱신했다.
+- 상태 기준: 아래 단계별 미커밋 기록은 당시 이력이다. 현재 통합 브랜치는 `develop`이며 최종 merge commit과 원격 일치는 Git 이력·refs에서 확인한다. 기능 브랜치와 기존 브랜치는 삭제하지 않는다.
+
+## DB-5 운영 보강 완료 (2026-09-29)
+
+- 시작: `feature/load-test-operations`에서 선행 DB-2~DB-4 미커밋 변경을 보존하고 SQL series 축소·응답 크기 예산·보존 preview/apply·격리 백업/복원·실제 HTTP API 성능 검증을 구현한다.
+- 범위: 30일 모델 20,000 run metadata, 상세 endpoint 500개/series 2,500 point 검증. 실제 LT-1~LT-5 부하 실행 및 커밋·푸시·병합·브랜치 삭제는 포함하지 않는다.
+- 운영 경계: 기존 DB 정리·백업은 owner/admin만 허용하고 복원은 명시한 trusted context로 새 격리 DB만 생성한다. 종료 시각 기준 기본 30일 보존, manifest 해시로 명시 적용하며 stale preview는 거부한다. DB 4개 테이블은 같은 transaction에서 정리하고 원본 artifact는 승인된 root에서 별도 preview/apply로 처리한다. 새 격리 DB에만 복원한다.
+- 의미 있는 변경: SQL window/group series 축소·consistent read snapshot·실제 UTF-8 1 MiB GET 응답 예산을 적용했다. 종료 시각 기준 30일 preview와 원본 DB identity/4개 테이블 hash를 검증하는 owner/admin 명시 apply, private quarantine 원본 파일 정리, checksum/schema/workspace를 검증하는 새 격리 DB portable 복원을 구현했다. 기존 4 MiB bundle과 12,000-point legacy 결과의 완전 백업을 유지한다.
+- 중간 검증: DB-5 운영 SQLite/ASGI 15개 통과(12.072초), 선행 저장소/importer 21개 독립 통과, 실제 SQLite/PostgreSQL HTTP 각 180건·동시성 8·오류 0. 목록 p95 10.524/24.898ms, 상세 p95 53.287/31.595ms, series p95 65.110/32.338ms로 조회 기준을 만족했다. 결과 범위·본문 크기는 [측정 JSON](load-test-db5-benchmark.json)에 기록한다.
+- CLI 검증: 격리 임시 DB에서 backup→DB/artifact preview→artifact apply→DB apply→새 DB restore를 실제 subprocess 명령으로 수행했다. run 1건·원본 파일 1개 정리, 복원 1건의 summary와 전체 series 원본 일치를 확인했다. 사용자 데이터는 사용하지 않았다.
+- 검증 실패/보완: 첫 운영 테스트 2건은 Unicode fixture가 예산보다 작았던 기대값과 기존 local bootstrap 범위를 잘못 단언한 테스트를 수정해 통과했다. OpenAPI 수정 직후 생성 `--check` 차이는 owning generator 재생성 후 통과했다. 첫 전체 Python 341개 중 PostgreSQL 복원 guard 2건에서 `%` SQL문자와 parameter 문법 충돌을 발견해 문자 없는 `LEFT(...,3)` 접두사 비교로 수정한 후 최종 전체 재검증에서 모두 통과했다.
+- 제한: 원본 파일 삭제는 POSIX no-follow descriptor에서만 제공하고 Windows는 명시적으로 거부한다. filesystem은 SQL과 별도이며 writer 중지·private quarantine 복구 절차가 필요하다. portable 백업은 정규화 결과 전용이며 전체 Studio/identity/artifact 백업은 별도다. 실제 LT-1~LT-5·production·전체 20,000건 상세 저장 용량 검증은 포함하지 않는다.
+- 최종 독립 검증: `.venv/bin/python -m unittest discover -s tests -v` 341개 전부 통과(skip 0, 46.820초). PostgreSQL SQL 축소·stale retention·4개 테이블 정리·portable 복원·다른 사용자 schema 보호 2개 통합 테스트를 포함한다. `web/` 프런트엔드 45개(13파일), `npm run build`, 생성 코드 `--check`, `git diff --check` 통과. DB-5 React 코드 변경은 없으며 표시 계약·수치·unknown/p95 의미를 유지한다.
+- 완료: DB-5 로컬 구현·독립 검증 완료. DB-1~DB-5/OBS-2 결과 대시보드 완료이며 실제 LT-1~LT-5는 대기다. `feature/load-test-operations`의 선행 DB-2~DB-4와 DB-5 모두 미커밋·미푸시·미병합이고 브랜치 삭제도 수행하지 않았다. 다음은 LT-1 k6 실행 구조·전용 fixture 준비다.
+
+
+
+## DB-4 실행 비교 완료 (2026-09-29)
+
+- 시작: `feature/load-test-comparison`에서 DB-2·DB-3 선행 미커밋 변경을 보존하고 실행 비교를 구현한다.
+- 범위: 같은 프로젝트·시나리오 이전 실행 추천, 기준·비교 URL 상태, 지표와 endpoint 증감·악화순 정렬, 경과 시간 정렬 추이, 임시 기준·사용자 threshold, 조건 불일치 경고.
+- 검증 계획: golden 수치·0 기준·신규/제거 endpoint·추천 시간/tie·workspace 경계·추이 정렬·비동기 선택 경합 테스트, frontend build 및 주 에이전트 독립 브라우저 검증.
+- 제한: DB-5 보존·운영 성능·실제 LT 부하 실행과 Git 게시 작업은 범위 밖이다. 실제 브라우저 증거 확보 전 완료로 표시하지 않는다.
+- 의미 있는 변경: `/load-tests/compare` 기준·비교 URL과 이전 실행 추천을 추가했다. 저장소에서 candidate 이전 `(startedAt,id)` 순서·workspace 경계를 보장하고 summary 7개 지표, endpoint p95 악화순·%p/상대% 구분, 조건 경고·버전 참고정보, 경과 시간 정렬 6개 추이와 동등한 표를 구현했다.
+- 기준 처리: 허용치 0의 수치 악화 후보를 표시하되 0 기준·신규/제거 endpoint는 판정 불가다. 임시 기준은 Target/read/write/비예상 오류 등의 적용 의미가 현재 bundle에 없어 참고용·판정 불가로 표시하고 실제 사용자 threshold와 함께 제공한다.
+- 중간 검증: frontend 44개(13파일), production build, 저장소/API·importer Python 21개, 생성 코드 `--check` 통과. 새 테스트의 중복 text query와 synthetic endpoint 요청 합계·commit 형식 오류를 수정한 뒤 통과했다. 당시 독립 검증 대기로 완료 판정을 보류했으며, 최신 판정은 아래 DB-4 최종 검증·완료 기록을 따른다.
+
+
+## DB-3 결과 목록·상세 대시보드 완료 (2026-09-28)
+
+- 시작: `feature/load-test-dashboard`에서 `/load-tests` 목록과 `/load-tests/results?run=...` 상세 화면을 구현한다. DB-2 결과 API를 사용하며 DB-4 비교 UI와 실제 LT 실행, 커밋·푸시·병합은 범위 밖이다.
+- 예정 파일·검증: React 라우터·상단 메뉴·전용 화면과 스타일·테스트, 결과 사용 문서. URL 필터·cursor, KPI·표·접근 가능한 추이 차트, 로딩·빈 결과·오류·부분 데이터·모바일 상태를 검증하고 `npm test`, `npm run build`, 실제 브라우저 확인을 수행한다.
+- 의미 있는 변경: 목록 필터·cursor와 상세 run을 URL에 보존하고, 요약 KPI·threshold/endpoint/환경 표, 6개 지표 SVG 추이와 동등한 데이터 표, 경고 및 부분 오류 상태를 구현했다. 최신 같은 시나리오 단순 차이에 비교 조건 미검증 주의를 표시하고 축소 p95 상한 규칙을 설명한다.
+- 중간 검증: 타깃 React/라우터 7개, 전체 프런트엔드 34개(11파일), `npm run build`, `git diff --check` 통과. 추가 테스트 첫 실행에서 프로젝트 datalist 내부 label 연결 실패 1건을 발견해 `htmlFor`/`id`로 수정하고 재실행에서 모두 통과했다. 실제 브라우저 검증을 이어서 진행한다.
+- 브라우저 중간 검증: 임시 격리 데이터 26개 실행에서 첫 페이지 20건→다음 페이지 6건 이동과 데스크톱 가로 넘침 없음을 확인했다. 목록의 최근 변화 안내에서 내부 단계명을 제거하고 사용자 판단 안내로 바꿨다. 상세·모바일·키보드 검증은 계속 진행한다.
+- 접근성 보완·검증 (2026-09-28): 목록·시간 추이·threshold·endpoint 표의 가로 스크롤 영역에 `tabIndex=0`, 이름 있는 region과 초점 표시를 추가했다. 상세 표 3종의 키보드 초점을 확인하는 테스트를 포함해 전체 프런트엔드 35개(11파일), build, diff check 통과. 최종 브라우저·전체 Python 검증은 주 에이전트가 진행한다.
+- 최종 검증: 전체 Python 322개(skip 0, 16.635초), 프런트엔드 35개(11파일), production build 통과. 실제 브라우저에서 20건→6건 cursor 이동, 프로젝트·상태·UTC 날짜 필터, 상세 새로고침·뒤로 가기의 URL 보존, KPI·실패 threshold·endpoint 값, CPU·메모리 미수집 표시, 존재하지 않는 실행의 오류·재시도·목록 복귀를 확인했다. 콘솔 오류·경고 없음.
+- 모바일·키보드: 390px 화면의 페이지 scrollWidth 375px로 가로 넘침 없음. 시간 추이 표의 키보드 초점·테두리와 ArrowRight 스크롤 0→40px, endpoint·목록 스크롤 영역의 초점을 실제 브라우저에서 확인했다.
+- 환경 참고: IAB 날짜 달력 팝업 클릭 중 호스트 탭이 종료되어 새 탭에서 native 날짜 입력·URL 새로고침으로 복구 검증했다. 애플리케이션 JavaScript 오류는 없었으며 제품 결함으로 분류하지 않았다.
+- 완료: DB-3 로컬 구현·검증 완료. `feature/load-test-dashboard`에 선행 DB-2 미커밋 변경을 그대로 이어받았고 DB-3 변경도 미커밋이다. 커밋·푸시·병합·삭제는 수행하지 않았다. 다음은 DB-4 실행 비교이며 DB-5 운영 보강과 LT 실제 부하 실행은 후속 범위다.
+- 최종 정리: 주 에이전트 독립 재실행의 프런트엔드 35개와 생성 코드 `--check`가 통과했다. 임시 QA 서버를 정상 종료하고 브라우저 QA 탭·viewport를 정리했다. 사용자 데이터는 사용하지 않았다.
+
+## DB-2 저장소·조회 API 완료 (2026-09-27)
+
+- 시작: `feature/load-test-storage`에서 전용 SQLite/PostgreSQL migration, 원자적 bundle 저장, 목록·상세·시계열·비교 API를 구현한다. DB-3 화면과 LT 실행, 커밋·푸시·병합은 범위 밖이다.
+- 예정 파일: `api_test/migrations.py`, `api_test/load_test_store.py`, API 라우트·계약, PostgreSQL 이관, 관련 테스트와 사용 문서. 2만 건 목록 조회 계획·시간 및 SQLite 문서 쓰기 경합을 검증한다.
+- 의미 있는 변경: schema v4에 결과 전용 4개 테이블과 목록·series 인덱스를 추가하고, 허용 필드만 저장하는 repository와 keyset cursor 목록·상세·시계열 축소·비교 API를 OpenAPI 생성 라우트에 연결했다. 4 MiB 전송 상한과 workspace 권한 경계를 적용했다.
+- 중간 검증: 고정 Smoke bundle 직접 저장·조회와 ASGI POST/GET 정상 흐름, DB-2 저장소/API 테스트 7개 통과. 2만 건 목록은 지정 인덱스 계획을 사용했고 p95 500 ms 단언을 통과했다. PostgreSQL·전체 회귀는 이어서 확인한다.
+- 최종 변경: PostgreSQL 이관에 결과 4개 테이블을 포함하고, 중복 동시 등록·자식 INSERT 실패 원자 rollback·workspace 분리·문서 쓰기 경합을 테스트했다. 비교 결과에는 endpoint별 p95·오류율 변화와 p95 악화순 목록이 포함된다. `docs/load-test-results.md`에 업로드·조회·축소 규칙을 기록했다.
+- 검증: DB-2 SQLite/ASGI 9개, PostgreSQL 저장·SQLite snapshot 이관 2개, migration 4개, 전체 Python 322개(skip 0) 통과. 실제 Uvicorn loopback POST→목록→상세→series·중복 409 검증, OpenAPI 생성 `--check`와 `git diff --check` 통과. 2만 run metadata의 SQLite 목록은 `load_test_runs_project_started` 인덱스를 사용했고 20회 측정 p95 0.6 ms(로컬 임시 DB)였다. 최초 전체 3건 실패는 migration 버전·경로 allowlist의 오래된 테스트 기대값으로 확인해 갱신한 뒤 재실행에서 통과했다.
+- 완료: DB-2 로컬 코드·검증 완료. DB-3 화면, DB-4 자동 추천·판정 UI, DB-5 보존·운영 보강과 실제 LT 실행은 후속 범위다.
+
 ## DB-1 결과 계약·importer 완료 (2026-09-26)
 
 - 시작: MOCK-1 통합 후 문서에 지정된 다음 작업인 결과 JSON schema와 fixture 설계를 `feature/load-test-results`에서 시작.
@@ -119,13 +177,21 @@
 
 이 문서는 [`API 부하테스트 계획`](api-load-test-plan.md)의 실행 상태를 기록하는 단일 기준 문서다. 구현 작업을 시작하기 전에 현재 상태를 확인하고, 작업 중 의미 있는 변경이나 검증이 끝날 때마다 같은 작업 안에서 갱신한다.
 
+## DB-4 최종 검증·완료 (2026-09-29)
+
+- GPT-6 Sol high 구현 후 주 에이전트가 전체 Python 324개(skip 0, 17.295초), 프런트엔드 45개(13파일), production build, 생성 코드 `--check`, `git diff --check` 통과를 확인했다. 마지막 보완은 기록된 VU 0을 미수집으로 표시하지 않는 회귀 수정이다.
+- 실제 브라우저: candidate 직전 실행 추천(더 최신 실행 제외), p95 +38.5 ms/+20%, 오류율 +25 %p/+100%, POST +39 ms → GET +29 ms 악화순, 0·5초 추이 정렬, 조건 경고와 사용자 threshold를 확인했다. 목록→상세→비교, 새로고침·뒤로 가기, 시나리오 불일치 거부와 추천 없음 안내도 통과했다.
+- 390px 화면에서 페이지 너비 375px, 표의 키보드 초점과 방향키 스크롤 0→40px, 콘솔 오류·경고 없음을 확인했다. 임시 검증 서버 정상 종료, 탭 정리와 viewport 복원을 완료했다.
+- 판정: DB-4 로컬 구현·검증 완료. 표시하는 회귀 후보는 수치 악화이며 통계적 유의성 판정이 아니다. 적용 의미가 없는 임시 SLO는 참고용·판정 불가로 유지한다.
+- Git: `feature/load-test-comparison`에 DB-2·DB-3 선행 변경을 보존한 미커밋 상태. 커밋·푸시·병합 없음. 다음 DB-5 운영 보강과 실제 LT 실행은 후속 범위다.
+
 ## 현재 요약
 
-- 최종 갱신일: 2026-09-26
-- 현재 단계: DB-1 결과 schema·importer 완료
+- 최종 갱신일: 2026-09-29
+- 현재 단계: DB-1~DB-5 결과 대시보드 완료. 실제 LT-1~LT-5 대기
 - 전체 상태: 진행
-- 작업 브랜치: `feature/load-test-results` (`develop` `d77e0d1` 기준)
-- 다음 작업: DB-2 migration·repository, atomic import와 목록·상세·series API
+- 작업 브랜치: `develop` (기능 커밋 `99b7821` 통합, 원격 게시 대상 `origin/develop`)
+- 다음 작업: LT-1 k6 실행 구조와 전용 fixture 준비
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -139,21 +205,21 @@
 | LT-4 | Stress·Spike·Soak 및 `/api/run` 시험 | 대기 | 중단 조건과 회복 측정을 포함한 결과 생성 | - |
 | LT-5 | 기준선 보고서 | 대기 | 최대 안정 RPS, 안정 동시 실행 수, 병목 기록 | - |
 | DB-1 | 결과 schema와 importer | 완료 | 고정 fixture의 집계값과 importer 결과 일치 | 단위 10개·전체 Python 310개·helper·생성·diff 검사 통과 |
-| DB-2 | 저장소와 결과 조회 API | 대기 | migration, atomic import, 목록·상세·series API 테스트 통과 | - |
-| DB-3 | 결과 목록과 상세 대시보드 | 대기 | 필터, KPI, 표, 차트와 상태 화면 구현 | - |
-| DB-4 | 실행 비교와 regression 판정 | 대기 | 기준 대비 증감률과 endpoint 악화 순위 검증 | - |
-| DB-5 | 성능·보존·문서 운영 보강 | 대기 | 예상 데이터 규모의 성능 및 정리·복구 검증 | - |
+| DB-2 | 저장소와 결과 조회 API | 완료 | migration, atomic import, 목록·상세·series API 테스트 통과 | 전체 Python 322개·실 HTTP·생성·diff 검사 통과, 2만 건 목록 p95 0.6 ms |
+| DB-3 | 결과 목록과 상세 대시보드 | 완료 | 필터, KPI, 표, 차트와 상태 화면 구현 | Python 322개·프런트엔드 35개·build, 실제 브라우저 URL·수치·390px·키보드·오류 복구 검증 통과 |
+| DB-4 | 실행 비교와 regression 판정 | 완료 | 기준 대비 증감률과 endpoint 악화 순위 검증 | Python 324개·프런트엔드 45개·build·생성·실제 브라우저 수치·URL·390px·키보드 검증 통과 |
+| DB-5 | 성능·보존·문서 운영 보강 | 완료 | 예상 데이터 규모의 성능 및 정리·복구 검증 | Python 341개·frontend 45개/build·양 backend HTTP·CLI 보존/복원·생성/diff 통과; 로컬/POSIX 범위와 metadata 모델 명시 |
 
 ## 현재 작업
 
 진행 중인 작업이 생기면 아래 항목을 갱신한다. 동시에 여러 작업을 수행할 때는 각각 구분해서 작성한다.
 
-- 작업 ID: 없음
-- 목표: 없음
-- 변경 예정 파일: 없음
-- 시작 시각: 없음
-- 상태: 대기
-- 확인이 필요한 사항: 다음 DB-2 시작 전 PostgreSQL 기준 저장 경계와 bundle body 상한 재확인
+- 작업 ID: DB-5
+- 목표: bounded series·API 응답 예산·보존/복구 운영 명령과 예상 데이터의 실제 HTTP 성능 검증
+- 변경 파일: `api_test/load_test_store.py`, `api_test/implementations/load_tests.py`, `api_test/load_test_maintenance.py`, `api_test/load_test_benchmark.py`, OpenAPI 계약·생성 route, 운영/PG 테스트, 결과 사용·측정 문서, 두 진행 문서
+- 시작 시각: 2026-09-29
+- 상태: 완료 (2026-09-29)
+- 확인이 필요한 사항: 없음. 실제 LT-1~LT-5 실행은 별도 대기.
 
 ## 검증 기록
 
@@ -161,6 +227,23 @@
 
 | 일시 | 작업 ID | 명령 또는 확인 방법 | 결과 | 비고 |
 | --- | --- | --- | --- | --- |
+| 2026-09-29 | DB-5 | `.venv/bin/python -m unittest discover -s tests -v` (수정 후 독립 재실행) | 통과 | 341개, skip 0, 46.820초; PG guard·복원·정리 포함 |
+| 2026-09-29 | DB-5 | `web/`의 `npm test`, `npm run build`, generator `--check`, `git diff --check` | 통과 | frontend 45개/13파일; 생성 최신; React DB-5 수정 없음 |
+| 2026-09-29 | DB-5 | 실제 Uvicorn HTTP `.venv/bin/python -m api_test.load_test_benchmark --requests 60 --concurrency 8` 및 `--postgres` | 통과 | 각 180건/오류 0; SQLite 목록/상세 p95 10.524/53.287ms, PG 24.898/31.595ms; metadata 20,000 + 상세 1건(500 endpoint/2,500 series) |
+| 2026-09-29 | DB-5 | 격리 CLI backup→DB/artifact preview→artifact apply→DB apply→new DB restore | 통과 | run 1건/파일 1개; summary·전체 series 복원 원본 일치; 사용자 데이터 비사용 |
+| 2026-09-29 | DB-5 | 첫 전체 Python 341개 검증 | 실패 후 해소 | PostgreSQL 2건 guard SQL `%` literal/parameter 충돌; `LEFT(...,3)` 접두사 비교로 수정 후 전체 통과 |
+| 2026-09-29 | DB-5 | 운영 SQLite/ASGI 15개, wrong-source DB·stale·rollback·symlink·quarantine 교체·backup checksum·12,000-point legacy·UTF-8 예산 | 통과 | 12.072초; 명시 적용과 새 격리 복원 경계 확인 |
+| 2026-09-29 | DB-4 | 최종 증거 확인·진행 기록 동기화 | 통과 | Python 324개, 프런트엔드 45개, build·생성·diff 검사 및 실제 브라우저 비교 수치·URL·390px·키보드 검증 완료 |
+| 2026-09-28 | DB-3 | 주 에이전트 독립 `cd web && npm test`, 생성 코드 `--check`, `git diff --check` | 통과 | 프런트엔드 35개·생성 코드 최신. 임시 QA 서버 정상 종료·브라우저 정리 |
+| 2026-09-28 | DB-3 | `.venv/bin/python -m unittest discover -s tests -v` | 통과 | 322개, skip 0, 16.635초 |
+| 2026-09-28 | DB-3 | 실제 브라우저 목록·상세·URL·오류 상태 확인 | 통과 | 26개 격리 fixture, 20→6 페이지, 필터·reload·back, KPI·threshold·endpoint 수치, missing run 복구, 콘솔 오류·경고 없음 |
+| 2026-09-28 | DB-3 | 390px 화면·표 키보드 스크롤 | 통과 | 페이지 375px, series ArrowRight 0→40px, 초점 테두리·endpoint·목록 region 초점 |
+| 2026-09-28 | DB-3 | IAB 날짜 팝업 후 새 탭 native 날짜 입력·reload | 복구 검증 통과 | 호스트 탭 종료는 도구 환경 문제. native 입력·필터 URL 보존 통과 |
+| 2026-09-28 | DB-3 | `cd web && npm test`, `npm run build`, `git diff --check` | 통과 | 표 스크롤 초점 접근성 테스트 포함 35개, production build 및 공백 검사 |
+| 2026-09-27 | DB-3 | `cd web && npm test` (추가 테스트 첫 실행) | 실패 | 34개 중 1개: datalist 내부 프로젝트 label 연계 실패. 명시적인 `htmlFor`/`id`로 수정 |
+| 2026-09-27 | DB-3 | `cd web && npm test` (최종 재실행) | 통과 | 11개 파일, 34개 테스트 |
+| 2026-09-27 | DB-3 | `cd web && npm run build` | 통과 | Vite production build |
+| 2026-09-27 | DB-3 | `git diff --check` | 통과 | 1차 공백 검사 |
 | 2026-09-26 | DB-1 | `.venv/bin/python -m unittest tests/test_load_results.py -v` | 통과 | 10개: Smoke·Target 수작업 수치, gzip·결정성, threshold fallback, 오류·schema·CLI·secret 제거 |
 | 2026-09-26 | DB-1 | `.venv/bin/python -m py_compile api_test/load_results.py tests/test_load_results.py` | 통과 | importer와 테스트 syntax 확인 |
 | 2026-09-26 | DB-1 | `node --experimental-default-type=module ...` | 실패 | 현재 Node에서 제거된 option. 제품 코드 실패가 아니라 검증 명령 호환 문제 |
@@ -183,6 +266,19 @@
 ## 변경 이력
 
 최신 기록을 위에 추가한다. 각 기록에는 작업 ID, 실제 변경, 검증 결과와 다음 작업을 포함한다.
+
+### 2026-09-29 — DB-5 운영 보강 완료
+
+- 변경: SQL bounded series와 GET 1 MiB 본문 예산, source/workspace/hash에 묶인 retention manifest, 승인 root의 private quarantine artifact 정리, 결과 JSONL 백업·새 격리 SQLite/빈 PostgreSQL 복원, 실제 HTTP benchmark를 추가했다. 전체 결과 요약·endpoint·원본 series는 보존한다.
+- 검증: Python 341개(skip 0, 46.820초), frontend 45개/build·생성·diff, 격리 CLI 및 SQLite/PostgreSQL HTTP 각 180건·오류 0 통과. 첫 전체 PG guard 2건 실패는 접두사 SQL 수정 후 재검증에서 해소했다. [측정 결과](load-test-db5-benchmark.json).
+- 범위·다음: 로컬 metadata 20,000 + 상세 1건의 모델, POSIX 원본 정리·정규화 결과 전용 백업. DB-1~DB-5 완료, 실제 LT-1~LT-5 대기. 다음은 LT-1 fixture/k6 실행 구조다. `feature/load-test-operations` 미커밋·미푸시·미병합.
+
+### 2026-09-28 — DB-3 — 결과 목록·상세 대시보드 완료
+
+- 변경: 새 라우트와 상단 메뉴, URL 필터·cursor·run, KPI·threshold·endpoint·환경·경고, SVG 추이와 동등한 표, 상태 화면과 표 키보드 초점을 구현했다.
+- 검증: Python 322개(skip 0), 프런트엔드 35개와 build, 실제 브라우저 필터·페이지·수치·URL·오류 복구·390px·키보드 확인 통과.
+- Git·제한: DB-2 선행 미커밋 변경을 보존한 `feature/load-test-dashboard` 미커밋 작업 트리. 비교 UI·회귀 판정·보존 운영 및 실제 LT 실행은 이번 완료 범위 밖이다.
+- 다음: DB-4 실행 비교와 regression 판정.
 
 ### 2026-09-26 — DB-1 — 결과 계약·importer 완료
 

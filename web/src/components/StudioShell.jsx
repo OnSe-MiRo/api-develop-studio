@@ -3,13 +3,15 @@ import packageJson from '../../package.json'
 function StudioShell({ tab, activeProject, error, onNavigate, onRefresh, children }) {
   const isApiCallTab = tab === 'api-call'
   const isDashboardTab = tab === 'dashboard'
+  const isLoadTestTab = tab === 'load-tests' || tab === 'load-test-result' || tab === 'load-test-compare'
   return <>
     <header className="topbar">
       <div className="brand"><img className="brand-logo" src="/logo.png" alt="API Develop Studio" /><div><strong>API Develop Studio</strong><span className="brand-version">v{packageJson.version}</span></div></div>
       <nav>
         <button className={isApiCallTab ? 'selected' : ''} onClick={() => onNavigate({ tab: 'api-call', activeProject })}>API 호출</button>
-        <button className={!isApiCallTab && !isDashboardTab ? 'selected' : ''} onClick={() => onNavigate({ tab: 'project', activeProject })}>프로젝트</button>
+        <button className={!isApiCallTab && !isDashboardTab && !isLoadTestTab ? 'selected' : ''} onClick={() => onNavigate({ tab: 'project', activeProject })}>프로젝트</button>
         <button className={isDashboardTab ? 'selected' : ''} onClick={() => onNavigate({ tab: 'dashboard', activeProject: '' })}>대시보드</button>
+        <button className={isLoadTestTab ? 'selected' : ''} onClick={() => onNavigate({ tab: 'load-tests' })}>부하테스트</button>
       </nav>
       <button className="ghost refresh" onClick={onRefresh}>↻ 새로고침</button>
     </header>

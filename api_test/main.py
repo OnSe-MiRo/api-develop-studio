@@ -85,7 +85,7 @@ def create_app(studio) -> FastAPI:
                 payload["runId"] = exc.run_id
         elif isinstance(exc, studio.OwnershipError) and request.method == "POST":
             status, payload = 403, {"error": str(exc), "code": "OWNERSHIP_POLICY_DENIED"}
-        elif isinstance(exc, studio.ApiError) and request.method == "POST":
+        elif isinstance(exc, studio.ApiError):
             status = exc.status_code
         if isinstance(exc, JobError):
             status = exc.status_code

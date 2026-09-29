@@ -26,7 +26,7 @@ class GeneratedServerTest(unittest.TestCase):
         self.assertEqual(path_files, {
             'projects.yaml', 'cases.yaml', 'pipelines.yaml', 'openapi.yaml',
             'execution.yaml', 'dashboard.yaml', 'ownership.yaml',
-            'uploads.yaml', 'example.yaml', 'mock.yaml',
+            'uploads.yaml', 'example.yaml', 'mock.yaml', 'load-tests.yaml',
         })
         schema_files = {path.name for path in (ROOT / 'openapi/components/schemas').glob('*.yaml')}
         self.assertEqual(schema_files, {

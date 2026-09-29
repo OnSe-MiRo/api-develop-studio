@@ -1,0 +1,95 @@
+/api/load-tests/runs:
+  post:
+    operationId: create_load_test_run
+    tags: [load-tests]
+    summary: Store a validated load-test result bundle
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+    responses:
+      '201': {description: Created, content: {application/json: {schema: {type: object}}}}
+      '400': {description: Invalid bundle}
+      '409': {description: Duplicate run ID}
+      '413': {description: Bundle too large}
+    x-studio-handler: load_tests.create_load_test_run
+    x-studio-parts: '[]'
+    x-studio-route: /api/load-tests/runs
+    x-studio-upload: false
+  get:
+    operationId: list_load_test_runs
+    tags: [load-tests]
+    summary: List load-test runs with keyset pagination
+    description: Responses are limited to 1 MiB of serialized UTF-8 JSON; narrow filters or limit on 413.
+    parameters:
+    - {name: project, in: query, schema: {type: string}}
+    - {name: scenario, in: query, schema: {type: string}}
+    - {name: status, in: query, schema: {type: string}}
+    - {name: from, in: query, schema: {type: string, format: date-time}}
+    - {name: to, in: query, schema: {type: string, format: date-time}}
+    - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    - {name: cursor, in: query, schema: {type: string}}
+    responses:
+      '200': {description: Page of runs, content: {application/json: {schema: {type: object}}}}
+      '400': {description: Invalid filter or cursor}
+      '413': {description: Serialized response exceeds 1 MiB}
+    x-studio-handler: load_tests.list_load_test_runs
+    x-studio-parts: '[]'
+    x-studio-route: /api/load-tests/runs
+    x-studio-upload: false
+/api/load-tests/runs/{runId}:
+  get:
+    operationId: get_load_test_run
+    tags: [load-tests]
+    summary: Get load-test run details
+    description: Complete summary and endpoint metrics. An oversized response returns 413 and is never truncated.
+    parameters:
+    - {name: runId, in: path, required: true, schema: {type: string}}
+    responses:
+      '200': {description: Run details, content: {application/json: {schema: {type: object}}}}
+      '404': {description: Run not found}
+      '413': {description: Serialized response exceeds 1 MiB}
+    x-studio-handler: load_tests.get_load_test_run
+    x-studio-parts: '[]'
+    x-studio-route: /api/load-tests/runs/{runId}
+    x-studio-upload: false
+/api/load-tests/runs/{runId}/series:
+  get:
+    operationId: get_load_test_series
+    tags: [load-tests]
+    summary: Get bounded and downsampled time series
+    description: SQL downsampling limits transferred rows; p95 is the group upper envelope and unknown values remain null. Responses over 1 MiB return 413.
+    parameters:
+    - {name: runId, in: path, required: true, schema: {type: string}}
+    - {name: from, in: query, schema: {type: string, format: date-time}}
+    - {name: to, in: query, schema: {type: string, format: date-time}}
+    - {name: maxPoints, in: query, schema: {type: integer, minimum: 1, maximum: 1000, default: 500}}
+    responses:
+      '200': {description: Time series, content: {application/json: {schema: {type: object}}}}
+      '400': {description: Invalid query}
+      '404': {description: Run not found}
+      '413': {description: Serialized response exceeds 1 MiB}
+    x-studio-handler: load_tests.get_load_test_series
+    x-studio-parts: '[]'
+    x-studio-route: /api/load-tests/runs/{runId}/series
+    x-studio-upload: false
+/api/load-tests/compare:
+  get:
+    operationId: compare_load_test_runs
+    tags: [load-tests]
+    summary: Compare two compatible load-test runs
+    description: Full endpoint comparison; responses over 1 MiB return 413 and are never truncated.
+    parameters:
+    - {name: baseline, in: query, required: true, schema: {type: string}}
+    - {name: candidate, in: query, required: true, schema: {type: string}}
+    responses:
+      '200': {description: Comparison, content: {application/json: {schema: {type: object}}}}
+      '400': {description: Incompatible runs}
+      '404': {description: Run not found}
+      '413': {description: Serialized response exceeds 1 MiB}
+    x-studio-handler: load_tests.compare_load_test_runs
+    x-studio-parts: '[]'
+    x-studio-route: /api/load-tests/compare
+    x-studio-upload: false

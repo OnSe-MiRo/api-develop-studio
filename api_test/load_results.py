@@ -521,7 +521,10 @@ def _walk_numbers(value: Any, path: str = "$") -> Iterable[tuple[str, float]]:
         for index, item in enumerate(value):
             yield from _walk_numbers(item, f"{path}[{index}]")
     elif isinstance(value, (int, float)) and not isinstance(value, bool):
-        yield path, float(value)
+        try:
+            yield path, float(value)
+        except OverflowError:
+            yield path, float("inf")
 
 
 def validate_bundle(bundle: dict[str, Any], schema_path: Path | None = None) -> None:

@@ -22,6 +22,8 @@ from api_test.cache import RevisionCache
 from api_test.collaboration_store import CollaborationStore, RevisionConflictError
 from api_test.database import LOCAL_CONTEXT, RequestContext, _pools, connect
 from api_test.execution_history import ExecutionHistory
+from api_test.load_results import import_k6_result
+from api_test.load_test_store import DuplicateRunError, LoadTestStore
 from api_test.migrate_postgres import migrate
 from api_test.ownership import OwnershipStore
 
@@ -79,6 +81,114 @@ class PostgresStorageTest(unittest.TestCase):
         store = CollaborationStore(self.root / 'unused', self.roots, context=context)
         store.initialize(False)
         return store
+
+    def test_load_results_postgres_import(self):
+        fixtures = Path(__file__).parent / 'fixtures' / 'load-tests'
+        result = import_k6_result(fixtures / 'smoke-summary.json', fixtures / 'smoke-raw.jsonl')
+        repository = LoadTestStore(self.root / 'unused')
+        self.assertEqual(repository.import_bundle(result)['id'], result['run']['id'])
+        with self.assertRaises(DuplicateRunError):
+            repository.import_bundle(result)
+        self.assertEqual(repository.detail(result['run']['id'])['summary'], result['summary'])
+        self.assertEqual(len(repository.series(result['run']['id'])['items']), 2)
+        with closing(connect(self.root / 'unused')) as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM load_test_thresholds').fetchone()[0], 2)
+
+    def test_load_operations_sql_downsampling_retention_and_portable_restore(self):
+        from datetime import timedelta
+        from api_test.load_test_benchmark import detailed_fixture
+        from api_test.load_test_maintenance import backup, restore, retention_preview, retention_apply, _digest
+        from api_test.load_results import _time, _time_text
+        from psycopg.conninfo import make_conninfo
+        from psycopg import sql
+        fixture = detailed_fixture()
+        fixture['run']['id'] = 'old-detailed'
+        for key in ('startedAt', 'endedAt'):
+            fixture['run'][key] = _time_text(_time(fixture['run'][key], key) - timedelta(days=40))
+        for point in fixture['series']:
+            point['bucketAt'] = _time_text(_time(point['bucketAt'], 'bucketAt') - timedelta(days=40))
+        store = LoadTestStore(self.root / 'unused', url=self.url)
+        store.import_bundle(fixture)
+        store.import_bundle(detailed_fixture())
+        series = store.series('old-detailed', max_points=240)
+        self.assertEqual(series['sourcePoints'], 2500)
+        self.assertLessEqual(len(series['items']), 240)
+        self.assertEqual(max(point['p95Ms'] for point in series['items']), 100.)
+        self.assertTrue(all(point['memoryMb'] is None for point in series['items']))
+        archive = self.root / 'results.jsonl'
+        self.assertEqual(backup(store, archive)['runs'], 2)
+        restore_name = 'fnd4_restore_' + uuid.uuid4().hex
+        self.admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(restore_name)))
+        restore_url = make_conninfo(os.environ['FND4_TEST_DATABASE_URL'], dbname=restore_name)
+        try:
+            self.assertEqual(restore(archive, self.root / 'restore-unused', url=restore_url)['restoredRuns'], 2)
+            restored = LoadTestStore(self.root / 'restore-unused', url=restore_url)
+            self.assertEqual(restored.detail('old-detailed'), store.detail('old-detailed'))
+            self.assertEqual(restored.series('old-detailed', max_points=240), series)
+            with self.assertRaisesRegex(ValueError, 'empty'):
+                restore(archive, self.root / 'restore-unused', url=restore_url)
+        finally:
+            pool = _pools.pop(restore_url, None)
+            if pool:
+                pool.close()
+            self.admin.execute(sql.SQL('DROP DATABASE {} WITH (FORCE)').format(sql.Identifier(restore_name)))
+        manifest = retention_preview(store, now=datetime(2026, 9, 29, tzinfo=timezone.utc))
+        self.assertEqual([row['id'] for row in manifest['runs']], ['old-detailed'])
+        with store.connection(write=True) as db, db:
+            db.execute("UPDATE load_test_series SET p95_ms=p95_ms+1 WHERE run_id='old-detailed'")
+        with self.assertRaisesRegex(ValueError, 'stale'):
+            retention_apply(store, manifest, confirmation=_digest(manifest))
+        manifest = retention_preview(store, now=datetime(2026, 9, 29, tzinfo=timezone.utc))
+        self.assertEqual(retention_apply(store, manifest, confirmation=_digest(manifest))['deletedRuns'], 1)
+        self.assertIsNone(store.detail('old-detailed'))
+        self.assertIsNone(store.detail('bench-detail')['recommendedBaseline'])
+        with store.connection() as db:
+            for table in ('load_test_thresholds', 'load_test_endpoint_metrics', 'load_test_series'):
+                self.assertEqual(db.execute(f"SELECT count(*) FROM {table} WHERE run_id='old-detailed'").fetchone()[0], 0)
+
+    def test_load_restore_refuses_unrelated_user_schema_in_destination(self):
+        from api_test.load_test_maintenance import backup, restore
+        from api_test.load_test_benchmark import detailed_fixture
+        from psycopg.conninfo import make_conninfo
+        from psycopg import sql
+        import psycopg
+        store = LoadTestStore(self.root / 'unused', url=self.url)
+        store.import_bundle(detailed_fixture())
+        archive = self.root / 'results.jsonl'
+        backup(store, archive)
+        restore_name = 'fnd4_restore_' + uuid.uuid4().hex
+        self.admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(restore_name)))
+        restore_url = make_conninfo(os.environ['FND4_TEST_DATABASE_URL'], dbname=restore_name)
+        try:
+            with psycopg.connect(restore_url) as raw:
+                raw.execute('CREATE SCHEMA unrelated')
+                raw.execute('CREATE TABLE unrelated.keep(value TEXT)')
+                raw.execute("INSERT INTO unrelated.keep VALUES ('preserve')")
+            with self.assertRaisesRegex(ValueError, 'empty'):
+                restore(archive, self.root / 'restore-unused', url=restore_url)
+            with psycopg.connect(restore_url) as raw:
+                self.assertEqual(raw.execute('SELECT value FROM unrelated.keep').fetchone()[0], 'preserve')
+                self.assertIsNone(raw.execute("SELECT to_regclass('public.load_test_runs')").fetchone()[0])
+        finally:
+            pool = _pools.pop(restore_url, None)
+            if pool:
+                pool.close()
+            self.admin.execute(sql.SQL('DROP DATABASE {} WITH (FORCE)').format(sql.Identifier(restore_name)))
+
+    def test_load_results_sqlite_snapshot_migrates_to_postgres(self):
+        from api_test.migrations import migrate_ownership_database
+        fixtures = Path(__file__).parent / 'fixtures' / 'load-tests'
+        result = import_k6_result(fixtures / 'smoke-summary.json', fixtures / 'smoke-raw.jsonl')
+        source = self.root / 'source.db'
+        ownership = self.root / 'ownership.db'
+        with patch.dict(os.environ, {'STUDIO_DATABASE_URL': '', 'STUDIO_DATABASE_URL_FILE': ''}):
+            LoadTestStore(source).import_bundle(result)
+            with closing(sqlite3.connect(ownership)) as db:
+                migrate_ownership_database(db)
+        manifest = migrate(source, ownership, url=self.url)
+        self.assertEqual(manifest['load_test_runs']['rows'], 1)
+        self.assertEqual(manifest['load_test_series']['rows'], 2)
+        self.assertEqual(LoadTestStore(self.root / 'unused').detail(result['run']['id'])['summary'], result['summary'])
 
     def test_revision_concurrent_write_and_transaction_rollback(self):
         store = self.store()
