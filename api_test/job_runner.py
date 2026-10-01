@@ -29,12 +29,13 @@ def stop_process_tree(process):
     process.wait()
 
 
-def execute_job(job, command, studio, projects, targets):
+def execute_job(job, command, studio, projects, targets, environment=None):
     timeout = float(os.environ.get('RUN_TIMEOUT_SECONDS', '300'))
     if not 0 < timeout <= 86400:
         raise ValueError('RUN_TIMEOUT_SECONDS must be between 0 and 86400')
     started = time.monotonic()
     started_at = now()
+    environments = studio.execution_environments(projects, environment)
     response = {'status': 'error', 'exitCode': None, 'result': None}
     with TemporaryDirectory(prefix='api-test-job-') as directory:
         root = Path(directory)
@@ -79,7 +80,8 @@ def execute_job(job, command, studio, projects, targets):
     try:
         studio.execution_history().record(run_id=job.id, started_at=started_at, finished_at=now(),
             duration_ms=(time.monotonic() - started) * 1000, status=response['status'],
-            exit_code=response['exitCode'], projects=projects, targets=history_targets(targets, response.get('result')))
+            exit_code=response['exitCode'], projects=projects, targets=history_targets(targets, response.get('result')),
+            report=response.get('result'), environment=environment, project_environments=environments)
     except (OSError, ValueError, *studio.DATABASE_ERRORS):
         response['historyWarning'] = '실행 이력을 저장하지 못했습니다. 저장소 상태를 확인하세요.'
     return response

@@ -93,3 +93,45 @@ def history_targets(targets, report):
         return targets
     return targets + [{key: item.get(key) for key in ('caseReference', 'project', 'status', 'httpStatus', 'phase')}
                       for item in (report or {}).get('targets', []) if item.get('caseReference')]
+
+
+def execution_detail(targets, report, environment, actor):
+    """An explicit metadata allowlist, including assertion verdicts but no values."""
+    report = report or {}
+    saved = [t for t in targets if t.get('kind') in ('case', 'pipeline')]
+    outcomes = []
+    for item in report.get('targets', []):
+        source = str(item.get('target', '')).replace('\\', '/')
+        matches = [t for t in saved if source == t['reference'] or
+                   (t['kind'] == 'pipeline' and source.endswith('/' + t['reference']))]
+        target = max(matches, key=lambda t: len(t['reference'])) if matches else None
+        outcomes.append({
+            **{key: item.get(key) for key in ('caseId', 'caseReference', 'project', 'phase', 'status',
+                                             'httpStatus', 'elapsedMs', 'attempts', 'errorCategory')},
+            'sourceKind': target['kind'] if target else None,
+            'sourceReference': target['reference'] if target else None,
+            'assertions': [{'index': a['index'], 'passed': a['passed']} for a in item.get('assertions', [])],
+        })
+    return {'environment': environment, 'actor': actor,
+            'appVersion': os.environ.get('APP_VERSION'), 'commit': os.environ.get('APP_COMMIT'),
+            'outcomes': outcomes, 'reportAvailable': bool(report)}
+
+
+def failed_run_request(run):
+    """Use saved top-level targets so pipeline lifecycle and dependencies survive."""
+    detail = run.get('detail')
+    targets = run['targets']
+    if not detail or not targets or any(t.get('preview') for t in targets) or run['status'] == 'passed':
+        return None
+    failures = [o for o in detail['outcomes'] if o['status'] in ('failed', 'error', 'timeout', 'cancelled')]
+    if failures and all(o['sourceReference'] for o in failures):
+        selected = {(o['sourceKind'], o['sourceReference']) for o in failures}
+        targets = [t for t in targets if (t['kind'], t['reference']) in selected]
+    # Incomplete reports cannot identify all failures: retry original saved targets.
+    elif detail['reportAvailable'] and run['status'] not in ('error', 'timeout', 'cancelled'):
+        return None
+    if not targets:
+        return None
+    return {'cases': [t['reference'] for t in targets if t['kind'] == 'case'],
+            'pipelines': [t['reference'] for t in targets if t['kind'] == 'pipeline'],
+            'environment': detail['environment']}
