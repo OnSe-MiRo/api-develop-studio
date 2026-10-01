@@ -11,6 +11,8 @@
 
 ## 기능 및 운영 문서
 
+- [잠정 부하테스트 기준선·용량·병목 보고서](load-test-baseline-report.md)
+- [부하테스트 fixture와 격리 k6 하네스](load-test-harness.md)
 - [부하테스트 결과 계약과 importer](load-test-results.md)
 - [Mock Server](mock-server.md)
 - [비동기 실행](async-runs.md)

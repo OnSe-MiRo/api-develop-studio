@@ -1,0 +1,595 @@
+{
+  "date": "2026-09-29",
+  "scope": "LT-3 implementation and local functional validation; Target capacity failed and full campaign unexecuted",
+  "environment": {
+    "mode": "same-host macOS SQLite Medium",
+    "k6Version": "2.3.0",
+    "pythonVersion": "3.13.5",
+    "appVersion": "1.0.1",
+    "commitSha": "483261549b0ea0d4612f183b845cd76887b0309a",
+    "workingTreeDirty": true,
+    "runWorkerLimit": 2
+  },
+  "functionalTarget": {
+    "localArtifacts": "/private/tmp/lt3-parent-target-functional",
+    "runId": "run_lt1_9ba7df54d45e40a6a252da3ea84aadb3",
+    "status": "passed",
+    "workload": {
+      "mode": "target",
+      "durationSeconds": 40,
+      "configuredVus": 2,
+      "vusPerEndpoint": null,
+      "gracefulStopSeconds": 10,
+      "validationMode": true,
+      "scope": "whole-dataset",
+      "selectionStride": 50,
+      "contentionRequests": 5,
+      "stageSeconds": 20,
+      "stageVus": [
+        1,
+        2
+      ],
+      "nominalWorkloadHttpRatios": {
+        "list": 0.35,
+        "single": 0.35,
+        "revision": 0.1,
+        "unique": 0.1,
+        "contention": 0.05,
+        "run": 0.05
+      }
+    },
+    "summary": {
+      "requests": 45,
+      "rps": 1.077829,
+      "errorRate": 0.0,
+      "latencyMs": {
+        "p50": 9.639,
+        "p90": 32.3108,
+        "p95": 44.1886,
+        "p99": 237.5538,
+        "max": 253.374
+      },
+      "vusMax": 2,
+      "thresholdsPassed": true
+    },
+    "sourceSha256": {
+      "api_test/load_test_harness.py": "a785cf77143cdea72fade8b2b73f102a389d557953152eac027a1fa6efe7533b",
+      "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+      "load-tests/k6/mixed.js": "ac3d87ca5f39d6b522ae501d66926c264f0b4005c89bda71b8eecc24f86104c3",
+      "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+      "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+      "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+      "api_test/load_test_mutations.py": "52209dc217033740ea210e36f8ea58175ca7cf96e0de945dacef48bd6c6a91ec"
+    },
+    "traffic": {
+      "requests": {
+        "list": 16,
+        "single": 4,
+        "revision": 3,
+        "unique": 8,
+        "contention": 10,
+        "run": 2,
+        "support": 2
+      },
+      "workloadRequests": 43,
+      "totalClassifiedRequests": 45,
+      "expected409": 8,
+      "activePeakVus": 2,
+      "allocatedMaxVus": 2,
+      "workloadRatios": {
+        "list": 0.37209302325581395,
+        "single": 0.09302325581395349,
+        "revision": 0.06976744186046512,
+        "unique": 0.18604651162790697,
+        "contention": 0.23255813953488372,
+        "run": 0.046511627906976744
+      },
+      "allHttpRatios": {
+        "list": 0.35555555555555557,
+        "single": 0.08888888888888889,
+        "revision": 0.06666666666666667,
+        "unique": 0.17777777777777778,
+        "contention": 0.2222222222222222,
+        "run": 0.044444444444444446,
+        "support": 0.044444444444444446
+      }
+    },
+    "mutations": {
+      "documents": 6,
+      "unique": 2,
+      "contention": 2
+    },
+    "originalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "postRunOriginalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "integrity": "passed",
+    "serverStopped": true
+  },
+  "shortTargetCapacityFailure": {
+    "localArtifacts": "/private/tmp/lt3-parent-target-20-50",
+    "runId": "run_lt1_c9fff959bc7a4612a60d7da54faee2d6",
+    "status": "failed",
+    "workload": {
+      "mode": "target",
+      "durationSeconds": 30,
+      "configuredVus": 50,
+      "vusPerEndpoint": null,
+      "gracefulStopSeconds": 10,
+      "validationMode": true,
+      "scope": "whole-dataset",
+      "selectionStride": 50,
+      "contentionRequests": 5,
+      "stageSeconds": 15,
+      "stageVus": [
+        20,
+        50
+      ],
+      "nominalWorkloadHttpRatios": {
+        "list": 0.35,
+        "single": 0.35,
+        "revision": 0.1,
+        "unique": 0.1,
+        "contention": 0.05,
+        "run": 0.05
+      }
+    },
+    "summary": {
+      "requests": 125,
+      "rps": 20.585847,
+      "errorRate": 0.016,
+      "latencyMs": {
+        "p50": 10.871,
+        "p90": 63.5096,
+        "p95": 190.982,
+        "p99": 218.36724,
+        "max": 228.282
+      },
+      "vusMax": 20,
+      "thresholdsPassed": false
+    },
+    "sourceSha256": {
+      "api_test/load_test_harness.py": "a785cf77143cdea72fade8b2b73f102a389d557953152eac027a1fa6efe7533b",
+      "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+      "load-tests/k6/mixed.js": "ac3d87ca5f39d6b522ae501d66926c264f0b4005c89bda71b8eecc24f86104c3",
+      "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+      "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+      "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+      "api_test/load_test_mutations.py": "52209dc217033740ea210e36f8ea58175ca7cf96e0de945dacef48bd6c6a91ec"
+    },
+    "traffic": {
+      "requests": {
+        "list": 10,
+        "single": 10,
+        "revision": 14,
+        "unique": 40,
+        "contention": 35,
+        "run": 9,
+        "support": 7
+      },
+      "workloadRequests": 118,
+      "totalClassifiedRequests": 125,
+      "expected409": 28,
+      "activePeakVus": 20,
+      "allocatedMaxVus": 50,
+      "workloadRatios": {
+        "list": 0.0847457627118644,
+        "single": 0.0847457627118644,
+        "revision": 0.11864406779661017,
+        "unique": 0.3389830508474576,
+        "contention": 0.2966101694915254,
+        "run": 0.07627118644067797
+      },
+      "allHttpRatios": {
+        "list": 0.08,
+        "single": 0.08,
+        "revision": 0.112,
+        "unique": 0.32,
+        "contention": 0.28,
+        "run": 0.072,
+        "support": 0.056
+      }
+    },
+    "mutations": {
+      "documents": 19,
+      "unique": 10,
+      "contention": 7
+    },
+    "originalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "postRunOriginalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "integrity": "passed",
+    "serverStopped": true
+  },
+  "unique50": {
+    "localArtifacts": "/private/tmp/lt3-parent-unique-50",
+    "runId": "run_lt1_7ab89c1b59134888bf04b6c391444b64",
+    "status": "passed",
+    "workload": {
+      "mode": "unique",
+      "durationSeconds": 60,
+      "configuredVus": 50,
+      "vusPerEndpoint": null,
+      "gracefulStopSeconds": 10,
+      "validationMode": false,
+      "scope": "whole-dataset",
+      "selectionStride": 50,
+      "contentionRequests": 50
+    },
+    "summary": {
+      "requests": 200,
+      "rps": 84.368251,
+      "errorRate": 0.0,
+      "latencyMs": {
+        "p50": 28.577,
+        "p90": 379.2604,
+        "p95": 510.79865,
+        "p99": 825.76831,
+        "max": 935.118
+      },
+      "vusMax": 50,
+      "thresholdsPassed": true
+    },
+    "sourceSha256": {
+      "api_test/load_test_harness.py": "a785cf77143cdea72fade8b2b73f102a389d557953152eac027a1fa6efe7533b",
+      "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+      "load-tests/k6/mixed.js": "ac3d87ca5f39d6b522ae501d66926c264f0b4005c89bda71b8eecc24f86104c3",
+      "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+      "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+      "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+      "api_test/load_test_mutations.py": "52209dc217033740ea210e36f8ea58175ca7cf96e0de945dacef48bd6c6a91ec"
+    },
+    "traffic": {
+      "requests": {
+        "list": 0,
+        "single": 0,
+        "revision": 0,
+        "unique": 200,
+        "contention": 0,
+        "run": 0,
+        "support": 0
+      },
+      "workloadRequests": 200,
+      "totalClassifiedRequests": 200,
+      "expected409": 0,
+      "activePeakVus": 50,
+      "allocatedMaxVus": 50,
+      "workloadRatios": {
+        "list": 0.0,
+        "single": 0.0,
+        "revision": 0.0,
+        "unique": 1.0,
+        "contention": 0.0,
+        "run": 0.0
+      },
+      "allHttpRatios": {
+        "list": 0.0,
+        "single": 0.0,
+        "revision": 0.0,
+        "unique": 1.0,
+        "contention": 0.0,
+        "run": 0.0,
+        "support": 0.0
+      }
+    },
+    "mutations": {
+      "documents": 50,
+      "unique": 50,
+      "contention": 0
+    },
+    "originalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "postRunOriginalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "integrity": "passed",
+    "serverStopped": true
+  },
+  "contention": [
+    {
+      "localArtifacts": "/private/tmp/lt3-parent-contention-5",
+      "runId": "run_lt1_e9b1f2eea36a4f45818b53cb4ad8e982",
+      "status": "passed",
+      "workload": {
+        "mode": "contention",
+        "durationSeconds": 30,
+        "configuredVus": 1,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 1,
+        "contentionRequests": 5
+      },
+      "summary": {
+        "requests": 6,
+        "rps": 4.944327,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 7.7025,
+          "p90": 11.896,
+          "p95": 13.798,
+          "p99": 15.3196,
+          "max": 15.7
+        },
+        "vusMax": 1,
+        "thresholdsPassed": true
+      },
+      "sourceSha256": {
+        "api_test/load_test_harness.py": "a785cf77143cdea72fade8b2b73f102a389d557953152eac027a1fa6efe7533b",
+        "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+        "load-tests/k6/mixed.js": "ac3d87ca5f39d6b522ae501d66926c264f0b4005c89bda71b8eecc24f86104c3",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "api_test/load_test_mutations.py": "52209dc217033740ea210e36f8ea58175ca7cf96e0de945dacef48bd6c6a91ec"
+      },
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 0,
+          "contention": 5,
+          "run": 0,
+          "support": 1
+        },
+        "workloadRequests": 5,
+        "totalClassifiedRequests": 6,
+        "expected409": 4,
+        "activePeakVus": 1,
+        "allocatedMaxVus": 1,
+        "workloadRatios": {
+          "list": 0.0,
+          "single": 0.0,
+          "revision": 0.0,
+          "unique": 0.0,
+          "contention": 1.0,
+          "run": 0.0
+        },
+        "allHttpRatios": {
+          "list": 0.0,
+          "single": 0.0,
+          "revision": 0.0,
+          "unique": 0.0,
+          "contention": 0.8333333333333334,
+          "run": 0.0,
+          "support": 0.16666666666666666
+        }
+      },
+      "mutations": {
+        "documents": 1,
+        "unique": 0,
+        "contention": 1
+      },
+      "originalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postRunOriginalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "integrity": "passed",
+      "serverStopped": true
+    },
+    {
+      "localArtifacts": "/private/tmp/lt3-parent-contention-20",
+      "runId": "run_lt1_680d6aca051843c49dff3ae6436e00e9",
+      "status": "passed",
+      "workload": {
+        "mode": "contention",
+        "durationSeconds": 30,
+        "configuredVus": 1,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 1,
+        "contentionRequests": 20
+      },
+      "summary": {
+        "requests": 21,
+        "rps": 16.473495,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 23.975,
+          "p90": 51.457,
+          "p95": 58.147,
+          "p99": 70.1678,
+          "max": 73.173
+        },
+        "vusMax": 1,
+        "thresholdsPassed": true
+      },
+      "sourceSha256": {
+        "api_test/load_test_harness.py": "a785cf77143cdea72fade8b2b73f102a389d557953152eac027a1fa6efe7533b",
+        "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+        "load-tests/k6/mixed.js": "ac3d87ca5f39d6b522ae501d66926c264f0b4005c89bda71b8eecc24f86104c3",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "api_test/load_test_mutations.py": "52209dc217033740ea210e36f8ea58175ca7cf96e0de945dacef48bd6c6a91ec"
+      },
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 0,
+          "contention": 20,
+          "run": 0,
+          "support": 1
+        },
+        "workloadRequests": 20,
+        "totalClassifiedRequests": 21,
+        "expected409": 19,
+        "activePeakVus": 1,
+        "allocatedMaxVus": 1,
+        "workloadRatios": {
+          "list": 0.0,
+          "single": 0.0,
+          "revision": 0.0,
+          "unique": 0.0,
+          "contention": 1.0,
+          "run": 0.0
+        },
+        "allHttpRatios": {
+          "list": 0.0,
+          "single": 0.0,
+          "revision": 0.0,
+          "unique": 0.0,
+          "contention": 0.9523809523809523,
+          "run": 0.0,
+          "support": 0.047619047619047616
+        }
+      },
+      "mutations": {
+        "documents": 1,
+        "unique": 0,
+        "contention": 1
+      },
+      "originalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postRunOriginalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "integrity": "passed",
+      "serverStopped": true
+    },
+    {
+      "localArtifacts": "/private/tmp/lt3-parent-contention-50",
+      "runId": "run_lt1_fb6efff4e4d24d53a78e36a0d45831dd",
+      "status": "passed",
+      "workload": {
+        "mode": "contention",
+        "durationSeconds": 30,
+        "configuredVus": 1,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 1,
+        "contentionRequests": 50
+      },
+      "summary": {
+        "requests": 51,
+        "rps": 34.845729,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 49.529,
+          "p90": 114.461,
+          "p95": 142.6905,
+          "p99": 199.3655,
+          "max": 228.598
+        },
+        "vusMax": 1,
+        "thresholdsPassed": true
+      },
+      "sourceSha256": {
+        "api_test/load_test_harness.py": "a785cf77143cdea72fade8b2b73f102a389d557953152eac027a1fa6efe7533b",
+        "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+        "load-tests/k6/mixed.js": "ac3d87ca5f39d6b522ae501d66926c264f0b4005c89bda71b8eecc24f86104c3",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "api_test/load_test_mutations.py": "52209dc217033740ea210e36f8ea58175ca7cf96e0de945dacef48bd6c6a91ec"
+      },
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 0,
+          "contention": 50,
+          "run": 0,
+          "support": 1
+        },
+        "workloadRequests": 50,
+        "totalClassifiedRequests": 51,
+        "expected409": 49,
+        "activePeakVus": 1,
+        "allocatedMaxVus": 1,
+        "workloadRatios": {
+          "list": 0.0,
+          "single": 0.0,
+          "revision": 0.0,
+          "unique": 0.0,
+          "contention": 1.0,
+          "run": 0.0
+        },
+        "allHttpRatios": {
+          "list": 0.0,
+          "single": 0.0,
+          "revision": 0.0,
+          "unique": 0.0,
+          "contention": 0.9803921568627451,
+          "run": 0.0,
+          "support": 0.0196078431372549
+        }
+      },
+      "mutations": {
+        "documents": 1,
+        "unique": 0,
+        "contention": 1
+      },
+      "originalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postRunOriginalFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "integrity": "passed",
+      "serverStopped": true
+    }
+  ],
+  "independentHttpContract": [
+    {
+      "concurrency": 5,
+      "successes": 1,
+      "expected409": 4,
+      "revision": 2,
+      "projectionMatches": true
+    },
+    {
+      "concurrency": 20,
+      "successes": 1,
+      "expected409": 19,
+      "revision": 2,
+      "projectionMatches": true
+    },
+    {
+      "concurrency": 50,
+      "successes": 1,
+      "expected409": 49,
+      "revision": 2,
+      "projectionMatches": true
+    }
+  ],
+  "activeVusCorrection": {
+    "originalReportedPeak": 50,
+    "correctedActualPeak": 20,
+    "allocatedCapacity": 50,
+    "reached50Vus": false,
+    "originalArtifactsPreserved": true,
+    "reimportedBundle": "/private/tmp/lt3-parent-target-20-50/reimported-bundle.json",
+    "correctedImporterSha256": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+    "existingStoredBundlesAutomaticallyChanged": false
+  },
+  "capacityFailure": {
+    "status": "failed",
+    "requests": 125,
+    "unexpected429": 2,
+    "errorRate": 0.016,
+    "reason": "unchanged synchronous /api/run worker limit2",
+    "stageReached": 20,
+    "stage50Unverified": true
+  },
+  "checks": {
+    "pythonFull": {
+      "tests": 364,
+      "skipped": 0,
+      "seconds": 46.197,
+      "status": "passed",
+      "log": "/private/tmp/lt3-final-python.log"
+    },
+    "frontendTests": 45,
+    "frontendBuild": "passed",
+    "harnessTests": 15,
+    "mutationTests": 5,
+    "importerTests": 13,
+    "nodeMixedModelTests": 7,
+    "nodeReadModelTests": 6,
+    "nodeSummaryRegression": "passed",
+    "actualTamperedRunnerUrlMethodNoNetwork": "passed",
+    "actualResidualChildIgnoringSigterm": "terminated",
+    "diffCheck": "passed"
+  },
+  "limitations": [
+    "full1200-second20-to50VU Target not executed",
+    "50VU Target phase not reached before429 threshold abort",
+    "completed200-workload-HTTP blocks have nominal weights; partial runs report observed ratios and additional preparation traffic separately",
+    "capacity/SLO not established; LT-4/LT-5, resource time series, production, PostgreSQL load and Windows descendant cleanup remain unverified"
+  ]
+}

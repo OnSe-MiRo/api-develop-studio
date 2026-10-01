@@ -95,6 +95,44 @@ class LoadResultTests(unittest.TestCase):
         self.assertEqual(bundle["thresholds"][0]["actualValue"], 575.0)
         self.assertFalse(bundle["thresholds"][0]["passed"])
 
+    def test_object_thresholds_preserve_verdict_and_reject_missing_expression(self):
+        expected = import_k6_result(FIXTURES / "target-summary.json", FIXTURES / "target-raw.jsonl")
+        events = [json.loads(line) for line in (FIXTURES / "target-raw.jsonl").read_text().splitlines()]
+        definitions = [event for event in events if event["type"] == "Metric" and event["data"].get("thresholds")]
+        for event in definitions:
+            event["data"]["thresholds"] = [{"threshold": expression, "abortOnFail": True, "delayAbortEval": "5s"} for expression in event["data"]["thresholds"]]
+        with tempfile.TemporaryDirectory() as directory:
+            raw = Path(directory) / "object-thresholds.jsonl"
+            raw.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+            self.assertEqual(import_k6_result(FIXTURES / "target-summary.json", raw), expected)
+            definitions[0]["data"]["thresholds"] = [{"abortOnFail": True, "secret": "do-not-echo"}]
+            raw.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+            with self.assertRaisesRegex(LoadResultError, "invalid thresholds") as raised:
+                import_k6_result(FIXTURES / "target-summary.json", raw)
+            self.assertNotIn("do-not-echo", str(raised.exception))
+
+    def test_summary_vus_uses_active_samples_instead_of_allocated_capacity(self):
+        events = [json.loads(line) for line in (FIXTURES / "target-raw.jsonl").read_text().splitlines()]
+        for event in events:
+            if event["type"] == "Point" and event["metric"] == "vus":
+                event["data"]["value"] = 20
+        with tempfile.TemporaryDirectory() as directory:
+            raw = Path(directory) / "early-abort.jsonl"
+            raw.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+            bundle = import_k6_result(FIXTURES / "target-summary.json", raw)
+        self.assertEqual(bundle["summary"]["vusMax"], 20)
+        self.assertEqual(max(point["activeVus"] for point in bundle["series"]), 20)
+
+    def test_missing_active_vu_samples_do_not_claim_allocated_stage_was_reached(self):
+        events = [json.loads(line) for line in (FIXTURES / "target-raw.jsonl").read_text().splitlines()]
+        events = [event for event in events if event["metric"] != "vus"]
+        with tempfile.TemporaryDirectory() as directory:
+            raw = Path(directory) / "missing-vus.jsonl"
+            raw.write_text("\n".join(json.dumps(event) for event in events) + "\n")
+            bundle = import_k6_result(FIXTURES / "target-summary.json", raw)
+        self.assertEqual(bundle["summary"]["vusMax"], 0)
+        self.assertTrue(any("active VU samples missing" in warning for warning in bundle["warnings"]))
+
     def test_mismatched_http_metric_counts_are_rejected(self):
         lines = (FIXTURES / "target-raw.jsonl").read_text().splitlines()
         with tempfile.TemporaryDirectory() as directory:

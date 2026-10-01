@@ -1,5 +1,135 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## LT-5 잠정 보고서·재현 도구 완료 / 전체 캠페인 미완료 (2026-09-29)
+
+- 완료: checked-in LT-1~LT-4 JSON만 사용한 기준선·용량·병목 보고서와 machine summary, input SHA256·deterministic `--check`·모순/누락 fail-closed 검증을 완료했다. 임시 원본 경로가 없어도 재생성하며 UTF-8 경로를 지원한다.
+- 결론: Baseline은754개/310.259481초=2.430224RPS·p95 53.183ms의 잠정 관측값이다. think time을 포함하며 최대 안정 RPS·sustained 동시성·3회 중앙값은null이다. 단일 동시 요청 관측2와 측정 당시worker2 제약, Target/Stress429·Spike/Stress 회복 실패·Soakunknown을 분리했다.
+- 증거/가설: code/admission으로 확인된 거부 구조와 case 목록의 투영 읽기/JSON 패턴을 기록했다. 파일I/O·SQL·같은호스트 영향이나 회복 실패 원인은 아직 가설이다. normal HTTP오류와 의도적인 timeout의 run exit실패를 구분하고 전체 시나리오/SLO coverage·우선 후속 명령/완료 기준을 작성했다.
+- 검증: 신규9개·전체Python382(skip0,44.620초), compile·diff·report check 통과. 독립 raw32개 count/error/p95/p99/RPS 및 회복7개 산술 일치,13개 모순 입력 거부, generator+JSON4개만 복사한 standalone/Unicode 경로·반복byte동일·stalecheck무수정·NaN거부를 확인했다.
+- 산출물: [잠정 보고서](load-test-baseline-report.md), [machine summary](load-test-baseline-summary.json), [검증·provenance](load-test-lt5-validation.json). LT-5 보고서 작성은 완료했지만 전체 부하 계획과 SLO 검증은 미완료다. fullcampaign·지속 안정 용량·stageSLO·physicalIOPS/Windows는 미검증이며 새로운 load나 tuning은 수행하지 않았다.
+- Git/다음: `feature/load-test-harness`의 LT-1~LT-5 미커밋 변경을 보존했다. 커밋·푸시·병합·브랜치 삭제 없음. 다음은 보고서 P0 실행 정책 검토와 P1 동일 조건3회 기준선·회복 원인 분리다. 새 LT 단계 번호를 만들지 않는다.
+
+
+## LT-5 의미 있는 변경·관련 검증 (2026-09-29)
+
+- 변경: checked-in LT-1~LT-4 JSON만 읽는 report CLI, input SHA256·deterministic `--check`, Korean 잠정 보고서와 machine summary를 추가했다. `/tmp` 포인터는 필수 입력이 아니고 UTF-8로 생성·검사한다.
+- 근거: Baseline754/310.259481초=2.430224RPS·p95 53.183ms·case목록71.39525ms는관측값이며 maximum이 아니다. 최대안정RPS·sustained동시성·3회중앙값은null, 단일 batch 관측2·Target/Stress429·회복실패·미검증SLO를 분리했다.
+- 검증: 신규9개 테스트로 nonfinite/음수·분모/예상409·falsepass·PID/정리/완료·missingcollection·회복산술·normal500·determinism/check무수정을 확인했다. 최초 aborted fault의 nullsummary 경계와 모순된 snapshot을 받아들이던 draft 검증은 fail-closed로 수정했다.
+- 독립 확인: 주 에이전트는 원본32개를 importer 없이 집계해 count/error/p95/p99/RPS가2e-6 이내 일치함과 회복7개 산술을 확인했다. generator+JSON4개만 복사한 별도 경로에서도 byte동일·Korean경로·check무수정·NaN거부를 확인했다. input hash는 raw 진실성의 증명이 아니며 독립 raw 감사와 구분한다.
+- 상태: 기능·관련 검증 완료, 주 에이전트의 최종 전체 회귀/보고서 독립 검토 대기. product tuning·새 load·Git 게시 작업 없음.
+
+
+## LT-5 시작 (2026-09-29)
+
+- 시작: `feature/load-test-harness`의 LT-1~LT-4 미커밋 변경을 보존하고 실제 측정 기반 기준선·용량·병목 보고서를 작성한다.
+- 범위: checked-in LT-1~LT-4 evidence를 입력으로 하는 재현 가능한 report CLI·Korean 보고서·machine summary, input hash·산술 검증·최초 실패·SLO/시나리오 coverage·우선 후속 명령/완료 기준.
+- 판단 경계: maximum stable RPS·sustained run capacity는unknown, single batch admission2·worker2 제약은별도 증거다. 다른 source/시간/window의 percentile이나 median을 합치지 않는다. fullcampaign·최적화·product tuning·Git 게시 작업 없음.
+- 검증: generator의 정상/불일치·unknown·deterministic/check 경계를 구현 에이전트가, raw/source 산술과 보고서 내용을 주 에이전트가 독립 확인한다. `/tmp` 포인터는필수 입력으로 사용하지 않는다.
+
+
+## LT-4 로컬 구현·검증 완료 / 회복 실패·unknown 보존 (2026-09-29)
+
+- 구현: bounded Stress/Spike/Soak·1/2/5/10 admission·controlled500/지연 timeout 명령, 같은 PID의 before/profile/after, 증분 rawtail·CPU/RSS/thread/FD/child/DB/WAL·tmp/log 기록과 enriched series, 중단·recovery·cleanup 판정을 완료했다. before/cleanup 미검증은 load 증가를 막고 worker2는 유지한다.
+- 실제 측정: single synchronized batch에서1/2는200/exit0,5는2성공+3x429,10은2성공+8x429였다. `maxObservedSuccessfulConcurrency:2`이며 sustained 안정 최대값이 아니다.40초 축소Stress/Spike/Soak의 요청·무결성·같은 PID·child/tmp0을 확인했다.
+- 실패/unknown: Spike recovery p95는61.43→84.49ms로120%를 초과했다. 실제50VU Stress는 약3.50초,121HTTP(84x200+31예상409+6x429)에서 중단해75VU로 증가하지 않았고 recovery43.11→62.45ms도 실패했다.40초 Soak은 functional 요청 통과지만2시간 trend 안정성unknown이다. 실패를 재실행하여 통과값으로 대체하지 않는다.
+- 최종 fault/interrupt:500은 명시적인scaled2초 gate로 중단,3초stub지연은caseHTTP2초 timeout2건을 관측했다. reset후 saved run1회의200/exit0·정상 slot 재사용과 recovery56.12→64.13ms·child/tmp0을 확인했다.500 주입의 aborted 상태는 전체failed로 보존했다. 별도SIGINT에서 관측4PID 모두 종료·raw보존·incomplete phase/no bundle·tmp0·serverStopped를 확인했다.
+- 검증: 전체Python372(skip0,89.240초) 통과 후 최종 narrow capacity/recovered-run 보완은 관련29개(8campaign+6mutation+15harness,1.302초)와 최종 실제fault로 확인했다. 현재discoverable373개 전체를 실행했다고 주장하지 않는다. Node campaign6 assertions/mixed7/read6/summary·compile·diff 통과.
+- 한계/다음: 같은 호스트macOS·SQLite Medium의 축소·단일 batch 검증이다. full35분Stress/fullSpike/2시간Soak, 실제120초CPU/메모리 지속, physical diskIOPS/latency·host전체CPU·Windows tree·Studio300초watchdog는 미검증이다. StableStressRps=null, stageSLO/지속 안정 동시성·엄밀Soaktrend·최종보고는LT-5로 남긴다. [명령](load-test-harness.md), [source hash·원본 경로·진단/최종 구분](load-test-lt4-validation.json).
+- Git: `feature/load-test-harness`의LT-1~LT-4 미커밋 변경을 보존했다. 커밋·푸시·병합·브랜치 삭제 없음. 다음은LT-5 기준선·용량·병목 보고서다.
+
+
+## LT-4 의미 있는 변경·관련 검증 (2026-09-29)
+
+- 변경: focused campaign/monitor module과 executor presets를 추가하고 같은 PID의 before→profile→after Baseline, nullable CPU/RSS/thread/FD/child/DB/WAL·tmp/log 기록, 증분 raw tail·monotonic 중단timer·resource series 연결을 구현했다. before 실패는 profile을 막고 semantic/429는 추가 증가를 중단한다.
+- 검증: campaign7개·mutation6개(중단 prefix/audit 포함), 기존 importer13개, Node campaign6 assertions·mixed7/read6/summary 회귀 통과. 최초 malformed/empty control body의 JSON decode가500이던 경계는 generic400으로 수정 후 통과했다.
+- 실제 진단: 같은 server의1/2/5/10 admission에서1/2 성공·5는3건429·10은8건429를 기록했다. controlled500은 scaled2초 window로 중단,3초 stub 지연은 caseHTTP2초 timeout으로 관측됐다. 축소Stress·Spike·Soak의 요청·무결성·자식/tmp 정리를 확인했다.
+- 실패 보존: 축소Spike의 회복 p95가61.43→84.49ms로120%를 초과했고,50VU Stress는4296건을 감지해75VU로 올라가기 전에 중단됐다. 후자의 회복p95도43.11→62.45ms로 실패했다. 단순 재실행으로 통과값을 선택하지 않는다.
+- 제한: full campaign 미실행, Soak trend 판정unknown, physical diskIOPS/latency와 Windows 자식tree 미검증. StableStressRps는null이며 지속 안정 용량·stageSLO/최종보고는LT-5로 남긴다. 현재 최종SIGINT·전체 회귀 독립 검증을 기다린다.
+
+
+## LT-4 시작 (2026-09-29)
+
+- 시작: `feature/load-test-harness`의 LT-1~LT-3 미커밋 변경을 보존하고 Stress·Spike·Soak·실행 용량·장애/회복 계측을 구현한다.
+- 범위: 상한이 있는 재현 가능한 캠페인 명령, 동일 격리 서버의 전/후 Baseline, `/api/run` 동시1/2/5/10, 제어 가능한 local stub delay/error·runner timeout, 증분 raw tail·서버 자원·중단/회복 기록.
+- 경계: 기존 worker2·20VU429 실패를 보존한다. full2시간Soak/Stress/Spike는 실제 실행 증거 전 미검증이며 축소 검증의 시간/VU·중단 timer는 명시적으로 구분한다. production·외부 URL·사용자 데이터·Git 게시 작업은 없다.
+- 검증: 관련 테스트/짧은 local 검증을 구현 에이전트가, 실제 독립 캠페인·전체 회귀를 주 에이전트가 진행한다. resource unknown을0 또는 통과로 취급하지 않는다.
+
+
+## LT-3 구현·로컬 검증 완료 / Target 용량 실패 (2026-09-29)
+
+- 변경: Target20→50 VU의600초/600초 plateau, 완료200 workload HTTP 기준35/35/10/10/5/5 비율과 준비 traffic 분리, 고유 생성+3수정, 같은 revision의5/20/50 batch 경합, 전용 saved-case runner와 허용 쓰기의 SQL/revision/audit/JSON 검증을 구현했다. 원본 fixture는 불변이며 application 저장/실행 계약과 worker2를 변경하지 않았다.
+- 기능 검증: 격리 Medium의40초1→2 VU Target은45HTTP(43workload+2support), unique2·경합2·saved run2·오류0·무결성·정상 종료를 통과했다. unique50은200PUT·50문서/revision4, 경합5/20/50은 정확히1승자·4/19/49 예상409/currentRevision2·투영 일치를 통과했다. 주 에이전트의 별도 barrier HTTP 계약 검증도 동일하게 통과했다.
+- **Target 용량 실패:** 축소20→50 VU는 약5.8초, 실제20 VU 단계에서 `/api/run`429 두 건(125요청·오류율1.6%)으로 threshold가 실패했다. failed bundle과 원본·무결성·정상 종료를 보존했다. **50 VU 단계와 전체1,200초 Target은 미검증**이며 용량·SLO 통과를 주장하지 않는다. 실행 제한2를 유지하고 후속 LT-4의 실행 용량·중단·회복 계측으로 연결한다.
+- 실측 보완: k6의 `vus_max`50은 할당 capacity였고 실제 `vus` peak는20이었다. importer는 활성 표본만 사용하도록 수정하고 missing sample은0/unknown warning으로 기록한다. 원본 artifact는 유지하며 별도 재집계 bundle의20을 확인했다. 기존 저장 bundle의 자동 migration/재집계는 없다.
+- 최종 검증: 전체 Python364(skip0,46.197초), frontend45/build, 하네스15·mutation5·importer13, Node mixed7·read6·summary 회귀, compile·diff 검사 통과. 변조 URL/method의 실제 CLI가 network 호출 전에 거부됨을 확인했고, 부모가 먼저 종료된 뒤 SIGTERM을 무시하는 실제 자식의 private group도 종료했다.
+- 판정/다음: LT-3 구현·로컬 기능 검증 완료; Target 용량은 실패 상태다. 같은 호스트macOS/SQLite/Medium 범위이며 Windows 자식 tree·운영·PostgreSQL 부하·장시간 campaign은 미검증이다. [명령](load-test-harness.md), [실행 source hash·수치·제한](load-test-lt3-validation.json). 다음은 LT-4 Stress·Spike·Soak 및 `/api/run` 용량·회복 시험이다.
+- Git: `feature/load-test-harness`에 LT-1~LT-3 미커밋 변경을 보존했다. 커밋·푸시·병합·브랜치 삭제 없음.
+
+
+## LT-3 시작 (2026-09-29)
+
+- 시작: `feature/load-test-harness`의 LT-1·LT-2 미커밋 변경을 보존하고 Target 혼합·고유 저장·동일 문서 경합을 구현한다.
+- 범위: 기본 20→50 VU·단계별10분 Target, HTTP workload 기준35/35/10/10/5/5 비율과 별도 준비 요청 기록, 생성+3회 수정, 같은 revision의5/20/50 동시 PUT, 격리 saved case의 `/api/run`과 저장 사후 무결성.
+- 계약: 생성 PUT은 `_storage`를 생략하고 수정은 직전 응답 revision을 사용한다. 예상409도 body.currentRevision을 확인하며 `/api/run`의429/exitCode 오류는 실패로 기록한다. 원본 fixture는 불변이고 복사본의 허용된 새 문서만 검증한다.
+- 실행 경계: 새 loopback 서버·SQLite·case/project/log/tmp와 전용 runner wrapper에 한정한다. 외부 URL·사용자 데이터·운영 부하·LT-4~LT-5와 Git 게시 작업은 포함하지 않는다. 전체20분 Target은 검증 증거가 없으면 미실행으로 남긴다.
+- 검증: 단위·Node·짧은 실제 k6를 구현 에이전트가, 전체 회귀·축소 Target·독립5/20/50 경합·고유 저장은 주 에이전트가 확인한다.
+
+
+## LT-2 최종 검증·완료 (2026-09-29)
+
+- 판정: Smoke·읽기 Baseline의 로컬 구현·검증 완료. 기본 60초 Smoke(7 endpoint×1 VU, 요청214)와 300초 Baseline(5 VU, 요청754)에서 상태·본문 checks 각각428/1,508 모두 통과, 오류율0·threshold 통과·endpoint7·fixture 불변·정상 종료를 독립 확인했다.
+- 최종 검증: 주 에이전트 전체 Python 354개(skip 0, 94.869초), frontend 45개·build, Node 읽기 모델 6개·summary 시작시각 회귀, `git diff --check` 통과. 구현 에이전트의 하네스12·importer11도 통과했다.
+- 최종 source 검증: output preflight·bundle-after-integrity 보완을 포함한 실제 3초 validation Smoke는 요청10·VU7·오류0·threshold·schema·fingerprint·서버 종료를 통과했다. 기본 부하 스크립트와 importer는 기본 실행 이후 변경하지 않았고, 실행별 source hash와 validation 여부를 [측정 기록](load-test-lt2-validation.json)에 보존했다.
+- 경계: 같은 호스트 macOS/SQLite의 Medium에서 각 기본 모델 1회 검증이다. p95 Smoke 56.45045ms·Baseline 53.183ms는 이번 실행 수치이며 확정 SLO·용량·3회 중앙값·전체 dataset 비교를 의미하지 않는다. LT-3~LT-5·운영 부하·Windows·서버 자원 시계열은 후속 범위다.
+- Git/다음: `feature/load-test-harness`에 LT-1·LT-2 미커밋 변경을 보존했다. 커밋·푸시·병합·브랜치 삭제 없음. 다음은 LT-3 Target 혼합 및 저장 경합 시나리오다.
+
+
+## LT-2 기본 실행 검증 완료·최종 회귀 대기 (2026-09-29)
+
+- 독립 기본 Smoke: 격리 Medium에서 60초, endpoint별 VU1(합계7), 요청214·checks428/실패0·오류율0·p95 56.45045ms·endpoint7·series13·threshold 통과. 서버 로그에서 프로젝트20개와 케이스 reference30개 순환을 확인했다.
+- 독립 기본 Baseline: 같은 전용 Medium 스냅샷에서 300초·VU5, 요청754·checks1,508/실패0·오류율0·p95 53.183ms·endpoint7·series63·프로젝트20개 순환·threshold 통과. 두 실행 모두 fixture fingerprint 불변, 원본→summary→bundle·서버 종료를 확인했다.
+- 최종 보완: 스냅샷 정합성과 fingerprint를 통과한 뒤에만 bundle을 기록한다. timeout/무결성 오류는 정상처럼 보이는 bundle을 남기지 않고, threshold 실패는 무결성 통과 후 failed bundle로 보존한다. 관련 12개 하네스 테스트 통과; 이 기록 순서와 output preflight는 부하 모델 변경 없이 별도 검증했다.
+- 경계: macOS 같은 호스트·SQLite·Medium에서 각 기본 모델 1회 검증이다. 확정 용량·SLO·3회 중앙값·Small/Medium/Large 성능 비교는 판정하지 않는다. [명령](load-test-harness.md), [실행 metadata·측정값](load-test-lt2-validation.json).
+- 현재: 최종 짧은 실제 k6 검증과 주 에이전트 전체 회귀 확인 후 LT-2 완료 상태를 확정한다. 미커밋·미푸시·미병합.
+
+
+## LT-2 의미 있는 변경·중간 검증 (2026-09-29)
+
+- 변경: 기본 Smoke 7 endpoint×1 VU×60초와 Baseline 5 VU×300초를 같은 격리 실행기로 연결했다. 전체 dataset 범위·duration/VU·validation 모드를 metadata에 기록하고 `load-test/{dataset}.json` 구분자를 사용한다. reference 순환·1~3초 think time, 상태·본문 의미·coverage 검증과 duration/grace/process timeout 경계를 추가했다.
+- 회귀: 하네스 12개(config·원본 보존·timeout/threshold/무결성 실패의 종료 기록·중단·fixture 내부 출력 거부), importer 11개(object threshold 수치·verdict 동일성과 잘못된 expression 거부 포함), Node 읽기 모델 6개(선택·pacing·안전한 metric 이름·본문 오류), summary 시작시각 회귀 통과.
+- 실패/해소: 실제 k6의 abort threshold가 raw JSON에서 객체로 기록되어 첫 짧은 실행과 주 에이전트 첫 60초 Smoke의 importer가 거부했다. expression만 정규화하는 owning importer 수정과 실제 원본 replay로 해소했다. 수정 후 독립 60초 Smoke는 214요청·428 checks/실패 0·VU7·오류0·7 endpoint·threshold·bundle·정합성·서버 종료를 통과했다.
+- 안전 보완: 실행 output을 fixture 내부에 지정하면 복사본을 다시 포함하는 재귀 복사가 발생할 수 있어 디렉터리 생성 전에 거부한다. 동일·하위·다단계 하위 output에서 fixture 파일 집합과 fingerprint 불변을 검증했다. 실제 실행과 별개로 이 preflight 보완을 검증했다.
+- 테스트 보완: 실패 경계 테스트의 첫 mock은 플랫폼 조회의 내부 subprocess에도 적용되어 목적한 k6 경계에 도달하지 못했다. 플랫폼 metadata를 별도 stub해 timeout·threshold·무결성 실패 3종 모두 기록·종료·원본 보존을 검증했다.
+- 현재 검증: 독립 기본 300초 Baseline과 전체 회귀를 주 에이전트가 진행 중이다. 이 증거 전 LT-2 완료 판정을 보류한다. Git 게시 작업 없음.
+
+
+## LT-2 시작 (2026-09-29)
+
+- 시작: `feature/load-test-harness`의 LT-1 미커밋 변경을 보존하고 Smoke·읽기 Baseline을 구현한다.
+- 범위: endpoint별 1 VU·60초 Smoke, 5 VU·300초 읽기 Baseline, dataset 전체의 seeded reference 순환·1~3초 think time, 상태·본문 의미 검증, 안전한 endpoint metric·summary/importer 연결.
+- 실행 경계: 새 격리 fixture 스냅샷·loopback 서버에만 실행한다. 짧은 검증은 별도 validation metadata/scenario로 구분한다. LT-3~LT-5, 운영 부하와 Git 게시 작업은 수행하지 않는다.
+- 검증: 관련 단위·Node·짧은 실제 k6 검증은 구현 에이전트가, 전체 회귀·기본 60초 Smoke/300초 Baseline은 주 에이전트가 독립 실행한다.
+
+
+## LT-1 구현·검증 완료 (2026-09-29)
+
+- 변경: 전용 fixture 생성·검증 CLI, 격리 SQLite·JSON 투영·로그와 실행 전 복사 스냅샷, 1 VU·단일 iteration k6 probe, 환경·명령·source hash·dirty 상태·종료 기록 및 DB-1 importer 연결을 구현했다.
+- 데이터 검증: Small(1/10/2)에서 case revision 100개씩 총 1,003개, Medium(20/2,000/100) 총 2,120개, Large(100/20,000/0) 총 20,100개 revision을 실제 생성했다. 전체 DB integrity/foreign key·revision hash·본문 1/10/100 KiB·JSON 투영 일치·manifest fingerprint를 확인했다. Large는 기본 revision 1개이며 전체 Large×100은 미실행이다.
+- 실제 k6: v2.3.0/macOS의 격리 Small depth100에서 7개 HTTP 요청, VU 1, 오류율 0, threshold 통과, summary→raw→bundle schema 통과, 전후 fingerprint 일치와 서버 종료를 확인했다. 주 에이전트도 새 Small depth3에서 독립 probe를 통과했다.
+- 검증: 신규 Python 8개, 주 에이전트 전체 Python 349개(skip 0, 162.468초), frontend 45개·build, Node summary 시작시각 회귀 테스트, `git diff --check` 통과. 생성기·메타데이터 최종 변경은 관련 8개와 실제 probe로 재확인했다.
+- 실패/해소: sandbox loopback bind는 해당 검증 명령의 권한 확장으로 해소했다. 실제 k6가 summary 컨텍스트에서 모듈을 다시 초기화해 raw가 시작 시각보다 앞서는 문제는 launcher의 `STUDIO_STARTED_AT` 전달로 수정했다. 1.1초 gauge 대기로 짧은 실행의 실제 VU 1을 기록한다.
+- 판정: LT-1 로컬 준비 완료. 같은 호스트 SQLite 연결 검증이며 처리량/SLO 기준선이 아니다. Windows·운영 부하·장시간 시나리오·서버 자원 시계열·저장 경합·`/api/run` 용량은 후속 범위다. [사용 명령](load-test-harness.md), [측정 기록](load-test-lt1-validation.json).
+- Git/다음: `feature/load-test-harness` 미커밋 상태. 커밋·푸시·병합·브랜치 삭제 없음. 다음은 LT-2 Smoke와 읽기 Baseline 스크립트다.
+
+
+## LT-1 시작 (2026-09-29)
+
+- 시작: 최신 `develop`의 DB-1~DB-5 완료 상태에서 `feature/load-test-harness`로 LT-1을 시작했다.
+- 범위: Small·Medium·Large 전용 fixture, 1/10/100 KiB 본문과 최대 100 case revision, 격리 SQLite·JSON 투영·로그, k6 실행 metadata와 원본→summary→bundle 연결.
+- 완료 기준: fixture 건수·크기·리비전·투영 정합성을 검증하고 짧은 1 VU 하네스 검증 명령을 재현한다. LT-2~LT-5 장시간 시나리오·용량 판정과 운영 대상 부하는 후속 범위다.
+- 확인: 현재 PATH에 k6 binary가 없으며 실제 k6 실행 가능 환경을 확인 중이다. Git 커밋·푸시·병합·삭제는 수행하지 않는다.
+
+
 ## DB-2~DB-5 develop 통합·원격 반영 (2026-09-29)
 
 - 시작: 사용자 요청으로 `feature/load-test-operations`의 DB-2~DB-5 변경을 커밋하고 `origin/develop`에 통합·푸시한다. 선행 DB-2~DB-4 변경을 포함하며 브랜치는 삭제하지 않는다.
@@ -188,10 +318,10 @@
 ## 현재 요약
 
 - 최종 갱신일: 2026-09-29
-- 현재 단계: DB-1~DB-5 결과 대시보드 완료. 실제 LT-1~LT-5 대기
+- 현재 단계: DB-1~DB-5/LT-1~LT-5 로컬 도구·잠정 보고서 완료; 전체 캠페인/SLO 미완료·실패/unknown 보존
 - 전체 상태: 진행
-- 작업 브랜치: `develop` (기능 커밋 `99b7821` 통합, 원격 게시 대상 `origin/develop`)
-- 다음 작업: LT-1 k6 실행 구조와 전용 fixture 준비
+- 작업 브랜치: `feature/load-test-harness` (최신 `develop`에서 분기; LT-1~LT-5 미커밋·미푸시·미병합)
+- 다음 작업: 보고서 P0 실행 정책 검토 → P1 동일 조건3회 기준선·회복 원인 분리
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -199,11 +329,11 @@
 
 | ID | 작업 | 상태 | 완료 기준 | 관련 변경 또는 결과 |
 | --- | --- | --- | --- | --- |
-| LT-1 | k6 실행 구조와 전용 fixture 준비 | 대기 | Small·Medium·Large fixture와 재현 가능한 실행 명령 준비 | - |
-| LT-2 | Smoke와 읽기 Baseline 스크립트 | 대기 | 응답 검증과 클라이언트 지표 출력 확인 | - |
-| LT-3 | Target 혼합 및 저장 경합 시나리오 | 대기 | 혼합 비율, 고유 저장, 예상 `409` 검증 | - |
-| LT-4 | Stress·Spike·Soak 및 `/api/run` 시험 | 대기 | 중단 조건과 회복 측정을 포함한 결과 생성 | - |
-| LT-5 | 기준선 보고서 | 대기 | 최대 안정 RPS, 안정 동시 실행 수, 병목 기록 | - |
+| LT-1 | k6 실행 구조와 전용 fixture 준비 | 완료 | Small·Medium·Large fixture와 재현 가능한 실행 명령 준비 | 전체 건수·본문·투영 검증, Small depth100·실제 k6 7요청·VU1·오류0·bundle·종료 통과 |
+| LT-2 | Smoke와 읽기 Baseline 스크립트 | 완료 | 응답 검증과 클라이언트 지표 출력 확인 | 기본60초/300초·요청214/754·오류0·7endpoint·bundle·종료, Python354·Node 회귀 통과 |
+| LT-3 | Target 혼합 및 저장 경합 시나리오 | 완료 | 혼합 비율, 고유 저장, 예상 `409` 검증 | 로컬 구현/기능 검증 완료; unique50·경합5/20/50 통과, Target20VU429 실패·50/전체20분 미검증 |
+| LT-4 | Stress·Spike·Soak 및 `/api/run` 시험 | 완료 | 중단 조건과 회복 측정을 포함한 결과 생성 | 로컬 bounded구현·축소 결과 완료; Spike/50VUStress회복 실패·Soakunknown·관측admission2·fullcampaign 미검증 |
+| LT-5 | 기준선 보고서 | 완료 | 최대 안정 RPS, 안정 동시 실행 수, 병목 기록 | 잠정 보고서/재현 완료; maximum/sustained/median null·관측2·실패/unknown·후속 기준 명시; 전체캠페인 미완료 |
 | DB-1 | 결과 schema와 importer | 완료 | 고정 fixture의 집계값과 importer 결과 일치 | 단위 10개·전체 Python 310개·helper·생성·diff 검사 통과 |
 | DB-2 | 저장소와 결과 조회 API | 완료 | migration, atomic import, 목록·상세·series API 테스트 통과 | 전체 Python 322개·실 HTTP·생성·diff 검사 통과, 2만 건 목록 p95 0.6 ms |
 | DB-3 | 결과 목록과 상세 대시보드 | 완료 | 필터, KPI, 표, 차트와 상태 화면 구현 | Python 322개·프런트엔드 35개·build, 실제 브라우저 URL·수치·390px·키보드·오류 복구 검증 통과 |
@@ -214,12 +344,12 @@
 
 진행 중인 작업이 생기면 아래 항목을 갱신한다. 동시에 여러 작업을 수행할 때는 각각 구분해서 작성한다.
 
-- 작업 ID: DB-5
-- 목표: bounded series·API 응답 예산·보존/복구 운영 명령과 예상 데이터의 실제 HTTP 성능 검증
-- 변경 파일: `api_test/load_test_store.py`, `api_test/implementations/load_tests.py`, `api_test/load_test_maintenance.py`, `api_test/load_test_benchmark.py`, OpenAPI 계약·생성 route, 운영/PG 테스트, 결과 사용·측정 문서, 두 진행 문서
+- 작업 ID: LT-5
+- 목표: 실제 evidence의 기준선·용량·병목·SLO coverage와 우선 후속 보고서
+- 변경 파일: `api_test/load_test_report.py`, `tests/test_load_test_report.py`, 생성 보고서/summary, README·사용 문서·LT-4 PID evidence 보강·두 진행 기록
 - 시작 시각: 2026-09-29
-- 상태: 완료 (2026-09-29)
-- 확인이 필요한 사항: 없음. 실제 LT-1~LT-5 실행은 별도 대기.
+- 상태: 완료 (보고서/재현; 신규9개·전체382·독립raw/repro/adversarial 검증 통과)
+- 확인이 필요한 사항: 최대안정RPS·sustained동시성·fullcampaign/SLO는미확정이며 보고서 완료와 분리한다.
 
 ## 검증 기록
 

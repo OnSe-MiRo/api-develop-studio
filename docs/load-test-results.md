@@ -40,7 +40,7 @@ k6 run \
   load-tests/target-mixed.js
 ```
 
-현재 DB-1에는 시나리오 스크립트와 fixture 생성기가 포함되지 않는다. 위의 `target-mixed.js`는 LT 단계에서 제공할 실행 파일 이름이며, 지금은 helper 연결 계약을 보여 주기 위한 예시다.
+LT-1·LT-2의 실제 fixture 생성·격리 실행 명령은 [k6 하네스](load-test-harness.md)를 사용한다. 위의 `target-mixed.js`는 helper 연결 예시이며 실제 LT-3 파일은 `load-tests/k6/mixed.js`다. 실행은 격리 `target` 명령을 사용한다. 실제 launcher는 process 시작 전에 UTC `STUDIO_STARTED_AT`를 전달해야 한다. k6가 종료 summary 컨텍스트에서 helper를 다시 초기화하면 모듈 내부 시작 시각이 원본 요청보다 늦어질 수 있다.
 
 ## bundle 생성
 
@@ -62,6 +62,7 @@ python3 -m api_test.load_results \
 - p50·p90·p95·p99는 정렬 표본의 `(n - 1) × percentile` 위치를 선형 보간하고 소수점 여섯 자리까지 기록한다.
 - series는 기본 5초 단위다. 마지막 구간은 실제 남은 시간으로 RPS를 계산하고 표본이 없는 latency는 `null`이다.
 - endpoint는 `name` tag를 우선하고 없으면 `url` tag를 사용한다. origin과 query를 제거하고 숫자·UUID·긴 불투명 path segment를 `{id}`로 바꾼다.
+- `summary.vusMax`는 실제 활성 `vus` 표본의 최대값이다. 할당 capacity인 `vus_max`를 포함하지 않는다. 활성 표본이 없으면0과 unknown warning을 남긴다. 기존 저장 bundle은 자동 수정하지 않으며 원본을 재집계해야 한다.
 - `studio_cpu_percent`, `studio_memory_mb`, `studio_child_processes` metric이 있으면 같은 bucket에 기록하고 없으면 `null`이다.
 - 단순 비교형 k6 threshold(`p(95)<300`, `rate<0.01`, `count>=1` 등)는 원본으로 실측값을 계산한다. helper가 전달한 k6 판정이 있으면 그 판정을 최종 기준으로 사용하고 차이가 있으면 안전한 warning을 남긴다.
 
@@ -86,7 +87,7 @@ python3 -m api_test.load_results \
 
 ## 현재 제한
 
-- 실제 k6 binary를 사용한 Smoke·Target 실행은 LT 단계 범위다. DB-1은 공식 형식의 고정 fixture로 수치 계약을 검증한다.
+- DB-1은 공식 형식의 고정 fixture로 수치 계약을 검증하고 LT-1은 실제 k6 단일 iteration probe로 연결을 확인한다. LT-2는 1분 Smoke·5분 읽기 Baseline을 제공한다. LT-3은 Target 혼합·저장 경합의 로컬 구현과 축소 검증을 제공하며 실제 Target 용량 시험은 실패429를 기록했다. 전체20분 Target과 후속 Stress·회복·용량 판정은 미검증이다.
 - 복합 JavaScript threshold 표현은 실측값 계산 대상이 아니다. helper의 판정도 없으면 안전하게 실패로 표시하고 warning을 남긴다.
 - exact percentile을 위해 latency 숫자 표본은 메모리에 유지한다. DB-5의 bounded-memory 개선은 저장된 series 조회에 적용한다. importer의 정확한 percentile 표본 메모리는 유지하며 대규모 Soak 입력의 histogram/외부 집계는 별도 변경이 필요하다.
 - 서버는 원본 k6 JSON Lines 대신 정규화 bundle만 받는다. 자동 정리는 제공하지 않으며 아래의 운영자 확인 명령을 사용한다.

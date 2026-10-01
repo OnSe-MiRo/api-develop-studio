@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+const source = await readFile(new URL("./campaign-model.js", import.meta.url), "utf8");
+const { campaignOptions } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+assert.equal(campaignOptions({ phase: "baseline", durationSeconds: 300 }).vus, 5);
+assert.equal(campaignOptions({ phase: "run", vus: 10 }).iterations, 1);
+assert.equal(campaignOptions({ phase: "run", vus: 10 }).exec, "runOnce");
+assert.equal(campaignOptions({ phase: "fault", durationSeconds: 90 }).vus, 1);
+assert.equal(campaignOptions({ phase: "profile", mode: "soak", vus: 35, durationSeconds: 7200 }).duration, "7200s");
+const stages = [{ duration: "300s", target: 50 }, { duration: "0s", target: 75 }, { duration: "300s", target: 75 }];
+assert.deepEqual(campaignOptions({ phase: "profile", mode: "stress", startVus: 50, stages }).stages, stages);
+console.log("campaign executor configuration:6 assertions passed");

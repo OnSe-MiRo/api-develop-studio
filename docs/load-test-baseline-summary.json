@@ -1,0 +1,1193 @@
+{
+  "admissionBatches": [
+    {
+      "concurrency": 1,
+      "rejected429": 0,
+      "succeeded": 1
+    },
+    {
+      "concurrency": 2,
+      "rejected429": 0,
+      "succeeded": 2
+    },
+    {
+      "concurrency": 5,
+      "rejected429": 3,
+      "succeeded": 2
+    },
+    {
+      "concurrency": 10,
+      "rejected429": 8,
+      "succeeded": 2
+    }
+  ],
+  "baselineMedian": null,
+  "baselineRepeatCount": 1,
+  "bottlenecks": [
+    {
+      "confidence": "confirmed measured constraint",
+      "evidence": "measurement workers2 +singlebatch1/2pass,5/10→429;legacy_slot nonblocking rejection",
+      "sourceReference": "api_test/jobs.py at measurement snapshot4832615; historical code/admission corroboration, current arbitrarysettings not inferred",
+      "topic": "synchronous admission"
+    },
+    {
+      "confidence": "hypothesis",
+      "evidence": "Baseline/api/cases highestread p95;list→case_summaries→SQLite projectionread/JSON parse path confirmed, causalshare unmeasured",
+      "topic": "case list projection work"
+    },
+    {
+      "confidence": "unproven cause",
+      "evidence": "singlehost shortwindows,different source versions,no per-query/file-I/O trace;no SQLitecapacity orleak conclusion",
+      "topic": "recovery p95"
+    }
+  ],
+  "campaigns": [
+    {
+      "evidenceLabel": "diagnostic before final cleanup guard; valid admission path",
+      "mode": "run-capacity",
+      "phases": [
+        {
+          "client": {
+            "capacity429": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": null,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 1
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 1
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": null,
+          "kind": "run",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 2
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 2
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": null,
+          "kind": "run",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 3,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 2,
+              "429": 3
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 5
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": null,
+          "kind": "run",
+          "status": "failed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 8,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 2,
+              "429": 8
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 10
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": null,
+          "kind": "run",
+          "status": "failed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": null,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "childProcesses": {
+            "after": 0,
+            "before": 0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "after": 0.0,
+            "before": 0.0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "after": 0.0,
+            "before": 0.0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "handles": {
+            "after": 12,
+            "before": 12,
+            "ratio": 1.0,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "after": 71.921875,
+            "before": 69.90625,
+            "ratio": 1.0288332588287885,
+            "verdict": "passed"
+          },
+          "p95Ms": {
+            "after": 58.43475,
+            "before": 79.24655,
+            "ratio": 0.7373791035698084,
+            "verdict": "passed"
+          },
+          "threads": {
+            "after": 2,
+            "before": 3,
+            "ratio": 0.6666666666666666,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed"
+      },
+      "sourceSha256": {
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "api_test/load_test_campaigns.py": "525037d935bcd7aa8fd7d913033babbb057bf6382e1e140d212f649ee90f0761",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_test_monitor.py": "9ef1657513150ecb21dc6e93083f9841d887a3729b09e2e7f0969cff8a1d227e",
+        "api_test/load_test_mutations.py": "b12b69d8b53878ae932da1b0d7665426bdfe8aaf3abc4f6ebc742913991d75d2",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/mixed.js": "130e9dc4c7040c600855ab47e66f54088e859132110ef375390b5e188a597c12",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "failed",
+      "validation": true,
+      "vusConfigured": 10
+    },
+    {
+      "evidenceLabel": "diagnostic before final run-recovered phase; controlled fault observations",
+      "mode": "fault",
+      "phases": [
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 1
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": 32.37494611740112,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 2,
+            "httpStatuses": {
+              "200": 2,
+              "500": 2
+            },
+            "networkOr5xxRate": 0.3333333333333333,
+            "runExitFailures": 2,
+            "windowRequests": 3
+          },
+          "complete": false,
+          "configuredStartVus": null,
+          "elapsedSeconds": 2.3698501586914062,
+          "kind": "fault",
+          "status": "aborted",
+          "stopReason": "network_or_5xx_rate_above_5_percent_in_full_window"
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 2,
+            "httpStatuses": {
+              "200": 4
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 2,
+            "windowRequests": 1
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": 13.701525688171387,
+          "kind": "fault",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 1
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": 32.298168897628784,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "childProcesses": {
+            "after": 0.0,
+            "before": 0.0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "after": 0.2221699721013697,
+            "before": 0.20984198453883077,
+            "ratio": 1.0587489085638992,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "after": 0.0,
+            "before": 0.0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "handles": {
+            "after": 16.8,
+            "before": 16.8,
+            "ratio": 1.0,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "after": 69.6109375,
+            "before": 72.003125,
+            "ratio": 0.9667766155982814,
+            "verdict": "passed"
+          },
+          "p95Ms": {
+            "after": 49.52185,
+            "before": 55.5746,
+            "ratio": 0.8910878350901311,
+            "verdict": "passed"
+          },
+          "threads": {
+            "after": 3.4,
+            "before": 3.3666666666666667,
+            "ratio": 1.00990099009901,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed"
+      },
+      "sourceSha256": {
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "api_test/load_test_campaigns.py": "72458638c770fe859ebee68d265be1260fb3fbcb28963dfe6776dc215ad68e7d",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_test_monitor.py": "062b30c24a294dfe3de3c3f4e200d3d2c463a3d273ae544a1a6c527a19f3e5b6",
+        "api_test/load_test_mutations.py": "b12b69d8b53878ae932da1b0d7665426bdfe8aaf3abc4f6ebc742913991d75d2",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "failed",
+      "validation": true,
+      "vusConfigured": 1
+    },
+    {
+      "evidenceLabel": "reduced1-to2VU diagnostic on evolving source; preserve passed functional result",
+      "mode": "stress",
+      "phases": [
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": 1,
+          "elapsedSeconds": 32.521870374970604,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 40,
+              "409": 8
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 48
+          },
+          "complete": true,
+          "configuredStartVus": 1,
+          "elapsedSeconds": 41.4437705000164,
+          "kind": "profile",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": 1,
+          "elapsedSeconds": 32.31148208398372,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "childProcesses": {
+            "after": 0,
+            "before": 0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "after": 0.24689356005456958,
+            "before": 0.2553325410965878,
+            "ratio": 0.9669490578608783,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "after": 0.0,
+            "before": 0.0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "handles": {
+            "after": 16.64516129032258,
+            "before": 16.64516129032258,
+            "ratio": 1.0,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "after": 73.61340725806451,
+            "before": 83.92792338709677,
+            "ratio": 0.877102688678962,
+            "verdict": "passed"
+          },
+          "p95Ms": {
+            "after": 65.7322,
+            "before": 60.02055,
+            "ratio": 1.0951615738276308,
+            "verdict": "passed"
+          },
+          "threads": {
+            "after": 3.7096774193548385,
+            "before": 3.2580645161290325,
+            "ratio": 1.1386138613861385,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed"
+      },
+      "sourceSha256": {
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "api_test/load_test_campaigns.py": "c2cff9556032f47b218738b584c5f5faec49a1e5d8713c977934cf1e513387dc",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_test_monitor.py": "062b30c24a294dfe3de3c3f4e200d3d2c463a3d273ae544a1a6c527a19f3e5b6",
+        "api_test/load_test_mutations.py": "b12b69d8b53878ae932da1b0d7665426bdfe8aaf3abc4f6ebc742913991d75d2",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "passed",
+      "validation": true,
+      "vusConfigured": 2
+    },
+    {
+      "evidenceLabel": "reduced1-to2-to1VU diagnostic; preserve recovery failure",
+      "mode": "spike",
+      "phases": [
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": 1,
+          "elapsedSeconds": 32.19580662500812,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 46,
+              "409": 8
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 54
+          },
+          "complete": true,
+          "configuredStartVus": 1,
+          "elapsedSeconds": 42.63515599997481,
+          "kind": "profile",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": 1,
+          "elapsedSeconds": 33.75149150000652,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "childProcesses": {
+            "after": 0,
+            "before": 0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "after": 0.10900876990970389,
+            "before": 0.139871308680488,
+            "ratio": 0.7793504682130037,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "after": 0.0,
+            "before": 0.0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "handles": {
+            "after": 16.75,
+            "before": 16.583333333333332,
+            "ratio": 1.0100502512562815,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "after": 43.0546875,
+            "before": 83.65234375,
+            "ratio": 0.5146859677795937,
+            "verdict": "passed"
+          },
+          "p95Ms": {
+            "after": 84.4885,
+            "before": 61.42995,
+            "ratio": 1.375363320334788,
+            "verdict": "failed"
+          },
+          "threads": {
+            "after": 3.8333333333333335,
+            "before": 3.9166666666666665,
+            "ratio": 0.9787234042553192,
+            "verdict": "passed"
+          }
+        },
+        "status": "failed"
+      },
+      "sourceSha256": {
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "api_test/load_test_campaigns.py": "4530ca1eb02e404a03656a97e1084288c3a5cdde24d8c022b691d9041ab9505c",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+        "api_test/load_test_mutations.py": "b12b69d8b53878ae932da1b0d7665426bdfe8aaf3abc4f6ebc742913991d75d2",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "failed",
+      "validation": true,
+      "vusConfigured": 2
+    },
+    {
+      "evidenceLabel": "reduced2VU40-second diagnostic; stability remains unknown",
+      "mode": "soak",
+      "phases": [
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": 33.324097709031776,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 50,
+              "409": 8
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 58
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": 42.570354165975004,
+          "kind": "profile",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": null,
+          "elapsedSeconds": 33.17699825001182,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "childProcesses": {
+            "after": 0,
+            "before": 0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "after": 0.11087286520950895,
+            "before": 0.1772900069076285,
+            "ratio": 0.6253757171281281,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "after": 0.0,
+            "before": 0.0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "handles": {
+            "after": 16.916666666666668,
+            "before": 16.833333333333332,
+            "ratio": 1.0049504950495052,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "after": 74.20052083333333,
+            "before": 73.33333333333333,
+            "ratio": 1.011825284090909,
+            "verdict": "passed"
+          },
+          "p95Ms": {
+            "after": 135.38685,
+            "before": 136.22845,
+            "ratio": 0.9938221421443172,
+            "verdict": "passed"
+          },
+          "threads": {
+            "after": 3.0,
+            "before": 3.8333333333333335,
+            "ratio": 0.7826086956521738,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed"
+      },
+      "sourceSha256": {
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "api_test/load_test_campaigns.py": "27620d725abe2a21041d0e9286669c7e6bb2e74ca5abf9d6655862323afe83b1",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+        "api_test/load_test_mutations.py": "eedba8431d92733d1d58da4ea3783436d7fc62880743feae971be8a7303eaa0a",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "unknown",
+      "validation": true,
+      "vusConfigured": 2
+    },
+    {
+      "evidenceLabel": "real50VU stop/recovery diagnostic; later narrow cleanup/run-recovered changes separately checked",
+      "mode": "stress",
+      "phases": [
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": 50,
+          "elapsedSeconds": 33.22217850002926,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        },
+        {
+          "client": {
+            "capacity429": 6,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 84,
+              "409": 31,
+              "429": 6
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 121
+          },
+          "complete": false,
+          "configuredStartVus": 50,
+          "elapsedSeconds": 3.4975652910070494,
+          "kind": "profile",
+          "status": "aborted",
+          "stopReason": "run_capacity_limit_429_before_further_increase"
+        },
+        {
+          "client": {
+            "capacity429": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "windowRequests": 70
+          },
+          "complete": true,
+          "configuredStartVus": 50,
+          "elapsedSeconds": 33.008158374985214,
+          "kind": "baseline",
+          "status": "passed",
+          "stopReason": null
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "childProcesses": {
+            "after": 0,
+            "before": 0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "after": 0.15235519949578366,
+            "before": 0.13813350504810434,
+            "ratio": 1.1029561542127428,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "after": 0.0,
+            "before": 0.0,
+            "ratio": null,
+            "verdict": "passed"
+          },
+          "handles": {
+            "after": 16.923076923076923,
+            "before": 16.923076923076923,
+            "ratio": 1.0,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "after": 77.75841346153847,
+            "before": 83.93629807692308,
+            "ratio": 0.9263979379967066,
+            "verdict": "passed"
+          },
+          "p95Ms": {
+            "after": 62.45055,
+            "before": 43.10875,
+            "ratio": 1.4486745730275177,
+            "verdict": "failed"
+          },
+          "threads": {
+            "after": 3.0,
+            "before": 3.0,
+            "ratio": 1.0,
+            "verdict": "passed"
+          }
+        },
+        "status": "failed"
+      },
+      "sourceSha256": {
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "api_test/load_test_campaigns.py": "10d5599eb8b11877b0dd755e487c0446f2ca3553f24e34133e7df2e787a8f04e",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+        "api_test/load_test_mutations.py": "f3586e8f5414d34d014bb4b90e988aceb4dd6ad1747e5c87ebeee59197cca414",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "failed",
+      "validation": true,
+      "vusConfigured": 200
+    }
+  ],
+  "coverage": [
+    {
+      "item": "Smoke",
+      "scope": "endpoint별1VU60초·214요청;1회",
+      "status": "observed-pass"
+    },
+    {
+      "item": "Baseline",
+      "scope": "5VU300초·754요청;동일조건3회/중앙값 미확정",
+      "status": "provisional"
+    },
+    {
+      "item": "Target",
+      "scope": "실제20VU429;50VU/전체1200초/3회 미검증",
+      "status": "observed-fail"
+    },
+    {
+      "item": "고유 저장/경합",
+      "scope": "50VU단일batch revision4;5/20/50정확히1승자;지속시험 아님",
+      "status": "observed-pass"
+    },
+    {
+      "item": "Stress",
+      "scope": "50VU429중단·회복실패;full단계/SLO/최대RPS 미확정",
+      "status": "observed-fail"
+    },
+    {
+      "item": "Spike",
+      "scope": "축소1→2→1에서p95회복실패;full100VU미검증",
+      "status": "observed-fail"
+    },
+    {
+      "item": "Soak",
+      "scope": "2VU40초;35VU2시간안정성 미검증",
+      "status": "unknown"
+    },
+    {
+      "item": "Target 읽기p95≤300/p99≤1000ms",
+      "scope": "Baseline값으로TargetSLO를 판정하지 않음",
+      "status": "unknown"
+    },
+    {
+      "item": "Target 고유 쓰기p95≤1000ms",
+      "scope": "unique50의단일batch값으로TargetSLO를 판정하지 않음",
+      "status": "unknown"
+    },
+    {
+      "item": "비예상 오류율<1%",
+      "scope": "축소Target125요청중429두건=1.6%",
+      "status": "observed-fail"
+    },
+    {
+      "item": "정상입력5xx0",
+      "scope": "관측normal호출 범위;intentional500별도;production보장 아님",
+      "status": "observed-pass"
+    },
+    {
+      "item": "run exit0/고아0",
+      "scope": "healthy호출/정리확인;429거부·injectedtimeout exit실패 별도",
+      "status": "partial"
+    },
+    {
+      "item": "CPU85%/메모리80% 5분",
+      "scope": "실제지속시험 미실행;timer단위테스트만",
+      "status": "unknown"
+    },
+    {
+      "item": "중단60/120초",
+      "scope": "fake timestamp검증·scaled2초fault·실제429중단;full실시간120초미검증",
+      "status": "partial"
+    },
+    {
+      "item": "회복120%",
+      "scope": "Spike/50VUStress p95초과;다른resource통과가 원인증명은 아님",
+      "status": "observed-fail"
+    },
+    {
+      "item": "IOPS/latency/Windows/별도발생기",
+      "scope": "수집/실행 미검증",
+      "status": "unknown"
+    }
+  ],
+  "date": "2026-09-29",
+  "environment": {
+    "appVersion": "1.0.1",
+    "commitSha": "483261549b0ea0d4612f183b845cd76887b0309a",
+    "k6Version": "2.3.0",
+    "mode": "same-host macOS SQLite Medium",
+    "pythonVersion": "3.13.5",
+    "runWorkerLimit": 2,
+    "workingTreeDirty": true
+  },
+  "faultBusinessErrors": [
+    {
+      "faultObservations": 2,
+      "httpErrorRate": null,
+      "kind": "error",
+      "runExitFailures": 2
+    },
+    {
+      "faultObservations": 2,
+      "httpErrorRate": 0.0,
+      "kind": "delay",
+      "runExitFailures": 2
+    }
+  ],
+  "finalFaultRecovery": {
+    "comparison": {
+      "childProcesses": {
+        "after": 0,
+        "before": 0,
+        "ratio": null,
+        "verdict": "passed"
+      },
+      "cpuPercent": {
+        "after": 0.13063633473101519,
+        "before": 0.13172517232911518,
+        "ratio": 0.9917340203178514,
+        "verdict": "passed"
+      },
+      "errorRate": {
+        "after": 0.0,
+        "before": 0.0,
+        "ratio": null,
+        "verdict": "passed"
+      },
+      "handles": {
+        "after": 16.923076923076923,
+        "before": 16.923076923076923,
+        "ratio": 1.0,
+        "verdict": "passed"
+      },
+      "memoryMb": {
+        "after": 57.57572115384615,
+        "before": 74.54326923076923,
+        "ratio": 0.7723798774588843,
+        "verdict": "passed"
+      },
+      "p95Ms": {
+        "after": 64.1294,
+        "before": 56.1165,
+        "ratio": 1.1427904448780661,
+        "verdict": "passed"
+      },
+      "threads": {
+        "after": 2.923076923076923,
+        "before": 2.6153846153846154,
+        "ratio": 1.1176470588235294,
+        "verdict": "passed"
+      }
+    },
+    "status": "passed"
+  },
+  "firstFailurePoints": [
+    {
+      "actualPeakVus": 20,
+      "errorRate": 0.016,
+      "reachedNextStage": false,
+      "rejected429": 2,
+      "requests": 125,
+      "scenario": "Target shortened20→50"
+    },
+    {
+      "actualPeakVus": null,
+      "configuredInitialVus": 50,
+      "elapsedSeconds": 3.4975652910070494,
+      "errorRate": null,
+      "reachedNextStage": false,
+      "rejected429": 6,
+      "requests": 121,
+      "scenario": "Stress shortened50→200"
+    }
+  ],
+  "inputSha256": [
+    {
+      "file": "load-test-lt1-validation.json",
+      "sha256": "f328a41fa33bdfa0a225bf2c51db5edbbce1cda4edf0528c66c8f7c53bcd4fac"
+    },
+    {
+      "file": "load-test-lt2-validation.json",
+      "sha256": "06d0fa8c6f322477f9b10fe66947f4373ec118030167492356fd5e53ee12218b"
+    },
+    {
+      "file": "load-test-lt3-validation.json",
+      "sha256": "ac75abb86e907b01db02cd1cd1eea21cbd3332ec71f58a50b9ad4a6ef918f18e"
+    },
+    {
+      "file": "load-test-lt4-validation.json",
+      "sha256": "83d084edd5d9eba4be4c8b075a6035cd8809e16d99fe4008e894bdfab1bafb12"
+    }
+  ],
+  "maximumStableRps": null,
+  "observedAdmissionConcurrency": 2,
+  "readingObservations": {
+    "baseline": {
+      "endpoints": [
+        {
+          "endpoint": "/api/cases",
+          "method": "GET",
+          "p95Ms": 71.39525,
+          "requests": 108
+        },
+        {
+          "endpoint": "/api/cases/{id}",
+          "method": "GET",
+          "p95Ms": 7.79325,
+          "requests": 108
+        },
+        {
+          "endpoint": "/api/cases/{id}/revisions",
+          "method": "GET",
+          "p95Ms": 7.8955,
+          "requests": 106
+        },
+        {
+          "endpoint": "/api/pipelines",
+          "method": "GET",
+          "p95Ms": 7.18105,
+          "requests": 108
+        },
+        {
+          "endpoint": "/api/projects",
+          "method": "GET",
+          "p95Ms": 13.3724,
+          "requests": 108
+        },
+        {
+          "endpoint": "/api/projects/{id}",
+          "method": "GET",
+          "p95Ms": 5.6343,
+          "requests": 108
+        },
+        {
+          "endpoint": "/example-api/health",
+          "method": "GET",
+          "p95Ms": 6.54115,
+          "requests": 108
+        }
+      ],
+      "errorRate": 0.0,
+      "manifestSeconds": 310.259481,
+      "p95Ms": 53.183,
+      "p99Ms": 69.64049,
+      "requests": 754,
+      "rps": 2.43022388089407,
+      "sourceSha256": {
+        "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+        "api_test/load_test_harness.py": "282864473f9aaa1e3a3d690a846d6c8ea3e632cbb96feef2930c28a128eaf37f",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/read.js": "18a326eb650d34d35a4a5cdb7921bf9be050ec6178e48da885c810e7a1de4705",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "vus": 5
+    },
+    "smoke": {
+      "endpoints": [
+        {
+          "endpoint": "/api/cases",
+          "method": "GET",
+          "p95Ms": 81.3985,
+          "requests": 31
+        },
+        {
+          "endpoint": "/api/cases/{id}",
+          "method": "GET",
+          "p95Ms": 11.20865,
+          "requests": 28
+        },
+        {
+          "endpoint": "/api/cases/{id}/revisions",
+          "method": "GET",
+          "p95Ms": 14.3986,
+          "requests": 30
+        },
+        {
+          "endpoint": "/api/pipelines",
+          "method": "GET",
+          "p95Ms": 7.60855,
+          "requests": 32
+        },
+        {
+          "endpoint": "/api/projects",
+          "method": "GET",
+          "p95Ms": 13.56115,
+          "requests": 32
+        },
+        {
+          "endpoint": "/api/projects/{id}",
+          "method": "GET",
+          "p95Ms": 6.79895,
+          "requests": 30
+        },
+        {
+          "endpoint": "/example-api/health",
+          "method": "GET",
+          "p95Ms": 11.661,
+          "requests": 31
+        }
+      ],
+      "errorRate": 0.0,
+      "manifestSeconds": 62.658663,
+      "p95Ms": 56.45045,
+      "p99Ms": 76.69429,
+      "requests": 214,
+      "rps": 3.4153298164054346,
+      "sourceSha256": {
+        "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+        "api_test/load_test_harness.py": "282864473f9aaa1e3a3d690a846d6c8ea3e632cbb96feef2930c28a128eaf37f",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/read.js": "18a326eb650d34d35a4a5cdb7921bf9be050ec6178e48da885c810e7a1de4705",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "vus": 7
+    }
+  },
+  "reportVersion": 1,
+  "status": "provisional-incomplete-campaign",
+  "supportedSnapshotLayout": "2026-09-29 checked-in LT1-LT4; changed critical results require review rather than silent fixed conclusions",
+  "sustainedRunCapacity": null
+}
