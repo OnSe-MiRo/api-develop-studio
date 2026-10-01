@@ -1,0 +1,548 @@
+{
+  "date": "2026-09-29",
+  "scope": "LT-2 Smoke/read Baseline scripts and isolated client metric validation",
+  "smoke": {
+    "execution": {
+      "fixture": {
+        "dataset": "medium",
+        "seed": 20260929,
+        "counts": {
+          "projects": 20,
+          "cases": 2000,
+          "pipelines": 100
+        },
+        "caseRevisions": 1,
+        "revisionCount": 2120,
+        "bodyCounts": {
+          "1024": 667,
+          "10240": 667,
+          "102400": 666
+        },
+        "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "databaseBytes": 79548416,
+        "projectionBytes": 76199087,
+        "revisionContentBytes": 76196967,
+        "integrity": "passed"
+      },
+      "executionMode": "isolated-local-same-host",
+      "k6Version": "k6 v2.3.0 (commit/e088784614, go1.26.8, darwin/arm64)",
+      "pythonVersion": "3.13.5",
+      "os": "macOS-27.0-arm64-arm-64bit-Mach-O",
+      "cpu": "arm, 8 logical CPUs",
+      "memoryMb": 16384.0,
+      "diskTotalBytes": 494384795648,
+      "diskFreeBytes": 157298475008,
+      "sourceSha256": {
+        "api_test/load_test_harness.py": "282864473f9aaa1e3a3d690a846d6c8ea3e632cbb96feef2930c28a128eaf37f",
+        "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+        "load-tests/k6/read.js": "18a326eb650d34d35a4a5cdb7921bf9be050ec6178e48da885c810e7a1de4705",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78"
+      },
+      "command": [
+        "/tmp/lt1-k6-bin/k6-v2.3.0-macos-arm64/k6",
+        "run",
+        "--out",
+        "json=/private/tmp/lt2-parent-smoke-final/raw.jsonl",
+        "/Users/kwondaehoon/Desktop/Project/api-develop-studio/load-tests/k6/read.js"
+      ],
+      "workload": {
+        "mode": "smoke",
+        "durationSeconds": 60,
+        "configuredVus": 7,
+        "vusPerEndpoint": 1,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset"
+      },
+      "status": "passed",
+      "commitSha": "483261549b0ea0d4612f183b845cd76887b0309a",
+      "workingTreeDirty": true,
+      "appVersion": "1.0.1",
+      "runId": "run_lt1_b9e0341892a3426bbe4db5d6710b340c",
+      "startedAt": "2026-09-29T04:09:34.439337+00:00",
+      "k6ExitCode": 0,
+      "summary": {
+        "requests": 214,
+        "rps": 3.41533,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 4.3545,
+          "p90": 47.8118,
+          "p95": 56.45045,
+          "p99": 76.69429,
+          "max": 114.402
+        },
+        "vusMax": 7,
+        "thresholdsPassed": true
+      },
+      "endedAt": "2026-09-29T04:10:37.098Z",
+      "postRunIntegrity": {
+        "dataset": "medium",
+        "seed": 20260929,
+        "counts": {
+          "projects": 20,
+          "cases": 2000,
+          "pipelines": 100
+        },
+        "caseRevisions": 1,
+        "revisionCount": 2120,
+        "bodyCounts": {
+          "1024": 667,
+          "10240": 667,
+          "102400": 666
+        },
+        "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "databaseBytes": 79548416,
+        "projectionBytes": 76199087,
+        "revisionContentBytes": 76196967,
+        "integrity": "passed"
+      },
+      "serverExitCode": -15,
+      "serverStopped": true
+    },
+    "endpointMetrics": [
+      {
+        "method": "GET",
+        "endpoint": "/api/cases",
+        "requestCount": 31,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 51.935,
+          "p90": 62.368,
+          "p95": 81.3985,
+          "p99": 105.27,
+          "max": 114.402
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/cases/{id}",
+        "requestCount": 28,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 4.18,
+          "p90": 9.2623,
+          "p95": 11.20865,
+          "p99": 11.67635,
+          "max": 11.756
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/cases/{id}/revisions",
+        "requestCount": 30,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 3.9775,
+          "p90": 9.9521,
+          "p95": 14.3986,
+          "p99": 17.82494,
+          "max": 17.829
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/pipelines",
+        "requestCount": 32,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 3.5975,
+          "p90": 6.2624,
+          "p95": 7.60855,
+          "p99": 14.81666,
+          "max": 17.828
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/projects",
+        "requestCount": 32,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 6.7615,
+          "p90": 11.1949,
+          "p95": 13.56115,
+          "p99": 17.149,
+          "max": 17.924
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/projects/{id}",
+        "requestCount": 30,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 3.5765,
+          "p90": 6.4993,
+          "p95": 6.79895,
+          "p99": 15.9587,
+          "max": 19.691
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/example-api/health",
+        "requestCount": 31,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 2.599,
+          "p90": 6.519,
+          "p95": 11.661,
+          "p99": 16.3198,
+          "max": 17.074
+        }
+      }
+    ],
+    "seriesPoints": 13,
+    "checks": {
+      "count": 428,
+      "failed": 0
+    },
+    "localArtifacts": "/private/tmp/lt2-parent-smoke-final",
+    "distinctProjectsFromServerLog": 20
+  },
+  "baseline": {
+    "execution": {
+      "fixture": {
+        "dataset": "medium",
+        "seed": 20260929,
+        "counts": {
+          "projects": 20,
+          "cases": 2000,
+          "pipelines": 100
+        },
+        "caseRevisions": 1,
+        "revisionCount": 2120,
+        "bodyCounts": {
+          "1024": 667,
+          "10240": 667,
+          "102400": 666
+        },
+        "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "databaseBytes": 79548416,
+        "projectionBytes": 76199087,
+        "revisionContentBytes": 76196967,
+        "integrity": "passed"
+      },
+      "executionMode": "isolated-local-same-host",
+      "k6Version": "k6 v2.3.0 (commit/e088784614, go1.26.8, darwin/arm64)",
+      "pythonVersion": "3.13.5",
+      "os": "macOS-27.0-arm64-arm-64bit-Mach-O",
+      "cpu": "arm, 8 logical CPUs",
+      "memoryMb": 16384.0,
+      "diskTotalBytes": 494384795648,
+      "diskFreeBytes": 157129506816,
+      "sourceSha256": {
+        "api_test/load_test_harness.py": "282864473f9aaa1e3a3d690a846d6c8ea3e632cbb96feef2930c28a128eaf37f",
+        "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+        "load-tests/k6/read.js": "18a326eb650d34d35a4a5cdb7921bf9be050ec6178e48da885c810e7a1de4705",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78"
+      },
+      "command": [
+        "/tmp/lt1-k6-bin/k6-v2.3.0-macos-arm64/k6",
+        "run",
+        "--out",
+        "json=/private/tmp/lt2-parent-baseline/raw.jsonl",
+        "/Users/kwondaehoon/Desktop/Project/api-develop-studio/load-tests/k6/read.js"
+      ],
+      "workload": {
+        "mode": "baseline",
+        "durationSeconds": 300,
+        "configuredVus": 5,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset"
+      },
+      "status": "passed",
+      "commitSha": "483261549b0ea0d4612f183b845cd76887b0309a",
+      "workingTreeDirty": true,
+      "appVersion": "1.0.1",
+      "runId": "run_lt1_1ad808ebdcd44e12a781a28d3ca9a93a",
+      "startedAt": "2026-09-29T04:11:05.137519+00:00",
+      "k6ExitCode": 0,
+      "summary": {
+        "requests": 754,
+        "rps": 2.430224,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 4.2895,
+          "p90": 40.0331,
+          "p95": 53.183,
+          "p99": 69.64049,
+          "max": 155.596
+        },
+        "vusMax": 5,
+        "thresholdsPassed": true
+      },
+      "endedAt": "2026-09-29T04:16:15.397Z",
+      "postRunIntegrity": {
+        "dataset": "medium",
+        "seed": 20260929,
+        "counts": {
+          "projects": 20,
+          "cases": 2000,
+          "pipelines": 100
+        },
+        "caseRevisions": 1,
+        "revisionCount": 2120,
+        "bodyCounts": {
+          "1024": 667,
+          "10240": 667,
+          "102400": 666
+        },
+        "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "databaseBytes": 79548416,
+        "projectionBytes": 76199087,
+        "revisionContentBytes": 76196967,
+        "integrity": "passed"
+      },
+      "serverExitCode": -15,
+      "serverStopped": true
+    },
+    "endpointMetrics": [
+      {
+        "method": "GET",
+        "endpoint": "/api/cases",
+        "requestCount": 108,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 46.283,
+          "p90": 62.8142,
+          "p95": 71.39525,
+          "p99": 91.98826,
+          "max": 155.596
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/cases/{id}",
+        "requestCount": 108,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 3.632,
+          "p90": 7.0622,
+          "p95": 7.79325,
+          "p99": 12.99269,
+          "max": 33.95
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/cases/{id}/revisions",
+        "requestCount": 106,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 4.2865,
+          "p90": 6.763,
+          "p95": 7.8955,
+          "p99": 42.12415,
+          "max": 79.722
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/pipelines",
+        "requestCount": 108,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 3.3205,
+          "p90": 6.1612,
+          "p95": 7.18105,
+          "p99": 11.65642,
+          "max": 18.764
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/projects",
+        "requestCount": 108,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 8.7075,
+          "p90": 12.3424,
+          "p95": 13.3724,
+          "p99": 20.4559,
+          "max": 48.504
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/projects/{id}",
+        "requestCount": 108,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 3.645,
+          "p90": 5.3286,
+          "p95": 5.6343,
+          "p99": 14.99559,
+          "max": 39.595
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/example-api/health",
+        "requestCount": 108,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 2.0015,
+          "p90": 4.1785,
+          "p95": 6.54115,
+          "p99": 17.23015,
+          "max": 22.459
+        }
+      }
+    ],
+    "seriesPoints": 63,
+    "checks": {
+      "count": 1508,
+      "failed": 0
+    },
+    "localArtifacts": "/private/tmp/lt2-parent-baseline",
+    "distinctProjectsFromServerLog": 20
+  },
+  "checks": {
+    "pythonHarness": {
+      "tests": 12,
+      "status": "passed"
+    },
+    "pythonImporter": {
+      "tests": 11,
+      "status": "passed"
+    },
+    "nodeReadModel": {
+      "tests": 6,
+      "status": "passed"
+    },
+    "nodeSummaryRegression": "passed",
+    "pythonFull": {
+      "tests": 354,
+      "skipped": 0,
+      "seconds": 94.869,
+      "status": "passed",
+      "reviewer": "parent",
+      "log": "/private/tmp/lt2-final-python.log"
+    },
+    "frontend": {
+      "tests": 45,
+      "status": "passed",
+      "reviewer": "parent"
+    },
+    "frontendBuild": "passed by parent",
+    "diffCheck": "passed"
+  },
+  "sourceChangesAfterSmoke": [
+    "fixture-contained output preflight guard and bundle-after-integrity artifact ordering, verified separately by targeted regressions and final short validation; read workload source unchanged"
+  ],
+  "limitations": [
+    "same-host macOS SQLite Medium dataset only",
+    "one default execution per workload; 3-repeat median/final baseline campaign pending LT-5",
+    "all-dataset capacity/SLO, resource time series, production/Windows and LT-3 to LT-5 remain unverified"
+  ],
+  "finalShortValidation": {
+    "localArtifacts": "/private/tmp/lt2-sol-smoke-final-validation",
+    "execution": {
+      "fixture": {
+        "dataset": "medium",
+        "seed": 20260929,
+        "counts": {
+          "projects": 20,
+          "cases": 2000,
+          "pipelines": 100
+        },
+        "caseRevisions": 1,
+        "revisionCount": 2120,
+        "bodyCounts": {
+          "1024": 667,
+          "10240": 667,
+          "102400": 666
+        },
+        "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "databaseBytes": 79548416,
+        "projectionBytes": 76199087,
+        "revisionContentBytes": 76196967,
+        "integrity": "passed"
+      },
+      "executionMode": "isolated-local-same-host",
+      "k6Version": "k6 v2.3.0 (commit/e088784614, go1.26.8, darwin/arm64)",
+      "pythonVersion": "3.13.5",
+      "os": "macOS-27.0-arm64-arm-64bit-Mach-O",
+      "cpu": "arm, 8 logical CPUs",
+      "memoryMb": 16384.0,
+      "diskTotalBytes": 494384795648,
+      "diskFreeBytes": 156955529216,
+      "sourceSha256": {
+        "api_test/load_test_harness.py": "eaa7c164295c3e243318e8c6147cf7c7a1a46031a620d5f83d8109deee0c0f6f",
+        "api_test/load_results.py": "e809f4c5c72848e92eceb410d49a51ae0ef7dfcd495fba6ea85a917eaacc5fbe",
+        "load-tests/k6/read.js": "18a326eb650d34d35a4a5cdb7921bf9be050ec6178e48da885c810e7a1de4705",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78"
+      },
+      "command": [
+        "/tmp/lt1-k6-bin/k6-v2.3.0-macos-arm64/k6",
+        "run",
+        "--out",
+        "json=/private/tmp/lt2-sol-smoke-final-validation/raw.jsonl",
+        "/Users/kwondaehoon/Desktop/Project/api-develop-studio/load-tests/k6/read.js"
+      ],
+      "workload": {
+        "mode": "smoke",
+        "durationSeconds": 3,
+        "configuredVus": 7,
+        "vusPerEndpoint": 1,
+        "gracefulStopSeconds": 10,
+        "validationMode": true,
+        "scope": "whole-dataset"
+      },
+      "status": "passed",
+      "commitSha": "483261549b0ea0d4612f183b845cd76887b0309a",
+      "workingTreeDirty": true,
+      "appVersion": "1.0.1",
+      "runId": "run_lt1_10d12ca96648404c9f996f07f6a578e0",
+      "startedAt": "2026-09-29T04:17:21.850666+00:00",
+      "k6ExitCode": 0,
+      "summary": {
+        "requests": 10,
+        "rps": 2.411769,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 6.6625,
+          "p90": 12.4225,
+          "p95": 17.55025,
+          "p99": 21.65245,
+          "max": 22.678
+        },
+        "vusMax": 7,
+        "thresholdsPassed": true
+      },
+      "endedAt": "2026-09-29T04:17:25.997Z",
+      "postRunIntegrity": {
+        "dataset": "medium",
+        "seed": 20260929,
+        "counts": {
+          "projects": 20,
+          "cases": 2000,
+          "pipelines": 100
+        },
+        "caseRevisions": 1,
+        "revisionCount": 2120,
+        "bodyCounts": {
+          "1024": 667,
+          "10240": 667,
+          "102400": 666
+        },
+        "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "databaseBytes": 79548416,
+        "projectionBytes": 76199087,
+        "revisionContentBytes": 76196967,
+        "integrity": "passed"
+      },
+      "serverExitCode": -15,
+      "serverStopped": true
+    },
+    "purpose": "verify final fixture-output preflight and bundle-after-integrity changes; not a performance baseline"
+  },
+  "status": "completed local LT-2 script and metric validation"
+}

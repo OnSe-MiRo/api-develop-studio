@@ -1,0 +1,79 @@
+{
+  "date": "2026-09-29",
+  "scope": "LT-5 deterministic provisional report; overall load campaign and SLO incomplete",
+  "generatorSha256": "e04bdcd6afa520dfc5ef4be6fea5e9f576b3037868442e70c9044e02c3db69d1",
+  "inputSha256": [
+    {
+      "file": "load-test-lt1-validation.json",
+      "sha256": "f328a41fa33bdfa0a225bf2c51db5edbbce1cda4edf0528c66c8f7c53bcd4fac"
+    },
+    {
+      "file": "load-test-lt2-validation.json",
+      "sha256": "06d0fa8c6f322477f9b10fe66947f4373ec118030167492356fd5e53ee12218b"
+    },
+    {
+      "file": "load-test-lt3-validation.json",
+      "sha256": "ac75abb86e907b01db02cd1cd1eea21cbd3332ec71f58a50b9ad4a6ef918f18e"
+    },
+    {
+      "file": "load-test-lt4-validation.json",
+      "sha256": "83d084edd5d9eba4be4c8b075a6035cd8809e16d99fe4008e894bdfab1bafb12"
+    }
+  ],
+  "outputsSha256": {
+    "load-test-baseline-report.md": "d01fa0d31f7a53590ed6928348fd787bb3365d05bcf8f033cb7ac191cc372d20",
+    "load-test-baseline-summary.json": "3e6bd87f0464f92840f02b2a7a0f3772351fc6751c1c366f9a69e0aec1d5c5b2"
+  },
+  "tests": {
+    "focusedReport": {
+      "tests": 9,
+      "status": "passed"
+    },
+    "parentAdversarial": {
+      "originalContradictions": 9,
+      "additionalContradictions": 4,
+      "allRejected": true
+    },
+    "independentRawAudit": {
+      "runs": 32,
+      "recoveryArithmetic": 7,
+      "tolerance": 2e-06,
+      "status": "passed",
+      "optionalEvidence": "/private/tmp/lt5-independent-evidence.json"
+    },
+    "standaloneReproduction": {
+      "status": "passed",
+      "onlyInputs": "generator module plus checked-in JSON4",
+      "unicodeOutputPath": true,
+      "byteDeterminism": true,
+      "checkDoesNotOverwrite": true,
+      "nanRejectPreservesOutputs": true,
+      "optionalEvidence": "/private/tmp/lt5-parent-reproduction-final/verification.json"
+    },
+    "generatorCheck": "passed",
+    "compile": "passed",
+    "diffCheck": "passed",
+    "pythonFull": {
+      "tests": 382,
+      "skipped": 0,
+      "seconds": 44.62,
+      "status": "passed",
+      "optionalEvidence": "/private/tmp/lt5-parent-final-python.log"
+    }
+  },
+  "capacityConclusions": {
+    "maximumStableRps": null,
+    "sustainedRunCapacity": null,
+    "observedSingleBatchConcurrency": 2,
+    "baselineMedian": null
+  },
+  "snapshotContract": "Current2026-09-29 criticallayout/results validated; new criticalresults require reviewed report changes",
+  "limitations": [
+    "no new load or tuning; fullcampaign/SLO incomplete",
+    "different source/settings/windows not pooled",
+    "optional rawpaths not required for regeneration",
+    "SHA256 input provenance does not authenticate rawtruth",
+    "code/admission constraint refers to measurement snapshot; arbitrary currentconfig not inferred"
+  ],
+  "status": "LT-5 report/tooling complete; overall campaign/SLO remains incomplete"
+}

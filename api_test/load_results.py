@@ -350,6 +350,7 @@ def import_k6_result(summary_path: Path, raw_path: Path, bucket_seconds: int = D
     failures = 0.0
     failure_samples = 0
     vus_max = 0.0
+    active_vus_seen = False
 
     for line_number, event in _raw_events(Path(raw_path)):
         event_type = event.get("type")
@@ -362,7 +363,11 @@ def import_k6_result(summary_path: Path, raw_path: Path, bucket_seconds: int = D
             if metric_type not in {"counter", "gauge", "rate", "trend"}:
                 raise LoadResultError(f"raw k6 line {line_number} declares an unsupported metric type")
             raw_thresholds = data.get("thresholds") or []
-            if not isinstance(raw_thresholds, list) or not all(isinstance(item, str) for item in raw_thresholds):
+            if not isinstance(raw_thresholds, list):
+                raise LoadResultError(f"raw k6 line {line_number} has invalid thresholds")
+            # k6 writes abortOnFail/delayAbortEval options as objects in JSON output.
+            raw_thresholds = [item.get("threshold") if isinstance(item, dict) else item for item in raw_thresholds]
+            if not all(isinstance(item, str) and item for item in raw_thresholds):
                 raise LoadResultError(f"raw k6 line {line_number} has invalid thresholds")
             definitions[metric] = {"type": metric_type, "tainted": data.get("tainted")}
             definition_thresholds.extend((metric, item) for item in raw_thresholds)
@@ -405,8 +410,11 @@ def import_k6_result(summary_path: Path, raw_path: Path, bucket_seconds: int = D
             bucket.failures += value
             bucket.failure_samples += 1
         elif metric in {"vus", "vus_max"}:
-            vus_max = max(vus_max, value)
+            _number(value, "VU gauge", minimum=0)
+            _whole(value, "VU gauge")
             if metric == "vus":
+                active_vus_seen = True
+                vus_max = max(vus_max, value)
                 _latest(bucket, "active_vus", "active_vus_at", timestamp, value)
         elif metric == "studio_cpu_percent":
             _number(value, "studio_cpu_percent", minimum=0, maximum=100)
@@ -431,6 +439,8 @@ def import_k6_result(summary_path: Path, raw_path: Path, bucket_seconds: int = D
             raise LoadResultError("raw k6 endpoint metric sample counts do not match")
 
     warnings: list[str] = []
+    if not active_vus_seen:
+        warnings.append("active VU samples missing; summary.vusMax is 0 (unknown), not allocated capacity")
     manifest_verdicts = {(item["metric"], item["condition"]): item["passed"] for item in manifest_thresholds}
     ordered_thresholds: list[tuple[str, str]] = []
     for item in [*definition_thresholds, *((item["metric"], item["condition"]) for item in manifest_thresholds)]:

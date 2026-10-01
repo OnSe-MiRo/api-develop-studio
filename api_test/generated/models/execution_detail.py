@@ -34,4 +34,3 @@ class ExecutionDetail(BaseModel):
     @classmethod
     def from_dict(cls, value):
         return cls.model_validate(value)
-

@@ -1,0 +1,143 @@
+{
+  "date": "2026-09-29",
+  "scope": "LT-1 fixture and isolated harness validation",
+  "fixtures": [
+    {
+      "dataset": "small",
+      "seed": 20260929,
+      "counts": {
+        "projects": 1,
+        "cases": 10,
+        "pipelines": 2
+      },
+      "caseRevisions": 100,
+      "revisionCount": 1003,
+      "bodyCounts": {
+        "1024": 4,
+        "10240": 3,
+        "102400": 3
+      },
+      "fixtureSha256": "aae085f420e29c9b7772dc81216beaa33bc99904779ce40cdc29c76a5a5c5816",
+      "databaseBytes": 35848192,
+      "projectionBytes": 344800,
+      "revisionContentBytes": 34436832,
+      "integrity": "passed"
+    },
+    {
+      "dataset": "medium",
+      "seed": 20260929,
+      "counts": {
+        "projects": 20,
+        "cases": 2000,
+        "pipelines": 100
+      },
+      "caseRevisions": 1,
+      "revisionCount": 2120,
+      "bodyCounts": {
+        "1024": 667,
+        "10240": 667,
+        "102400": 666
+      },
+      "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "databaseBytes": 79548416,
+      "projectionBytes": 76199087,
+      "revisionContentBytes": 76196967,
+      "integrity": "passed"
+    },
+    {
+      "dataset": "large",
+      "seed": 20260929,
+      "counts": {
+        "projects": 100,
+        "cases": 20000,
+        "pipelines": 0
+      },
+      "caseRevisions": 1,
+      "revisionCount": 20100,
+      "bodyCounts": {
+        "1024": 6667,
+        "10240": 6667,
+        "102400": 6666
+      },
+      "fixtureSha256": "ec6d43e22beddea5033a148ec480c05999aecda7bf630699464fae4af50308b6",
+      "databaseBytes": 793620480,
+      "projectionBytes": 762405987,
+      "revisionContentBytes": 762385887,
+      "integrity": "passed"
+    }
+  ],
+  "probe": {
+    "runId": "run_lt1_8eab9e00d3ac4331a24f054b69e55b3b",
+    "status": "passed",
+    "k6Version": "k6 v2.3.0 (commit/e088784614, go1.26.8, darwin/arm64)",
+    "pythonVersion": "3.13.5",
+    "os": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "cpu": "arm, 8 logical CPUs",
+    "memoryMb": 16384.0,
+    "diskTotalBytes": 494384795648,
+    "diskFreeBytes": 159040978944,
+    "commitSha": "483261549b0ea0d4612f183b845cd76887b0309a",
+    "workingTreeDirty": true,
+    "appVersion": "1.0.1",
+    "sourceSha256": {
+      "api_test/load_test_harness.py": "18b2808ef79d5ffd2c0112ad11c971e0ec23309301f74abef83c238a9d774da1",
+      "load-tests/k6/harness-probe.js": "064c11fefed903e314f835f7aff22bf827964b9bda5e71cb8c9e8b2594447896",
+      "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+    },
+    "startedAt": "2026-09-29T04:00:02.581792+00:00",
+    "endedAt": "2026-09-29T04:00:03.990Z",
+    "k6ExitCode": 0,
+    "serverStopped": true,
+    "summary": {
+      "requests": 7,
+      "rps": 4.970857,
+      "errorRate": 0.0,
+      "latencyMs": {
+        "p50": 12.391,
+        "p90": 26.7472,
+        "p95": 33.7876,
+        "p99": 39.41992,
+        "max": 40.828
+      },
+      "vusMax": 1,
+      "thresholdsPassed": true
+    }
+  },
+  "probeFixtureSha256": "aae085f420e29c9b7772dc81216beaa33bc99904779ce40cdc29c76a5a5c5816",
+  "postRunFixtureSha256": "aae085f420e29c9b7772dc81216beaa33bc99904779ce40cdc29c76a5a5c5816",
+  "checks": {
+    "pythonFull": {
+      "tests": 349,
+      "skipped": 0,
+      "seconds": 162.468,
+      "status": "passed",
+      "reviewer": "parent"
+    },
+    "frontend": {
+      "tests": 45,
+      "status": "passed",
+      "reviewer": "parent"
+    },
+    "frontendBuild": "passed by parent",
+    "pythonHarnessTests": 8,
+    "nodeSummaryRegression": "passed",
+    "parentIndependentProbe": {
+      "requests": 7,
+      "caseRevisions": 3,
+      "vusMax": 1,
+      "errorRate": 0,
+      "status": "passed"
+    }
+  },
+  "localArtifacts": {
+    "probe": "/private/tmp/run_lt1_probe_20260929_sol_verified",
+    "fixtures": "/private/tmp/lt1-{small,medium,large}-final-20260929-sol"
+  },
+  "limitations": [
+    "same-host macOS SQLite only",
+    "Large generated at case revision depth 1; depth 100 verified on Small only",
+    "Large pipeline count unspecified in plan, configured as 0",
+    "LT-2 to LT-5 sustained load, resource time series, write contention and run execution remain pending",
+    "Windows execution not verified"
+  ]
+}

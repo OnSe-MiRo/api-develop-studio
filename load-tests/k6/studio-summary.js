@@ -61,7 +61,8 @@ export function studioHandleSummary(data) {
       id: required("STUDIO_RUN_ID"),
       project: required("STUDIO_PROJECT"),
       scenario: required("STUDIO_SCENARIO"),
-      startedAt,
+      // k6 can reinitialize the summary context; the launcher supplies the real start.
+      startedAt: optional("STUDIO_STARTED_AT") || startedAt,
       endedAt: new Date().toISOString(),
       status,
       appVersion: optional("STUDIO_APP_VERSION"),

@@ -1,0 +1,3227 @@
+{
+  "date": "2026-09-29",
+  "scope": "LT-4 local implementation and bounded diagnostics; complete long campaigns and capacity report unverified",
+  "currentSourceSha256": {
+    "api_test/load_test_campaigns.py": "1de98e0f1b36520836e595992932b1b133c45a8375b91463ab852946f97603bc",
+    "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+    "api_test/load_test_mutations.py": "f3586e8f5414d34d014bb4b90e988aceb4dd6ad1747e5c87ebeee59197cca414",
+    "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+    "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+    "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5"
+  },
+  "campaignEvidence": [
+    {
+      "evidenceLabel": "diagnostic before final cleanup guard; valid admission path",
+      "localArtifacts": "/private/tmp/lt4-parent-capacity-draft",
+      "configuration": {
+        "mode": "run-capacity",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 10,
+        "selectionStride": 10,
+        "contentionRequests": 5,
+        "durationSeconds": 10
+      },
+      "sourceSha256": {
+        "api_test/load_test_campaigns.py": "525037d935bcd7aa8fd7d913033babbb057bf6382e1e140d212f649ee90f0761",
+        "api_test/load_test_monitor.py": "9ef1657513150ecb21dc6e93083f9841d887a3729b09e2e7f0969cff8a1d227e",
+        "api_test/load_test_mutations.py": "b12b69d8b53878ae932da1b0d7665426bdfe8aaf3abc4f6ebc742913991d75d2",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "load-tests/k6/mixed.js": "130e9dc4c7040c600855ab47e66f54088e859132110ef375390b5e188a597c12",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "failed",
+      "sameServerPid": 23691,
+      "phases": [
+        {
+          "phase": {
+            "mode": "run-capacity",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 10,
+            "selectionStride": 10,
+            "contentionRequests": 5,
+            "durationSeconds": 25,
+            "phase": "baseline"
+          },
+          "serverPid": 23691,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": null,
+          "summary": {
+            "requests": 70,
+            "rps": 2.209186,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.793,
+              "p90": 79.1168,
+              "p95": 79.24655,
+              "p99": 117.69481,
+              "max": 118.351
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0
+          },
+          "postRequestCleanup": null,
+          "resourceAggregate": null,
+          "resourceWindowSeconds": null,
+          "growth": null,
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "run-capacity",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 10,
+            "selectionStride": 10,
+            "contentionRequests": 5,
+            "durationSeconds": 30,
+            "phase": "run",
+            "vus": 1
+          },
+          "serverPid": 23691,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": null,
+          "summary": {
+            "requests": 1,
+            "rps": 0.678619,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 265.538,
+              "p90": 265.538,
+              "p95": 265.538,
+              "p99": 265.538,
+              "max": 265.538
+            },
+            "vusMax": 1,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 1,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 1
+            },
+            "faultObservations": 0
+          },
+          "postRequestCleanup": null,
+          "resourceAggregate": null,
+          "resourceWindowSeconds": null,
+          "growth": null,
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "run-capacity",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 10,
+            "selectionStride": 10,
+            "contentionRequests": 5,
+            "durationSeconds": 30,
+            "phase": "run",
+            "vus": 2
+          },
+          "serverPid": 23691,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": null,
+          "summary": {
+            "requests": 2,
+            "rps": 1.422044,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 201.8755,
+              "p90": 202.1791,
+              "p95": 202.21705,
+              "p99": 202.24741,
+              "max": 202.255
+            },
+            "vusMax": 2,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 2,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 2
+            },
+            "faultObservations": 0
+          },
+          "postRequestCleanup": null,
+          "resourceAggregate": null,
+          "resourceWindowSeconds": null,
+          "growth": null,
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "run-capacity",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 10,
+            "selectionStride": 10,
+            "contentionRequests": 5,
+            "durationSeconds": 30,
+            "phase": "run",
+            "vus": 5
+          },
+          "serverPid": 23691,
+          "status": "failed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": null,
+          "summary": {
+            "requests": 5,
+            "rps": 3.478346,
+            "errorRate": 0.6,
+            "latencyMs": {
+              "p50": 10.457,
+              "p90": 219.6864,
+              "p95": 219.8902,
+              "p99": 220.05324,
+              "max": 220.094
+            },
+            "vusMax": 5,
+            "thresholdsPassed": false
+          },
+          "client": {
+            "windowRequests": 5,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 3,
+            "httpStatuses": {
+              "429": 3,
+              "200": 2
+            },
+            "faultObservations": 0
+          },
+          "postRequestCleanup": null,
+          "resourceAggregate": null,
+          "resourceWindowSeconds": null,
+          "growth": null,
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "run-capacity",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 10,
+            "selectionStride": 10,
+            "contentionRequests": 5,
+            "durationSeconds": 30,
+            "phase": "run",
+            "vus": 10
+          },
+          "serverPid": 23691,
+          "status": "failed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": null,
+          "summary": {
+            "requests": 10,
+            "rps": 6.991359,
+            "errorRate": 0.8,
+            "latencyMs": {
+              "p50": 4.488,
+              "p90": 206.8125,
+              "p95": 207.28725,
+              "p99": 207.66705,
+              "max": 207.762
+            },
+            "vusMax": 10,
+            "thresholdsPassed": false
+          },
+          "client": {
+            "windowRequests": 10,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 8,
+            "httpStatuses": {
+              "429": 8,
+              "200": 2
+            },
+            "faultObservations": 0
+          },
+          "postRequestCleanup": null,
+          "resourceAggregate": null,
+          "resourceWindowSeconds": null,
+          "growth": null,
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "run-capacity",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 10,
+            "selectionStride": 10,
+            "contentionRequests": 5,
+            "durationSeconds": 25,
+            "phase": "baseline"
+          },
+          "serverPid": 23691,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": null,
+          "summary": {
+            "requests": 70,
+            "rps": 2.235869,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 3.34,
+              "p90": 46.7801,
+              "p95": 58.43475,
+              "p99": 81.30837,
+              "max": 82.086
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0
+          },
+          "postRequestCleanup": null,
+          "resourceAggregate": null,
+          "resourceWindowSeconds": null,
+          "growth": null,
+          "error": null,
+          "integrity": "passed"
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 79.24655,
+            "after": 58.43475,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 69.90625,
+            "after": 71.921875,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3,
+            "after": 2,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 12,
+            "after": 12,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "maxObservedSuccessfulConcurrency": 2,
+      "soakStability": null,
+      "stableStressRps": null,
+      "fullDurationCompleted": false,
+      "originalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "error": null
+    },
+    {
+      "evidenceLabel": "diagnostic before final run-recovered phase; controlled fault observations",
+      "localArtifacts": "/private/tmp/lt4-parent-fault-draft",
+      "configuration": {
+        "mode": "fault",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 2,
+        "resourceSustainSeconds": 2,
+        "scaledStopTimers": true,
+        "configuredVus": 1,
+        "selectionStride": 1,
+        "contentionRequests": 5,
+        "durationSeconds": 10
+      },
+      "sourceSha256": {
+        "api_test/load_test_campaigns.py": "72458638c770fe859ebee68d265be1260fb3fbcb28963dfe6776dc215ad68e7d",
+        "api_test/load_test_monitor.py": "062b30c24a294dfe3de3c3f4e200d3d2c463a3d273ae544a1a6c527a19f3e5b6",
+        "api_test/load_test_mutations.py": "b12b69d8b53878ae932da1b0d7665426bdfe8aaf3abc4f6ebc742913991d75d2",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "failed",
+      "sameServerPid": 25337,
+      "phases": [
+        {
+          "phase": {
+            "mode": "fault",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 2,
+            "resourceSustainSeconds": 2,
+            "scaledStopTimers": true,
+            "configuredVus": 1,
+            "selectionStride": 1,
+            "contentionRequests": 5,
+            "durationSeconds": 25,
+            "phase": "baseline"
+          },
+          "serverPid": 25337,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 32.37494611740112,
+          "summary": {
+            "requests": 70,
+            "rps": 2.231931,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 3.664,
+              "p90": 39.6106,
+              "p95": 55.5746,
+              "p99": 63.55055,
+              "max": 63.968
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 1,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.20984198453883077,
+            "memoryMb": 72.003125,
+            "threads": 3.3666666666666667,
+            "handles": 16.8,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": null,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 30,
+                "first": 80.25,
+                "last": 70.46875,
+                "delta": -9.78125,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 30,
+                "first": 1,
+                "last": 3,
+                "delta": 2,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 30,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 30,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "fault",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 2,
+            "resourceSustainSeconds": 2,
+            "scaledStopTimers": true,
+            "configuredVus": 1,
+            "selectionStride": 1,
+            "contentionRequests": 5,
+            "durationSeconds": 10,
+            "phase": "fault",
+            "fault": "error"
+          },
+          "serverPid": 25337,
+          "status": "aborted",
+          "complete": false,
+          "stopReason": "network_or_5xx_rate_above_5_percent_in_full_window",
+          "elapsedSeconds": 2.3698501586914062,
+          "summary": null,
+          "client": {
+            "windowRequests": 3,
+            "networkOr5xxRate": 0.3333333333333333,
+            "runExitFailures": 2,
+            "capacity429": 0,
+            "httpStatuses": {
+              "500": 2,
+              "200": 2
+            },
+            "faultObservations": 2,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.08015546687389064,
+            "memoryMb": 70.79166666666667,
+            "threads": 3.0,
+            "handles": 12.666666666666666,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": null,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 3,
+                "first": 70.515625,
+                "last": 70.9375,
+                "delta": 0.421875,
+                "continuouslyIncreasing": true
+              },
+              "threads": {
+                "samples": 3,
+                "first": 3,
+                "last": 3,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 3,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 3,
+                "first": 0,
+                "last": 2,
+                "delta": 2,
+                "continuouslyIncreasing": true
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": null
+        },
+        {
+          "phase": {
+            "mode": "fault",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 2,
+            "resourceSustainSeconds": 2,
+            "scaledStopTimers": true,
+            "configuredVus": 1,
+            "selectionStride": 1,
+            "contentionRequests": 5,
+            "durationSeconds": 10,
+            "phase": "fault",
+            "fault": "delay"
+          },
+          "serverPid": 25337,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 13.701525688171387,
+          "summary": {
+            "requests": 4,
+            "rps": 0.315115,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 2652.9785,
+              "p90": 3008.9208,
+              "p95": 3010.4709,
+              "p99": 3011.71098,
+              "max": 3012.021
+            },
+            "vusMax": 1,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 1,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 2,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 4
+            },
+            "faultObservations": 2,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.42024009643642557,
+            "memoryMb": 88.09254807692308,
+            "threads": 2.230769230769231,
+            "handles": 13.923076923076923,
+            "childProcesses": 0.46153846153846156
+          },
+          "resourceWindowSeconds": null,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 13,
+                "first": 70.9375,
+                "last": 70.75,
+                "delta": -0.1875,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 13,
+                "first": 3,
+                "last": 2,
+                "delta": -1,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 13,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 13,
+                "first": 2,
+                "last": 4,
+                "delta": 2,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "fault",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 2,
+            "resourceSustainSeconds": 2,
+            "scaledStopTimers": true,
+            "configuredVus": 1,
+            "selectionStride": 1,
+            "contentionRequests": 5,
+            "durationSeconds": 25,
+            "phase": "baseline"
+          },
+          "serverPid": 25337,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 32.298168897628784,
+          "summary": {
+            "requests": 70,
+            "rps": 2.234562,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.2025,
+              "p90": 43.2325,
+              "p95": 49.52185,
+              "p99": 78.61876,
+              "max": 79.168
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 1,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.2221699721013697,
+            "memoryMb": 69.6109375,
+            "threads": 3.4,
+            "handles": 16.8,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": null,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 30,
+                "first": 70.734375,
+                "last": 45.890625,
+                "delta": -24.84375,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 30,
+                "first": 2,
+                "last": 3,
+                "delta": 1,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 30,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 30,
+                "first": 4,
+                "last": 4,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 55.5746,
+            "after": 49.52185,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.20984198453883077,
+            "after": 0.2221699721013697,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 72.003125,
+            "after": 69.6109375,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3.3666666666666667,
+            "after": 3.4,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.8,
+            "after": 16.8,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "maxObservedSuccessfulConcurrency": null,
+      "soakStability": null,
+      "stableStressRps": null,
+      "fullDurationCompleted": false,
+      "originalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "error": null
+    },
+    {
+      "evidenceLabel": "reduced1-to2VU diagnostic on evolving source; preserve passed functional result",
+      "localArtifacts": "/private/tmp/lt4-parent-stress-2",
+      "configuration": {
+        "mode": "stress",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 2,
+        "selectionStride": 2,
+        "contentionRequests": 5,
+        "phase": "profile",
+        "startVus": 1,
+        "stages": [
+          {
+            "duration": "20s",
+            "target": 1
+          },
+          {
+            "duration": "0s",
+            "target": 2
+          },
+          {
+            "duration": "20s",
+            "target": 2
+          }
+        ],
+        "durationSeconds": 40,
+        "stressMaximumVus": 200
+      },
+      "sourceSha256": {
+        "api_test/load_test_campaigns.py": "c2cff9556032f47b218738b584c5f5faec49a1e5d8713c977934cf1e513387dc",
+        "api_test/load_test_monitor.py": "062b30c24a294dfe3de3c3f4e200d3d2c463a3d273ae544a1a6c527a19f3e5b6",
+        "api_test/load_test_mutations.py": "b12b69d8b53878ae932da1b0d7665426bdfe8aaf3abc4f6ebc742913991d75d2",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "passed",
+      "sameServerPid": 27310,
+      "phases": [
+        {
+          "phase": {
+            "mode": "stress",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "baseline",
+            "startVus": 1,
+            "stages": [
+              {
+                "duration": "20s",
+                "target": 1
+              },
+              {
+                "duration": "0s",
+                "target": 2
+              },
+              {
+                "duration": "20s",
+                "target": 2
+              }
+            ],
+            "durationSeconds": 25,
+            "stressMaximumVus": 200
+          },
+          "serverPid": 27310,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 32.521870374970604,
+          "summary": {
+            "requests": 70,
+            "rps": 2.228044,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.4355,
+              "p90": 50.9251,
+              "p95": 60.02055,
+              "p99": 85.18296,
+              "max": 85.815
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.2553325410965878,
+            "memoryMb": 83.92792338709677,
+            "threads": 3.2580645161290325,
+            "handles": 16.64516129032258,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": null,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 31,
+                "first": 80.09375,
+                "last": 84.28125,
+                "delta": 4.1875,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 31,
+                "first": 1,
+                "last": 2,
+                "delta": 1,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "stress",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "profile",
+            "startVus": 1,
+            "stages": [
+              {
+                "duration": "20s",
+                "target": 1
+              },
+              {
+                "duration": "0s",
+                "target": 2
+              },
+              {
+                "duration": "20s",
+                "target": 2
+              }
+            ],
+            "durationSeconds": 40,
+            "stressMaximumVus": 200
+          },
+          "serverPid": 27310,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 41.4437705000164,
+          "summary": {
+            "requests": 48,
+            "rps": 1.1843,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 9.584,
+              "p90": 48.5624,
+              "p95": 223.82375,
+              "p99": 268.82986,
+              "max": 275.627
+            },
+            "vusMax": 2,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 48,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 40,
+              "409": 8
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.1285103176563234,
+            "memoryMb": 72.35176282051282,
+            "threads": 4.153846153846154,
+            "handles": 14.487179487179487,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": null,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 39,
+                "first": 72.9375,
+                "last": 72.046875,
+                "delta": -0.890625,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 39,
+                "first": 2,
+                "last": 2,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 39,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 39,
+                "first": 0,
+                "last": 4,
+                "delta": 4,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "stress",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "baseline",
+            "startVus": 1,
+            "stages": [
+              {
+                "duration": "20s",
+                "target": 1
+              },
+              {
+                "duration": "0s",
+                "target": 2
+              },
+              {
+                "duration": "20s",
+                "target": 2
+              }
+            ],
+            "durationSeconds": 25,
+            "stressMaximumVus": 200
+          },
+          "serverPid": 27310,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 32.31148208398372,
+          "summary": {
+            "requests": 70,
+            "rps": 2.233225,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.349,
+              "p90": 53.7226,
+              "p95": 65.7322,
+              "p99": 81.60636,
+              "max": 81.921
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.24689356005456958,
+            "memoryMb": 73.61340725806451,
+            "threads": 3.7096774193548385,
+            "handles": 16.64516129032258,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": null,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 31,
+                "first": 72.046875,
+                "last": 73.84375,
+                "delta": 1.796875,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 31,
+                "first": 2,
+                "last": 3,
+                "delta": 1,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 31,
+                "first": 4,
+                "last": 4,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 60.02055,
+            "after": 65.7322,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.2553325410965878,
+            "after": 0.24689356005456958,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 83.92792338709677,
+            "after": 73.61340725806451,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3.2580645161290325,
+            "after": 3.7096774193548385,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.64516129032258,
+            "after": 16.64516129032258,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "maxObservedSuccessfulConcurrency": null,
+      "soakStability": null,
+      "stableStressRps": null,
+      "fullDurationCompleted": false,
+      "originalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "error": null
+    },
+    {
+      "evidenceLabel": "reduced1-to2-to1VU diagnostic; preserve recovery failure",
+      "localArtifacts": "/private/tmp/lt4-parent-spike-2",
+      "configuration": {
+        "mode": "spike",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 2,
+        "selectionStride": 2,
+        "contentionRequests": 5,
+        "phase": "profile",
+        "startVus": 1,
+        "stages": [
+          {
+            "duration": "10s",
+            "target": 2
+          },
+          {
+            "duration": "20s",
+            "target": 2
+          },
+          {
+            "duration": "10s",
+            "target": 1
+          }
+        ],
+        "durationSeconds": 40
+      },
+      "sourceSha256": {
+        "api_test/load_test_campaigns.py": "4530ca1eb02e404a03656a97e1084288c3a5cdde24d8c022b691d9041ab9505c",
+        "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+        "api_test/load_test_mutations.py": "b12b69d8b53878ae932da1b0d7665426bdfe8aaf3abc4f6ebc742913991d75d2",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "failed",
+      "sameServerPid": 29066,
+      "phases": [
+        {
+          "phase": {
+            "mode": "spike",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "baseline",
+            "startVus": 1,
+            "stages": [
+              {
+                "duration": "10s",
+                "target": 2
+              },
+              {
+                "duration": "20s",
+                "target": 2
+              },
+              {
+                "duration": "10s",
+                "target": 1
+              }
+            ],
+            "durationSeconds": 25
+          },
+          "serverPid": 29066,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 32.19580662500812,
+          "summary": {
+            "requests": 70,
+            "rps": 2.232494,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.3795,
+              "p90": 43.4792,
+              "p95": 61.42995,
+              "p99": 71.08849,
+              "max": 71.281
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.139871308680488,
+            "memoryMb": 83.65234375,
+            "threads": 3.9166666666666665,
+            "handles": 16.583333333333332,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": 12.5,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 31,
+                "first": 80.03125,
+                "last": 83.640625,
+                "delta": 3.609375,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 31,
+                "first": 1,
+                "last": 3,
+                "delta": 2,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "spike",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "profile",
+            "startVus": 1,
+            "stages": [
+              {
+                "duration": "10s",
+                "target": 2
+              },
+              {
+                "duration": "20s",
+                "target": 2
+              },
+              {
+                "duration": "10s",
+                "target": 1
+              }
+            ],
+            "durationSeconds": 40
+          },
+          "serverPid": 29066,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 42.63515599997481,
+          "summary": {
+            "requests": 54,
+            "rps": 1.295761,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 8.034,
+              "p90": 50.5107,
+              "p95": 224.1874,
+              "p99": 255.28333,
+              "max": 284.772
+            },
+            "vusMax": 2,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 54,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 46,
+              "409": 8
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.1497281920486961,
+            "memoryMb": 81.03565705128206,
+            "threads": 4.076923076923077,
+            "handles": 14.794871794871796,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": 40,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 40,
+                "first": 83.640625,
+                "last": 75.328125,
+                "delta": -8.3125,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 40,
+                "first": 3,
+                "last": 2,
+                "delta": -1,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 40,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 40,
+                "first": 0,
+                "last": 4,
+                "delta": 4,
+                "continuouslyIncreasing": true
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "spike",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "baseline",
+            "startVus": 1,
+            "stages": [
+              {
+                "duration": "10s",
+                "target": 2
+              },
+              {
+                "duration": "20s",
+                "target": 2
+              },
+              {
+                "duration": "10s",
+                "target": 1
+              }
+            ],
+            "durationSeconds": 25
+          },
+          "serverPid": 29066,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 33.75149150000652,
+          "summary": {
+            "requests": 70,
+            "rps": 2.178369,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 6.1345,
+              "p90": 65.0224,
+              "p95": 84.4885,
+              "p99": 279.84867,
+              "max": 483.576
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.10900876990970389,
+            "memoryMb": 43.0546875,
+            "threads": 3.8333333333333335,
+            "handles": 16.75,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": 12.5,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 31,
+                "first": 75.34375,
+                "last": 43.140625,
+                "delta": -32.203125,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 31,
+                "first": 2,
+                "last": 2,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 31,
+                "first": 4,
+                "last": 4,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 61.42995,
+            "after": 84.4885,
+            "verdict": "failed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.139871308680488,
+            "after": 0.10900876990970389,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 83.65234375,
+            "after": 43.0546875,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3.9166666666666665,
+            "after": 3.8333333333333335,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.583333333333332,
+            "after": 16.75,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "failed",
+        "factor": 1.2
+      },
+      "maxObservedSuccessfulConcurrency": null,
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "fullDurationCompleted": false,
+      "originalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "error": null
+    },
+    {
+      "evidenceLabel": "reduced2VU40-second diagnostic; stability remains unknown",
+      "localArtifacts": "/private/tmp/lt4-parent-soak-2",
+      "configuration": {
+        "mode": "soak",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 2,
+        "selectionStride": 2,
+        "contentionRequests": 5,
+        "phase": "profile",
+        "vus": 2,
+        "durationSeconds": 40,
+        "soakTargetBasis": "70% of planned Target50VU; proven stable capacity is not established"
+      },
+      "sourceSha256": {
+        "api_test/load_test_campaigns.py": "27620d725abe2a21041d0e9286669c7e6bb2e74ca5abf9d6655862323afe83b1",
+        "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+        "api_test/load_test_mutations.py": "eedba8431d92733d1d58da4ea3783436d7fc62880743feae971be8a7303eaa0a",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "unknown",
+      "sameServerPid": 31146,
+      "phases": [
+        {
+          "phase": {
+            "mode": "soak",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "baseline",
+            "vus": 2,
+            "durationSeconds": 25,
+            "soakTargetBasis": "70% of planned Target50VU; proven stable capacity is not established"
+          },
+          "serverPid": 31146,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 33.324097709031776,
+          "summary": {
+            "requests": 70,
+            "rps": 2.205306,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 6.36,
+              "p90": 47.2217,
+              "p95": 136.22845,
+              "p99": 231.92863,
+              "max": 243.364
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.1772900069076285,
+            "memoryMb": 73.33333333333333,
+            "threads": 3.8333333333333335,
+            "handles": 16.833333333333332,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": 12.5,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 31,
+                "first": 80.3125,
+                "last": 73.078125,
+                "delta": -7.234375,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 31,
+                "first": 1,
+                "last": 2,
+                "delta": 1,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "soak",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "profile",
+            "vus": 2,
+            "durationSeconds": 40,
+            "soakTargetBasis": "70% of planned Target50VU; proven stable capacity is not established"
+          },
+          "serverPid": 31146,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 42.570354165975004,
+          "summary": {
+            "requests": 58,
+            "rps": 1.41581,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 7.748,
+              "p90": 78.9578,
+              "p95": 420.97635,
+              "p99": 719.67072,
+              "max": 790.296
+            },
+            "vusMax": 2,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 58,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 50,
+              "409": 8
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.2639019863863167,
+            "memoryMb": 76.05729166666667,
+            "threads": 3.41025641025641,
+            "handles": 15.128205128205128,
+            "childProcesses": 0.07692307692307693
+          },
+          "resourceWindowSeconds": 40,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 40,
+                "first": 73.078125,
+                "last": 73.953125,
+                "delta": 0.875,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 40,
+                "first": 2,
+                "last": 2,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 40,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 40,
+                "first": 0,
+                "last": 4,
+                "delta": 4,
+                "continuouslyIncreasing": true
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "soak",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 2,
+            "selectionStride": 2,
+            "contentionRequests": 5,
+            "phase": "baseline",
+            "vus": 2,
+            "durationSeconds": 25,
+            "soakTargetBasis": "70% of planned Target50VU; proven stable capacity is not established"
+          },
+          "serverPid": 31146,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 33.17699825001182,
+          "summary": {
+            "requests": 70,
+            "rps": 2.223507,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 6.163,
+              "p90": 46.1833,
+              "p95": 135.38685,
+              "p99": 300.67128,
+              "max": 304.803
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.11087286520950895,
+            "memoryMb": 74.20052083333333,
+            "threads": 3.0,
+            "handles": 16.916666666666668,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": 12.5,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 31,
+                "first": 73.953125,
+                "last": 74.21875,
+                "delta": 0.265625,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 31,
+                "first": 2,
+                "last": 3,
+                "delta": 1,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 31,
+                "first": 4,
+                "last": 4,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 136.22845,
+            "after": 135.38685,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.1772900069076285,
+            "after": 0.11087286520950895,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 73.33333333333333,
+            "after": 74.20052083333333,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3.8333333333333335,
+            "after": 3.0,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.833333333333332,
+            "after": 16.916666666666668,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "maxObservedSuccessfulConcurrency": null,
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "fullDurationCompleted": false,
+      "originalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "error": null
+    },
+    {
+      "evidenceLabel": "real50VU stop/recovery diagnostic; later narrow cleanup/run-recovered changes separately checked",
+      "localArtifacts": "/private/tmp/lt4-parent-stress-50",
+      "configuration": {
+        "mode": "stress",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 200,
+        "selectionStride": 200,
+        "contentionRequests": 5,
+        "phase": "profile",
+        "startVus": 50,
+        "stages": [
+          {
+            "duration": "10s",
+            "target": 50
+          },
+          {
+            "duration": "0s",
+            "target": 75
+          },
+          {
+            "duration": "10s",
+            "target": 75
+          },
+          {
+            "duration": "0s",
+            "target": 100
+          },
+          {
+            "duration": "10s",
+            "target": 100
+          },
+          {
+            "duration": "0s",
+            "target": 125
+          },
+          {
+            "duration": "10s",
+            "target": 125
+          },
+          {
+            "duration": "0s",
+            "target": 150
+          },
+          {
+            "duration": "10s",
+            "target": 150
+          },
+          {
+            "duration": "0s",
+            "target": 175
+          },
+          {
+            "duration": "10s",
+            "target": 175
+          },
+          {
+            "duration": "0s",
+            "target": 200
+          },
+          {
+            "duration": "10s",
+            "target": 200
+          }
+        ],
+        "durationSeconds": 70,
+        "stressMaximumVus": 200
+      },
+      "sourceSha256": {
+        "api_test/load_test_campaigns.py": "10d5599eb8b11877b0dd755e487c0446f2ca3553f24e34133e7df2e787a8f04e",
+        "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+        "api_test/load_test_mutations.py": "f3586e8f5414d34d014bb4b90e988aceb4dd6ad1747e5c87ebeee59197cca414",
+        "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+        "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+        "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+        "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+        "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+        "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+        "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+      },
+      "status": "failed",
+      "sameServerPid": 34181,
+      "phases": [
+        {
+          "phase": {
+            "mode": "stress",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 200,
+            "selectionStride": 200,
+            "contentionRequests": 5,
+            "phase": "baseline",
+            "startVus": 50,
+            "stages": [
+              {
+                "duration": "10s",
+                "target": 50
+              },
+              {
+                "duration": "0s",
+                "target": 75
+              },
+              {
+                "duration": "10s",
+                "target": 75
+              },
+              {
+                "duration": "0s",
+                "target": 100
+              },
+              {
+                "duration": "10s",
+                "target": 100
+              },
+              {
+                "duration": "0s",
+                "target": 125
+              },
+              {
+                "duration": "10s",
+                "target": 125
+              },
+              {
+                "duration": "0s",
+                "target": 150
+              },
+              {
+                "duration": "10s",
+                "target": 150
+              },
+              {
+                "duration": "0s",
+                "target": 175
+              },
+              {
+                "duration": "10s",
+                "target": 175
+              },
+              {
+                "duration": "0s",
+                "target": 200
+              },
+              {
+                "duration": "10s",
+                "target": 200
+              }
+            ],
+            "durationSeconds": 25,
+            "stressMaximumVus": 200
+          },
+          "serverPid": 34181,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 33.22217850002926,
+          "summary": {
+            "requests": 70,
+            "rps": 2.218196,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.085,
+              "p90": 42.4446,
+              "p95": 43.10875,
+              "p99": 63.22238,
+              "max": 63.773
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.13813350504810434,
+            "memoryMb": 83.93629807692308,
+            "threads": 3.0,
+            "handles": 16.923076923076923,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": 12.5,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 31,
+                "first": 80.171875,
+                "last": 84.046875,
+                "delta": 3.875,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 31,
+                "first": 1,
+                "last": 3,
+                "delta": 2,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        },
+        {
+          "phase": {
+            "mode": "stress",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 200,
+            "selectionStride": 200,
+            "contentionRequests": 5,
+            "phase": "profile",
+            "startVus": 50,
+            "stages": [
+              {
+                "duration": "10s",
+                "target": 50
+              },
+              {
+                "duration": "0s",
+                "target": 75
+              },
+              {
+                "duration": "10s",
+                "target": 75
+              },
+              {
+                "duration": "0s",
+                "target": 100
+              },
+              {
+                "duration": "10s",
+                "target": 100
+              },
+              {
+                "duration": "0s",
+                "target": 125
+              },
+              {
+                "duration": "10s",
+                "target": 125
+              },
+              {
+                "duration": "0s",
+                "target": 150
+              },
+              {
+                "duration": "10s",
+                "target": 150
+              },
+              {
+                "duration": "0s",
+                "target": 175
+              },
+              {
+                "duration": "10s",
+                "target": 175
+              },
+              {
+                "duration": "0s",
+                "target": 200
+              },
+              {
+                "duration": "10s",
+                "target": 200
+              }
+            ],
+            "durationSeconds": 70,
+            "stressMaximumVus": 200
+          },
+          "serverPid": 34181,
+          "status": "aborted",
+          "complete": false,
+          "stopReason": "run_capacity_limit_429_before_further_increase",
+          "elapsedSeconds": 3.4975652910070494,
+          "summary": null,
+          "client": {
+            "windowRequests": 121,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 6,
+            "httpStatuses": {
+              "200": 84,
+              "429": 6,
+              "409": 31
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 1.7941111963059264,
+            "memoryMb": 76.19921875,
+            "threads": 15.0,
+            "handles": 52.25,
+            "childProcesses": 0.25
+          },
+          "resourceWindowSeconds": 70,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 4,
+                "first": 84.046875,
+                "last": 78.015625,
+                "delta": -6.03125,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 4,
+                "first": 3,
+                "last": 32,
+                "delta": 29,
+                "continuouslyIncreasing": true
+              },
+              "walBytes": {
+                "samples": 4,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 4,
+                "first": 0,
+                "last": 2,
+                "delta": 2,
+                "continuouslyIncreasing": true
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": null
+        },
+        {
+          "phase": {
+            "mode": "stress",
+            "validationMode": true,
+            "baselineSeconds": 25,
+            "sampleIntervalSeconds": 1,
+            "windowSeconds": 60,
+            "resourceSustainSeconds": 120,
+            "scaledStopTimers": false,
+            "configuredVus": 200,
+            "selectionStride": 200,
+            "contentionRequests": 5,
+            "phase": "baseline",
+            "startVus": 50,
+            "stages": [
+              {
+                "duration": "10s",
+                "target": 50
+              },
+              {
+                "duration": "0s",
+                "target": 75
+              },
+              {
+                "duration": "10s",
+                "target": 75
+              },
+              {
+                "duration": "0s",
+                "target": 100
+              },
+              {
+                "duration": "10s",
+                "target": 100
+              },
+              {
+                "duration": "0s",
+                "target": 125
+              },
+              {
+                "duration": "10s",
+                "target": 125
+              },
+              {
+                "duration": "0s",
+                "target": 150
+              },
+              {
+                "duration": "10s",
+                "target": 150
+              },
+              {
+                "duration": "0s",
+                "target": 175
+              },
+              {
+                "duration": "10s",
+                "target": 175
+              },
+              {
+                "duration": "0s",
+                "target": 200
+              },
+              {
+                "duration": "10s",
+                "target": 200
+              }
+            ],
+            "durationSeconds": 25,
+            "stressMaximumVus": 200
+          },
+          "serverPid": 34181,
+          "status": "passed",
+          "complete": true,
+          "stopReason": null,
+          "elapsedSeconds": 33.008158374985214,
+          "summary": {
+            "requests": 70,
+            "rps": 2.228809,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 5.207,
+              "p90": 32.5119,
+              "p95": 62.45055,
+              "p99": 66.90112,
+              "max": 71.836
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "windowRequests": 70,
+            "networkOr5xxRate": 0.0,
+            "runExitFailures": 0,
+            "capacity429": 0,
+            "httpStatuses": {
+              "200": 70
+            },
+            "faultObservations": 0,
+            "correctnessFailures": 0
+          },
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "resourceAggregate": {
+            "cpuPercent": 0.15235519949578366,
+            "memoryMb": 77.75841346153847,
+            "threads": 3.0,
+            "handles": 16.923076923076923,
+            "childProcesses": 0.0
+          },
+          "resourceWindowSeconds": 12.5,
+          "growth": {
+            "metrics": {
+              "memoryMb": {
+                "samples": 31,
+                "first": 78.140625,
+                "last": 77.03125,
+                "delta": -1.109375,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 31,
+                "first": 32,
+                "last": 3,
+                "delta": -29,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 31,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 31,
+                "first": 2,
+                "last": 2,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+          },
+          "error": null,
+          "integrity": "passed"
+        }
+      ],
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 43.10875,
+            "after": 62.45055,
+            "verdict": "failed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.13813350504810434,
+            "after": 0.15235519949578366,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 83.93629807692308,
+            "after": 77.75841346153847,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3.0,
+            "after": 3.0,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.923076923076923,
+            "after": 16.923076923076923,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "failed",
+        "factor": 1.2
+      },
+      "maxObservedSuccessfulConcurrency": null,
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "fullDurationCompleted": false,
+      "originalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "error": null
+    }
+  ],
+  "independentCapacity": {
+    "1": [
+      {
+        "httpStatus": 200,
+        "exitCode": 0,
+        "resultStatus": "passed",
+        "seconds": 0.35526116599794477
+      }
+    ],
+    "2": [
+      {
+        "httpStatus": 200,
+        "exitCode": 0,
+        "resultStatus": "passed",
+        "seconds": 0.34941579203587025
+      },
+      {
+        "httpStatus": 200,
+        "exitCode": 0,
+        "resultStatus": "passed",
+        "seconds": 0.34699962503509596
+      }
+    ],
+    "5": [
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.0068124160170555115
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.005588917003478855
+      },
+      {
+        "httpStatus": 200,
+        "exitCode": 0,
+        "resultStatus": "passed",
+        "seconds": 0.47518100001616403
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.004904249974060804
+      },
+      {
+        "httpStatus": 200,
+        "exitCode": 0,
+        "resultStatus": "passed",
+        "seconds": 0.4741623330046423
+      }
+    ],
+    "10": [
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.01960679196054116
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.016113333054818213
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.007091999985277653
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.02008737501455471
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.01435799995670095
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.013898124976549298
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.019823333015665412
+      },
+      {
+        "httpStatus": 200,
+        "exitCode": 0,
+        "resultStatus": "passed",
+        "seconds": 0.3593268750119023
+      },
+      {
+        "httpStatus": 200,
+        "exitCode": 0,
+        "resultStatus": "passed",
+        "seconds": 0.36302929098019376
+      },
+      {
+        "httpStatus": 429,
+        "exitCode": null,
+        "resultStatus": null,
+        "seconds": 0.007469834003131837
+      }
+    ],
+    "tmpRemaining": [],
+    "serverStopped": true
+  },
+  "interrupt": {
+    "localArtifacts": "/private/tmp/lt4-parent-interrupt",
+    "sourceSha256": {
+      "api_test/load_test_campaigns.py": "10d5599eb8b11877b0dd755e487c0446f2ca3553f24e34133e7df2e787a8f04e",
+      "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+      "api_test/load_test_mutations.py": "f3586e8f5414d34d014bb4b90e988aceb4dd6ad1747e5c87ebeee59197cca414",
+      "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+      "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+      "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+      "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+      "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+      "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+      "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+    },
+    "exitCode": -2,
+    "observedPids": [
+      35680,
+      35729,
+      36296,
+      36351
+    ],
+    "remainingLivePids": {},
+    "campaignStatus": "error",
+    "campaignError": "KeyboardInterrupt: ",
+    "serverStopped": true,
+    "phaseStatus": "error",
+    "phaseComplete": false,
+    "rawPreserved": true,
+    "bundleExists": false,
+    "tmpRemaining": []
+  },
+  "finalFaultRecovery": {
+    "status": "failed",
+    "evidenceLabel": "final-source replay after narrow capacity safety/recovered-run additions",
+    "localArtifacts": "/private/tmp/lt4-parent-fault-final",
+    "sourceSha256": {
+      "api_test/load_test_campaigns.py": "1de98e0f1b36520836e595992932b1b133c45a8375b91463ab852946f97603bc",
+      "api_test/load_test_monitor.py": "b949dec13ab634fbefeb46b1ebaaced19b2e644121e9dbc217b1af4807d2b007",
+      "api_test/load_test_mutations.py": "f3586e8f5414d34d014bb4b90e988aceb4dd6ad1747e5c87ebeee59197cca414",
+      "api_test/load_test_harness.py": "5a57690cbea9349360c8ba85db218d0c7142ad9474eb772c8a9afade8335e081",
+      "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+      "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+      "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+      "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+      "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+      "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+    },
+    "sameServerPid": 39140,
+    "phases": [
+      {
+        "phase": {
+          "mode": "fault",
+          "validationMode": true,
+          "baselineSeconds": 25,
+          "sampleIntervalSeconds": 1,
+          "windowSeconds": 2,
+          "resourceSustainSeconds": 2,
+          "scaledStopTimers": true,
+          "configuredVus": 1,
+          "selectionStride": 1,
+          "contentionRequests": 5,
+          "durationSeconds": 25,
+          "phase": "baseline"
+        },
+        "status": "passed",
+        "complete": true,
+        "stopReason": null,
+        "summary": {
+          "requests": 70,
+          "rps": 2.218764,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.3945,
+            "p90": 55.2808,
+            "p95": 56.1165,
+            "p99": 74.15351,
+            "max": 75.617
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "client": {
+          "windowRequests": 1,
+          "networkOr5xxRate": 0.0,
+          "runExitFailures": 0,
+          "capacity429": 0,
+          "httpStatuses": {
+            "200": 70
+          },
+          "faultObservations": 0,
+          "correctnessFailures": 0
+        },
+        "postRequestCleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "resourceAggregate": {
+          "cpuPercent": 0.13172517232911518,
+          "memoryMb": 74.54326923076923,
+          "threads": 2.6153846153846154,
+          "handles": 16.923076923076923,
+          "childProcesses": 0.0
+        },
+        "resourceWindowSeconds": 12.5,
+        "serverPid": 39140
+      },
+      {
+        "phase": {
+          "mode": "fault",
+          "validationMode": true,
+          "baselineSeconds": 25,
+          "sampleIntervalSeconds": 1,
+          "windowSeconds": 2,
+          "resourceSustainSeconds": 2,
+          "scaledStopTimers": true,
+          "configuredVus": 1,
+          "selectionStride": 1,
+          "contentionRequests": 5,
+          "durationSeconds": 10,
+          "phase": "fault",
+          "fault": "error"
+        },
+        "status": "aborted",
+        "complete": false,
+        "stopReason": "network_or_5xx_rate_above_5_percent_in_full_window",
+        "summary": null,
+        "client": {
+          "windowRequests": 3,
+          "networkOr5xxRate": 0.3333333333333333,
+          "runExitFailures": 2,
+          "capacity429": 0,
+          "httpStatuses": {
+            "500": 2,
+            "200": 2
+          },
+          "faultObservations": 2,
+          "correctnessFailures": 0
+        },
+        "postRequestCleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "resourceAggregate": {
+          "cpuPercent": 0.08219888647686757,
+          "memoryMb": 74.65625,
+          "threads": 3.0,
+          "handles": 12.666666666666666,
+          "childProcesses": 0.0
+        },
+        "resourceWindowSeconds": 10,
+        "serverPid": 39140
+      },
+      {
+        "phase": {
+          "mode": "fault",
+          "validationMode": true,
+          "baselineSeconds": 25,
+          "sampleIntervalSeconds": 1,
+          "windowSeconds": 2,
+          "resourceSustainSeconds": 2,
+          "scaledStopTimers": true,
+          "configuredVus": 1,
+          "selectionStride": 1,
+          "contentionRequests": 5,
+          "durationSeconds": 10,
+          "phase": "fault",
+          "fault": "delay"
+        },
+        "status": "passed",
+        "complete": true,
+        "stopReason": null,
+        "summary": {
+          "requests": 4,
+          "rps": 0.314684,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 2648.019,
+            "p90": 3001.9994,
+            "p95": 3002.0762,
+            "p99": 3002.13764,
+            "max": 3002.153
+          },
+          "vusMax": 1,
+          "thresholdsPassed": true
+        },
+        "client": {
+          "windowRequests": 1,
+          "networkOr5xxRate": 0.0,
+          "runExitFailures": 2,
+          "capacity429": 0,
+          "httpStatuses": {
+            "200": 4
+          },
+          "faultObservations": 2,
+          "correctnessFailures": 0
+        },
+        "postRequestCleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "resourceAggregate": {
+          "cpuPercent": 0.5087033415244674,
+          "memoryMb": 93.771875,
+          "threads": 2.1,
+          "handles": 14.4,
+          "childProcesses": 0.4
+        },
+        "resourceWindowSeconds": 10,
+        "serverPid": 39140
+      },
+      {
+        "phase": {
+          "mode": "fault",
+          "validationMode": true,
+          "baselineSeconds": 25,
+          "sampleIntervalSeconds": 1,
+          "windowSeconds": 2,
+          "resourceSustainSeconds": 2,
+          "scaledStopTimers": true,
+          "configuredVus": 1,
+          "selectionStride": 1,
+          "contentionRequests": 5,
+          "durationSeconds": 30,
+          "phase": "run",
+          "vus": 1
+        },
+        "status": "passed",
+        "complete": true,
+        "stopReason": null,
+        "summary": {
+          "requests": 1,
+          "rps": 0.606313,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 385.696,
+            "p90": 385.696,
+            "p95": 385.696,
+            "p99": 385.696,
+            "max": 385.696
+          },
+          "vusMax": 1,
+          "thresholdsPassed": true
+        },
+        "client": {
+          "windowRequests": 1,
+          "networkOr5xxRate": 0.0,
+          "runExitFailures": 0,
+          "capacity429": 0,
+          "httpStatuses": {
+            "200": 1
+          },
+          "faultObservations": 0,
+          "correctnessFailures": 0
+        },
+        "postRequestCleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "resourceAggregate": {
+          "cpuPercent": 0.06002388710632089,
+          "memoryMb": 74.71875,
+          "threads": 2.0,
+          "handles": 12.5,
+          "childProcesses": 0.0
+        },
+        "resourceWindowSeconds": 30,
+        "serverPid": 39140
+      },
+      {
+        "phase": {
+          "mode": "fault",
+          "validationMode": true,
+          "baselineSeconds": 25,
+          "sampleIntervalSeconds": 1,
+          "windowSeconds": 2,
+          "resourceSustainSeconds": 2,
+          "scaledStopTimers": true,
+          "configuredVus": 1,
+          "selectionStride": 1,
+          "contentionRequests": 5,
+          "durationSeconds": 25,
+          "phase": "baseline"
+        },
+        "status": "passed",
+        "complete": true,
+        "stopReason": null,
+        "summary": {
+          "requests": 70,
+          "rps": 2.233599,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.6385,
+            "p90": 33.5336,
+            "p95": 64.1294,
+            "p99": 467.62906,
+            "max": 519.19
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "client": {
+          "windowRequests": 1,
+          "networkOr5xxRate": 0.0,
+          "runExitFailures": 0,
+          "capacity429": 0,
+          "httpStatuses": {
+            "200": 70
+          },
+          "faultObservations": 0,
+          "correctnessFailures": 0
+        },
+        "postRequestCleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "resourceAggregate": {
+          "cpuPercent": 0.13063633473101519,
+          "memoryMb": 57.57572115384615,
+          "threads": 2.923076923076923,
+          "handles": 16.923076923076923,
+          "childProcesses": 0.0
+        },
+        "resourceWindowSeconds": 12.5,
+        "serverPid": 39140
+      }
+    ],
+    "executionRecovery": {
+      "status": "passed",
+      "complete": true,
+      "client": {
+        "windowRequests": 1,
+        "networkOr5xxRate": 0.0,
+        "runExitFailures": 0,
+        "capacity429": 0,
+        "httpStatuses": {
+          "200": 1
+        },
+        "faultObservations": 0,
+        "correctnessFailures": 0
+      },
+      "cleanup": {
+        "childProcesses": 0,
+        "tempEntries": 0,
+        "status": "passed"
+      }
+    },
+    "recovery": {
+      "comparison": {
+        "p95Ms": {
+          "before": 56.1165,
+          "after": 64.1294,
+          "verdict": "passed"
+        },
+        "errorRate": {
+          "before": 0.0,
+          "after": 0.0,
+          "verdict": "passed"
+        },
+        "cpuPercent": {
+          "before": 0.13172517232911518,
+          "after": 0.13063633473101519,
+          "verdict": "passed"
+        },
+        "memoryMb": {
+          "before": 74.54326923076923,
+          "after": 57.57572115384615,
+          "verdict": "passed"
+        },
+        "threads": {
+          "before": 2.6153846153846154,
+          "after": 2.923076923076923,
+          "verdict": "passed"
+        },
+        "handles": {
+          "before": 16.923076923076923,
+          "after": 16.923076923076923,
+          "verdict": "passed"
+        },
+        "childProcesses": {
+          "before": 0,
+          "after": 0,
+          "verdict": "passed"
+        }
+      },
+      "status": "passed",
+      "factor": 1.2
+    },
+    "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "serverStopped": true
+  },
+  "verification": {
+    "pythonFull": {
+      "tests": 372,
+      "skipped": 0,
+      "seconds": 89.24,
+      "status": "passed before last two narrow safety/recovered-run additions",
+      "log": "/private/tmp/lt4-parent-final-python.log"
+    },
+    "campaignFocusedTests": 8,
+    "mutationFocusedTests": 6,
+    "importerTests": 13,
+    "nodeCampaignAssertions": 6,
+    "nodeMixedTests": 7,
+    "nodeReadTests": 6,
+    "nodeSummaryRegression": "passed",
+    "compile": "passed",
+    "diffCheck": "passed",
+    "finalFocused": {
+      "tests": 29,
+      "seconds": 1.302,
+      "status": "passed after final changes",
+      "counts": {
+        "campaign": 8,
+        "mutation": 6,
+        "harness": 15
+      },
+      "log": "/private/tmp/lt4-parent-final-focused.log"
+    },
+    "discoverableCurrentTests": 373,
+    "full373Executed": false
+  },
+  "interpretation": {
+    "capacity": "observed successful single synchronized batches1 and2;5 and10 expose3/8x429; sustained stable maximum not established",
+    "recoveryFailures": [
+      "Spike p95 61.43 to84.49ms exceeds120%",
+      "real50VU Stress p95 43.11 to62.45ms exceeds120%"
+    ],
+    "stopEvidence": "real50VU Stress abortedabout3.50seconds on6x429 before75VU;121HTTP=84x200+31expected409+6x429; no completed bundle for aborted profile",
+    "noCherryPicking": true,
+    "sourceEvolution": "Actual diagnostic artifacts keep their recorded hashes; runtime evolved between runs. Final narrow changes verified by focused tests and final fault replay; diagnostic numbers not relabelled as final-source campaigns.",
+    "finalFault": "controlled500 abortedscaled2sec window,delay produced2request_timeout observations,normal saved run afterreset passed,allrecovery passed; overallfailed preserves injectedabort"
+  },
+  "limitations": [
+    "full35-minute Stress/full Spike/2-hourSoak not run",
+    "sustained CPU95%/memory90% for120sec tested with fake timestamps, not full real elapsed120sec",
+    "no physical diskIOPS/latency or host-wideCPU accounting",
+    "children exiting between resource samples not completely measured; RSS sum can double-count shared pages",
+    "Windows child-tree cleanup not verified",
+    "Studio subprocess300sec watchdog not triggered or changed; saved caseHTTP2sec timeout observed",
+    "full-stageSLO/maximumstableStressRPS and rigorousSoaktrend interpretation remain LT-5; stableStressRps=null"
+  ],
+  "status": "LT-4 local implementation and validation complete; measured failures/unknown and full-campaign limits retained"
+}
