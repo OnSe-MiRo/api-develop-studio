@@ -17,9 +17,10 @@ TERMINAL = frozenset({'passed', 'failed', 'error', 'timeout', 'cancelled'})
 
 
 class JobError(Exception):
-    def __init__(self, message, status_code):
+    def __init__(self, message, status_code, *, code=None, guidance=None):
         super().__init__(message)
         self.status_code = status_code
+        self.code, self.guidance = code, guidance
 
 
 @dataclass
@@ -65,12 +66,17 @@ class JobManager:
             if self.closed:
                 raise JobError('실행 worker가 종료 중입니다.', 503)
             active = [j for j in self.jobs.values() if not j.done.is_set()]
-            if len(active) >= self.capacity or sum((j.owner.workspace_id, j.owner.user_id) == (owner.workspace_id, owner.user_id) for j in active) >= self.user_limit:
-                raise JobError('실행 대기 한도를 초과했습니다. 진행 중인 작업이 끝난 후 다시 실행하세요.', 429)
+            if len(active) >= self.capacity:
+                raise JobError('실행 대기 한도를 초과했습니다. 진행 중인 작업이 끝난 후 다시 실행하세요.', 429,
+                               code='RUN_CAPACITY_EXCEEDED', guidance='접수되지 않았습니다. 기존 Run ID로 완료 상태를 확인한 뒤 새 작업을 명시적으로 제출하세요.')
+            if sum((j.owner.workspace_id, j.owner.user_id) == (owner.workspace_id, owner.user_id) for j in active) >= self.user_limit:
+                raise JobError('실행 대기 한도를 초과했습니다. 진행 중인 작업이 끝난 후 다시 실행하세요.', 429,
+                               code='RUN_USER_LIMIT_EXCEEDED', guidance='접수되지 않았습니다. 본인의 기존 Run ID로 완료 상태를 확인한 뒤 새 작업을 명시적으로 제출하세요.')
             projects = tuple(sorted(set(projects))) or ('__unassigned__',)
             for project in projects:
                 if sum(j.owner.workspace_id == owner.workspace_id and project in j.projects for j in active) >= self.project_limit:
-                    raise JobError('프로젝트 실행 대기 한도를 초과했습니다.', 429)
+                    raise JobError('프로젝트 실행 대기 한도를 초과했습니다.', 429,
+                                   code='RUN_PROJECT_LIMIT_EXCEEDED', guidance='접수되지 않았습니다. 해당 프로젝트의 진행 중 작업이 끝난 뒤 새 작업을 명시적으로 제출하세요.')
             run_id = str(uuid.uuid4())
             job = Job(run_id, owner, projects, task, {
                 'runId': run_id, 'status': 'queued', 'createdAt': now(), 'startedAt': None,
@@ -153,7 +159,8 @@ class JobManager:
         if self.closed:
             raise JobError('실행 worker가 종료 중입니다.', 503)
         if not self.slots.acquire(blocking=False):
-            raise JobError('동시 실행 한도를 초과했습니다.', 429)
+            raise JobError('동시 실행 한도를 초과했습니다.', 429, code='RUN_WORKERS_BUSY',
+                           guidance='실행이 시작되지 않았습니다. 대기가 필요하면 POST /api/runs로 한 번 제출하고 반환된 Run ID를 조회하세요. 비동기 대기열에도 한도가 있습니다.')
         try:
             yield
         finally:

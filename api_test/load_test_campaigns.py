@@ -22,7 +22,7 @@ from api_test.load_results import import_k6_result
 from api_test.load_test_monitor import RawTail, ResourceSampler, StopPolicy, recovery_report, aggregate_resources, growth_report, stable_resource_window
 from api_test.load_test_mutations import expected_mutations, traffic_report
 
-MODES = ("stress", "spike", "soak", "run-capacity", "fault")
+MODES = ("stress", "spike", "soak", "run-capacity", "run-sustained", "fault")
 
 
 def configuration(mode, validation_seconds=None, validation_vus=None, validation_stop_seconds=None):
@@ -36,10 +36,10 @@ def configuration(mode, validation_seconds=None, validation_vus=None, validation
         raise ValueError("scaled stop timers require validation and2..30seconds")
     validation = validation_seconds is not None
     config = {"mode": mode, "validationMode": validation, "baselineSeconds": 25 if validation else 300,
-              "sampleIntervalSeconds": 1 if validation or mode in ("run-capacity", "fault") else 5,
+              "sampleIntervalSeconds": 1 if validation or mode in ("run-capacity", "run-sustained", "fault") else 5,
               "windowSeconds": validation_stop_seconds or 60, "resourceSustainSeconds": validation_stop_seconds or 120,
-              "scaledStopTimers": validation_stop_seconds is not None, "configuredVus": validation_vus or {"stress": 200, "spike": 100, "soak": 35, "run-capacity": 10, "fault": 1}[mode],
-              "selectionStride": validation_vus or {"stress": 200, "spike": 100, "soak": 35, "run-capacity": 10, "fault": 1}[mode], "contentionRequests": 5}
+              "scaledStopTimers": validation_stop_seconds is not None, "configuredVus": validation_vus or {"stress": 200, "spike": 100, "soak": 35, "run-capacity": 10, "run-sustained": 2, "fault": 1}[mode],
+              "selectionStride": validation_vus or {"stress": 200, "spike": 100, "soak": 35, "run-capacity": 10, "run-sustained": 2, "fault": 1}[mode], "contentionRequests": 5}
     reduced = validation_vus or config["configuredVus"]
     if mode == "stress":
         levels = [50, 75, 100, 125, 150, 175, 200] if not validation_vus else [1, reduced]
@@ -56,6 +56,8 @@ def configuration(mode, validation_seconds=None, validation_vus=None, validation
         config.update(phase="profile", startVus=base, stages=[{"duration": f"{ramp}s", "target": reduced}, {"duration": f"{hold}s", "target": reduced}, {"duration": f"{down}s", "target": base}], durationSeconds=ramp + hold + down)
     elif mode == "soak":
         config.update(phase="profile", vus=reduced, durationSeconds=validation_seconds or 7200, soakTargetBasis="70% of planned Target50VU; proven stable capacity is not established")
+    elif mode == "run-sustained":
+        config.update(durationSeconds=validation_seconds or 60, queueBatchSize=5, queueStubDelayMs=500)
     else:
         config.update(durationSeconds=validation_seconds or 90)
     return config
@@ -116,7 +118,8 @@ def _phase(config, directory, snapshot, environment, executable, server, sampler
            "STUDIO_STARTED_AT": datetime.now(timezone.utc).isoformat(), "STUDIO_RUN_ID": "run_lt4_" + uuid.uuid4().hex,
            "STUDIO_SCENARIO": f"lt4-{config['mode']}-{config['phase']}" + ("-validation" if config["validationMode"] else "")}
     from api_test.load_test_harness import REPOSITORY, _stop, verify_fixture
-    command = [executable, "run", "--out", f"json={raw}", str(REPOSITORY / "load-tests/k6/mixed.js")]
+    script = "run-admission.js" if config["mode"] == "run-sustained" and config["phase"] != "baseline" else "mixed.js"
+    command = [executable, "run", "--out", f"json={raw}", str(REPOSITORY / "load-tests/k6" / script)]
     result = {"phase": config, "serverPid": server.pid, "command": command, "status": "error", "complete": False, "stopReason": None, "resources": []}
     client = RawTail(raw, config["windowSeconds"])
     policy = StopPolicy(started, config["windowSeconds"], config["resourceSustainSeconds"])
@@ -204,6 +207,28 @@ def capacity_stop_reason(phase):
     return None
 
 
+def sustained_verdict(phase):
+    """Require repeated logical successes per VU and verified cleanup, never infer capacity."""
+    if phase.get("status") != "passed" or phase.get("complete") is not True or phase.get("stopReason"):
+        return {"status": "failed", "reason": "execution_or_threshold_failure"}
+    if phase.get("postRequestCleanup", {}).get("status") != "passed":
+        return {"status": "failed" if phase.get("postRequestCleanup", {}).get("status") == "failed" else "unknown", "reason": "cleanup_not_verified"}
+    client = phase.get("client", {})
+    if any(client.get(field) != 0 for field in ("correctnessFailures", "runExitFailures", "capacity429")) or client.get("networkOr5xxRate") != 0:
+        return {"status": "failed", "reason": "logical_or_http_failure"}
+    config = phase["phase"]
+    if config["phase"] == "sustained":
+        counts = client.get("sustainedRunsByVu", {})
+        windows = client.get("sustainedSuccessWindowsByVu", {})
+        if any(counts.get(str(vu), 0) < 2 or windows.get(str(vu), {}).get("observedSpanSeconds", 0) < config["durationSeconds"] / 2 for vu in range(1, config["vus"] + 1)) or phase.get("elapsedSeconds", 0) < config["durationSeconds"]:
+            return {"status": "failed", "reason": "repeated_duration_or_per_vu_success_missing"}
+    else:
+        counts = client.get("asyncJobs", {})
+        if counts.get("accepted") != 5 or counts.get("passed") != 5 or counts.get("queued", 0) < 1 or counts.get("running", 0) < 1:
+            return {"status": "failed", "reason": "queue_admission_or_terminal_success_missing"}
+    return {"status": "passed", "reason": None}
+
+
 def run_campaign(fixture, output, k6="k6", mode="stress", validation_seconds=None, validation_vus=None, validation_stop_seconds=None):
     config = configuration(mode, validation_seconds, validation_vus, validation_stop_seconds)
     from api_test.load_test_harness import REPOSITORY, HarnessError, _new_root, _stop, _host_memory_mb, isolated_environment, verify_fixture
@@ -223,7 +248,7 @@ def run_campaign(fixture, output, k6="k6", mode="stress", validation_seconds=Non
         environment[temporary_variable] = str(snapshot / "tmp")
     server = None
     result = {"configuration": config, "originalFixture": original, "status": "error", "phases": [], "fullDurationConfigured": not config["validationMode"], "fullDurationCompleted": False}
-    files = ("api_test/load_test_campaigns.py", "api_test/load_test_monitor.py", "api_test/load_test_mutations.py", "api_test/load_test_harness.py", "api_test/load_results.py", "load-tests/k6/mixed.js", "load-tests/k6/mixed-model.js", "load-tests/k6/read-model.js", "load-tests/k6/campaign-model.js", "load-tests/k6/studio-summary.js")
+    files = ("api_test/jobs.py", "api_test/main.py", "api_test/services/execution.py", "api_test/job_runner.py", "load-tests/k6/run-admission.js", "api_test/load_test_campaigns.py", "api_test/load_test_monitor.py", "api_test/load_test_mutations.py", "api_test/load_test_harness.py", "api_test/load_results.py", "load-tests/k6/mixed.js", "load-tests/k6/mixed-model.js", "load-tests/k6/read-model.js", "load-tests/k6/campaign-model.js", "load-tests/k6/studio-summary.js")
     result["sourceSha256"] = {name: hashlib.sha256((REPOSITORY / name).read_bytes()).hexdigest() for name in files}
     result["k6Version"] = subprocess.run([executable, "version"], capture_output=True, text=True, env=environment, timeout=10, check=True).stdout.strip()
     result["appVersion"] = json.loads((REPOSITORY / "web/package.json").read_text())["version"]
@@ -272,6 +297,26 @@ def run_campaign(fixture, output, k6="k6", mode="stress", validation_seconds=Non
                         result["capacityStoppedReason"] = reason
                         break
                 result["maxObservedSuccessfulConcurrency"] = max((phase["phase"]["vus"] for phase in result["phases"] if phase["phase"]["phase"] == "run" and phase["status"] == "passed"), default=None)
+            elif mode == "run-sustained":
+                for concurrency in (1, 2):
+                    phase = _phase({**config, "phase": "sustained", "vus": concurrency}, output / f"sustained-{concurrency}", snapshot, environment, executable, server, sampler, config)
+                    result["phases"].append(phase)
+                    verdict = sustained_verdict(phase)
+                    phase["admissionValidation"] = verdict
+                    _json(output / f"sustained-{concurrency}" / "phase.json", phase)
+                    if verdict["status"] != "passed":
+                        result["sustainedStoppedReason"] = verdict["reason"]
+                        break
+                if not result.get("sustainedStoppedReason"):
+                    _control(base_url, config["queueStubDelayMs"])
+                    phase = _phase({**config, "phase": "queue", "vus": 1}, output / "queue", snapshot, environment, executable, server, sampler, config)
+                    result["phases"].append(phase)
+                    phase["admissionValidation"] = sustained_verdict(phase)
+                    _json(output / "queue" / "phase.json", phase)
+                result["sustainedScope"] = "bounded repeated local execution and explicit queue admission; maximum stable capacity is not established"
+                result["maximumStableConcurrency"] = None
+                admission_phases = [item for item in result["phases"] if item.get("admissionValidation")]
+                result["admissionStatus"] = "failed" if any(item["admissionValidation"]["status"] == "failed" for item in admission_phases) else "unknown" if len(admission_phases) != 3 or any(item["admissionValidation"]["status"] == "unknown" for item in admission_phases) else "passed"
             elif mode == "fault":
                 for fault, delay, status in (("error", 0, 500), ("delay", 3000, 200)):
                     _control(base_url, delay, status)
@@ -298,7 +343,7 @@ def run_campaign(fixture, output, k6="k6", mode="stress", validation_seconds=Non
             result["stableStressRps"] = None
             result["stressCapacityStatus"] = "not established; full stable stage/SLO evidence required"
             result["resourceUnknown"] = [field for field in ("diskIops", "diskLatencyMs")]
-            result["status"] = "failed" if any(phase["status"] in ("failed", "aborted", "error") for phase in result["phases"]) or any(phase["postRequestCleanup"]["status"] == "failed" for phase in result["phases"]) or result["recovery"]["status"] == "failed" or result["soakStability"] == "failed" else "unknown" if (mode == "soak" and result["soakStability"] == "unknown") or any(phase["postRequestCleanup"]["status"] == "unknown" for phase in result["phases"]) else result["recovery"]["status"]
+            result["status"] = "failed" if any(phase.get("admissionValidation", {}).get("status", "passed") == "failed" for phase in result["phases"]) or any(phase["status"] in ("failed", "aborted", "error") for phase in result["phases"]) or any(phase["postRequestCleanup"]["status"] == "failed" for phase in result["phases"]) or result["recovery"]["status"] == "failed" or result["soakStability"] == "failed" else "unknown" if any(phase.get("admissionValidation", {}).get("status") == "unknown" for phase in result["phases"]) or (mode == "soak" and result["soakStability"] == "unknown") or any(phase["postRequestCleanup"]["status"] == "unknown" for phase in result["phases"]) else result["recovery"]["status"]
     except BaseException as exc:
         result["status"] = "error"
         result["error"] = type(exc).__name__ + ": " + str(exc)

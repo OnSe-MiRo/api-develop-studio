@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api_test.load_test_campaigns import configuration, install_stub, enriched_raw, capacity_stop_reason
+from api_test.load_test_campaigns import configuration, install_stub, enriched_raw, capacity_stop_reason, sustained_verdict
 from api_test.load_test_monitor import RawTail, StopPolicy, cpu_seconds, within_baseline, growth_report, stable_resource_window
 
 
@@ -29,6 +29,28 @@ class LoadTestCampaignTests(unittest.TestCase):
         for arguments in (("stress", 9), ("stress", 121), ("stress", None, 2), ("fault", 10, 2), ("run-capacity", 10, 2), ("fault", 10, None, True), ("fault", 10, None, 2.5)):
             with self.subTest(arguments=arguments), self.assertRaises(ValueError):
                 configuration(*arguments)
+
+    def test_sustained_is_bounded_and_requires_each_vu_repeated_success_and_cleanup(self):
+        self.assertEqual(configuration("run-sustained")["durationSeconds"], 60)
+        self.assertEqual(configuration("run-sustained", 10)["configuredVus"], 2)
+        phase = {"status": "passed", "complete": True, "stopReason": None, "elapsedSeconds": 10,
+                 "phase": {"phase": "sustained", "vus": 2, "durationSeconds": 10},
+                 "postRequestCleanup": {"status": "passed"},
+                 "client": {"sustainedRunsByVu": {"1": 2, "2": 3},
+                            "sustainedSuccessWindowsByVu": {"1": {"observedSpanSeconds": 8}, "2": {"observedSpanSeconds": 8}}, "correctnessFailures": 0,
+                            "runExitFailures": 0, "capacity429": 0, "networkOr5xxRate": 0}}
+        self.assertEqual(sustained_verdict(phase)["status"], "passed")
+        for changed in ({"client": {**phase["client"], "sustainedRunsByVu": {"1": 5}}},
+                        {"client": {**phase["client"], "sustainedSuccessWindowsByVu": {"1": {"observedSpanSeconds": 1}}}},
+                        {"elapsedSeconds": 9}, {"complete": False}, {"client": {**phase["client"], "runExitFailures": 1}},
+                        {"client": {**phase["client"], "networkOr5xxRate": None}}):
+            self.assertEqual(sustained_verdict({**phase, **changed})["status"], "failed")
+        self.assertEqual(sustained_verdict({**phase, "postRequestCleanup": {"status": "unknown"}})["status"], "unknown")
+        self.assertEqual(sustained_verdict({**phase, "postRequestCleanup": {"status": "failed"}})["status"], "failed")
+        queue = {**phase, "phase": {"phase": "queue"}, "client": {**phase["client"], "asyncJobs": {"accepted": 5, "queued": 5, "running": 1, "passed": 5}}}
+        self.assertEqual(sustained_verdict(queue)["status"], "passed")
+        for counts in ({"accepted": 5, "queued": 0, "passed": 5}, {"accepted": 5, "queued": 5, "passed": 4}, {}):
+            self.assertEqual(sustained_verdict({**queue, "client": {**queue["client"], "asyncJobs": counts}})["status"], "failed")
 
     def test_real_60_and_120_second_predicates_and_unknown_reset(self):
         policy = StopPolicy(0)
@@ -72,6 +94,27 @@ class LoadTestCampaignTests(unittest.TestCase):
             self.assertEqual(tail.poll(1000)["httpStatuses"], {"500": 1})
             self.assertEqual(tail.offset, offset)
             self.assertEqual(tail.poll(1061)["windowRequests"], 0)
+
+    def test_raw_tail_preserves_per_vu_success_spans_and_actual_queue_observations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "raw.jsonl"
+            events = []
+            for metric, value, timestamp, tags in (("studio_sustained_runs", 1, 1000, {"vu": "1"}),
+                                                  ("studio_sustained_runs", 1, 1008, {"vu": "1"}),
+                                                  ("studio_sustained_runs", 1, 1002, {"vu": "2"}),
+                                                  ("studio_async_accepted", 5, 1010, None),
+                                                  ("studio_async_queued", 1, 1011, None),
+                                                  ("studio_async_running", 1, 1011, None),
+                                                  ("studio_async_passed", 5, 1012, None)):
+                events.append({"type": "Point", "metric": metric, "data": {"value": value, "time": datetime.fromtimestamp(timestamp, timezone.utc).isoformat(), "tags": tags}})
+            path.write_text("".join(json.dumps(event) + "\n" for event in events))
+            tail = RawTail(path)
+            result = tail.poll(1012)
+            self.assertEqual(result["sustainedRunsByVu"], {"1": 2, "2": 1})
+            self.assertEqual(result["sustainedSuccessWindowsByVu"]["1"]["observedSpanSeconds"], 8)
+            self.assertEqual(result["sustainedSuccessWindowsByVu"]["2"]["observedSpanSeconds"], 0)
+            self.assertEqual(result["asyncJobs"], {"accepted": 5, "queued": 1, "running": 1, "passed": 5})
+            self.assertEqual(tail.poll(1013)["asyncJobs"], result["asyncJobs"])
 
     def test_recovery_unknown_and_zero_do_not_become_automatic_pass(self):
         self.assertEqual(within_baseline(None, 0), "unknown")

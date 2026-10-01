@@ -217,3 +217,22 @@ k6 원본 형식과 system tags는 [JSON output](https://grafana.com/docs/k6/lat
 VU metric 의미는 [k6 metrics reference](https://grafana.com/docs/k6/latest/using-k6/metrics/reference/)를 따른다.
 
 시나리오 종료와 grace는 [k6 graceful stop](https://grafana.com/docs/k6/latest/using-k6/scenarios/concepts/graceful-stop/), executor 설정은 [k6 scenarios](https://grafana.com/docs/k6/latest/using-k6/scenarios/)를 따른다.
+
+## P0 반복 실행과 비동기 접수 검증
+
+기존 `run-capacity`는 1/2/5/10의 단일 동시 batch이며 지속 실행 증거와 구분한다. 다음 명령은 같은 격리 서버에서 before Baseline → sync 1 VU 반복 → sync 2 VU 반복 → async 5개 제출/조회 → after Baseline을 기록한다.
+
+```bash
+python -m api_test.load_test_harness run-sustained --fixture data/lt-fixtures/medium-01 --output data/load-tests/admission-sustained-01
+python -m api_test.load_test_harness run-sustained --fixture data/lt-fixtures/medium-01 --output data/load-tests/admission-sustained-validation-01 --validation-seconds 10
+```
+
+sync phase는 기본 각 60초, 명시적 validation은 각 10~120초다. VU는 1→2 고정이며 worker 기본 2를 증가시키지 않는다. 매 HTTP 200 응답의 exit 0, report/response Run ID 일치, 준비된 case의 terminal passed와 대상 HTTP 200을 확인한다. raw에서 **VU별** 성공 수와 첫/마지막 성공 시각·span을 기록하고, 각 VU가 최소 2회 성공하며 성공 span이 설정 시간의 절반 이상인 경우만 반복 실행 검증을 통과한다. phase elapsed에는 startup·정리가 포함되므로 이것만으로 실행 지속 시간을 판정하지 않는다. 정확히 60초 동안 모든 순간의 동시 실행이나 최대 안정 용량을 입증하는 시험은 아니다.
+
+queue phase는 준비된 local stub의 지연을 500ms로 고정한 뒤 5개를 한 번씩 제출한다. 202/고유 Run ID 5개, **GET에서 실제 queued와 running 관측**, 동일 ID/report의 terminal passed/exit 0 5개를 요구한다. 한 번의 batch이므로 queue의 장시간 처리량·공정성을 판정하지 않는다. 조회 deadline은 15초이며 조회 round 사이에서 확인한다. round 안의 최대 5개 GET은 각각 timeout 5초이므로 15초에서 즉시 끝남을 보장하지 않는다. 전체 queue workload는 k6 최대 30초와 grace 5초로 제한한다. 접수 실패·network ambiguity·terminal 오류는 새 제출로 재시도하지 않는다. phase 종료 후 child/tmp가 0으로 검증되지 않으면 다음 VU/queue로 진행하지 않는다. 실패는 failed, 누락된 cleanup 관측은 unknown이며 둘 다 증가를 막는다.
+
+`campaign.json`의 `admissionStatus`와 각 `admissionValidation`은 반복 실행/queue/정리 판정이다. 기존 `status`는 전후 읽기·CPU/RSS/thread/FD 회복 판정도 반영하므로 admission이 passed여도 recovery 실패면 campaign은 failed다. raw·summary·phase·source hash·실행 PID와 원본 fixture 불변성을 보존한다. `maximumStableConcurrency`는 null이다. 과거 LT-5 생성 보고서의 실패/unknown은 이 검증으로 덮어쓰지 않으며, 다음 P1 동일 조건 3회 기준선과 회복 원인 분리에서 추가 판단한다.
+
+실행 API 선택·429와 중복 제출 주의사항은 [접수 정책](async-runs.md#실행-접수-정책)을 따른다.
+
+2026-10-01 Small/각10초 실제 검증은 admission passed지만 thread 회복 4.5→5.461538(121.37%)로 전체 campaign failed다. sync1 32회·sync2 각31회, async5개 terminal passed·모든 phase child/tmp0을 확인했다. [별도 검증 기록](run-admission-validation.json)의 진단 실패와 최종 실행을 함께 보존한다.

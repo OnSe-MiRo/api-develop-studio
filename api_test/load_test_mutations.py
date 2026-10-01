@@ -55,10 +55,12 @@ def run_isolated_case() -> int:
     root = Path.cwd().resolve()
     runtime = json.loads((root / "runtime.json").read_text())
     arguments = sys.argv[1:]
-    if len(arguments) != 6 or arguments[0:2] != ["--case", RUN_CASE] or arguments[2] != "--report-json" or arguments[4] != "--run-id":
+    if len(arguments) not in (6, 8) or arguments[0:2] != ["--case", RUN_CASE] or arguments[2] != "--report-json" or arguments[4] != "--run-id":
         raise ValueError("isolated runner accepts only the prepared saved health case")
     if not Path(arguments[3]).resolve().is_relative_to(root / "tmp"):
         raise ValueError("isolated report must remain in its private temporary directory")
+    if len(arguments) == 8 and (arguments[6] != "--log-dir" or not Path(arguments[7]).resolve().is_relative_to(root / "tmp")):
+        raise ValueError("isolated async logs must remain in the private temporary directory")
     from api_test import cli
     from api_test.ownership import OwnershipError
     def guard(project, _root, external=False):

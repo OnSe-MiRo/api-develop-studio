@@ -89,6 +89,8 @@ def create_app(studio) -> FastAPI:
             status = exc.status_code
         if isinstance(exc, JobError):
             status = exc.status_code
+            if exc.code:
+                payload.update(code=exc.code, admission={"accepted": False, "guidance": exc.guidance})
         if isinstance(exc, DATABASE_ERRORS):
             status, payload = 503, {"error": "저장소에 연결할 수 없습니다. 잠시 후 다시 시도하세요."}
         return context.json_response(status, payload)

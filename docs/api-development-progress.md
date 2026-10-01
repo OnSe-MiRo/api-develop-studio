@@ -1,5 +1,30 @@
 # API 개발 기능 진행 기록
 
+## P0 실행 접수 정책 독립 검증·리뷰 완료 (2026-10-01)
+
+- 역할: GPT-6.1 Sol high 구현 → GPT-6.1 Sol xhigh 독립 검증 → 주 에이전트 최종 diff·검증 결과 리뷰를 완료했다.
+- 회귀: `.venv/bin/python -m unittest discover -s tests -v` 종료 0. 같은 환경의 현재 discovery는 398개이며 PostgreSQL·Redis 실제 테스트를 포함한다. verbose 출력 잘림으로 최종 실행 시간/요약 행은 보존하지 못해 추정하지 않았다. 생성 서버·LT-5 보고서 `--check`, Node 5개 파일(신규 admission 내부 시나리오 5개), HTTP 접수·취소·거부 계약과 판정 변형 20건, `git diff --check`가 통과했다. React 변경이 없어 frontend test/build는 재실행하지 않았다.
+- 독립 실제 실행: SQLite Small/각 10초에서 sync1 32회·sync2 각 30회, GET queued/running 관측·async5 완료와 child/tmp0을 확인했다. 접수 기능은 통과했지만 thread 회복 3.615385→4.769231이 120% 기준을 넘어 전체 campaign 실패를 보존했다.
+- 실패·정리: 500 주입과 3초 지연(실제 case timeout 2초)은 HTTP200 안의 실행 실패까지 검출해 후속 2VU/queue를 차단하고 incomplete/raw를 보존했다. 실제 server 자식 Python runner를 확인한 SIGINT에서도 incomplete·bundle 없음·server 종료·관측 PID 잔존 0·tmp0을 확인했다. SIGINT phase의 cleanup unknown과 종료 후 외부 관측 정리 성공은 구분한다.
+- 주 에이전트 리뷰: 최종 diff, 현재 소스 15개 hash, 독립 5개 실행의 artifact hash와 판정 근거를 대조했다. 추가 수정이 필요한 결함은 없다. 증거와 제한은 [검증 기록](run-admission-validation.json)에 통합했다.
+- 완료 범위: P0 접수 정책·bounded 반복/queue 검증 도구와 로컬 기능 검증 완료. 기본 60초·Medium·장시간/SLO·최대 안정 용량·Windows는 미검증이다. 다음은 P1 동일 조건 3회 기준선·회복 원인 분리이며 `feature/run-admission-policy` 미커밋·미푸시·미병합 상태다.
+
+## P0 실행 접수 정책 구현·로컬 검증 (2026-10-01)
+
+- 변경: worker 기본 2와 기존 HTTP/error 문자열을 유지하고 동기 slot·전체/user/project async 거부 `code`와 `admission.accepted:false`/다음 행동을 추가했다. `/api/run`은 대기하지 않고 async job 수와 slot 공유를 분리하며, 자동 재시도·중복 제출·암묵적 queue 전환 없이 Run ID 조회 기준을 [운영 문서](async-runs.md#실행-접수-정책)에 확정했다.
+- 하네스: `run-sustained`는 같은 PID의 전후 읽기·sync1/2 constant-VU 반복·500ms local stub의 async5 제출/조회·정리 gate를 기록한다. VU별 최소2회 및 설정시간 절반 이상 성공 span, 동일 Run ID/논리 passed, 실제 GET queued/running 관측·terminal5개, child/tmp0을 요구하며 cleanup 실패/unknown은 후속 증가를 막는다.
+- 관련 검증: 최종 관련 Python51개(2.560초)·후속 raw span/log 경계 포함 campaign/mutation17개, Node admission5개, LT-5 deterministic `--check`·공백 검사가 통과했다. 최초 sandbox `ps` 권한 오류4건은 필요 권한 실행으로 해소했으며 product 실패로 해석하지 않았다.
+- 실제 접수 검증 통과: macOS 같은 호스트 SQLite Small, 각10초에서 sync1 32회(span9.6477초), sync2 각31회(span9.9454/9.9458초) 및 async5x202→GET queued28/running36→terminalpassed5를 확인했다. 모든 phase child/tmp0·같은 PID·serverStopped·원본 불변·최종 source hash 일치를 확인했다. [명령/판정](load-test-harness.md#p0-반복-실행과-비동기-접수-검증), [machine evidence](run-admission-validation.json).
+- **전체 campaign 실패 보존:** thread 회복4.5→5.461538(121.37%)가120% 기준을 넘었다. 접수 기능 `admissionStatus:passed`와 campaign `status:failed`를 구분한다. 초기 diagnostic의 importer submetric 오류·CPU 회복 실패도 보존하고, aggregate threshold+VU별 raw 판정으로 수정한 뒤 최종 source로 별도 검증했다. 회복 통과값을 고르기 위한 재실행은 하지 않았다.
+- 제한·다음: 기본각60초·Medium·장시간·최대안정RPS/동시성·운영/Windows/physicalIOPS는 미검증이며 과거 LT-5 실패/unknown은 그대로다. lazy async worker 시작의 thread 영향은 코드상 가능한 가설로만 남긴다. 독립 검증·전체 회귀와 최종 리뷰를 완료했으며 다음은 P1 동일 조건3회 기준선·회복 원인 분리다. `feature/run-admission-policy` 미커밋·미푸시·미병합.
+
+## P0 실행 접수 정책 시작 (2026-10-01)
+
+- 시작: `develop`에서 분기한 `feature/run-admission-policy`에서 보고서의 다음 P0 작업을 진행한다.
+- 범위: worker 기본 2 유지, 동기 429와 비동기 bounded queue 안내·거부 사유, 격리 하네스의 상한 있는 반복 실행·queue 접수/조회·child/tmp 정리 증거. 자동 재시도·중복 제출·암묵적 async 전환은 추가하지 않는다.
+- 판단 경계: LT-5 과거 측정·실패/unknown 및 생성 보고서는 보존한다. 새 유한 시간 검증은 최대 안정 RPS·장시간 안정 동시성·운영 용량의 판정이 아니다. production/외부 부하·worker 증가·Git 게시 없음.
+- 검증 계획: 접수 한도·shared slot·무접수 오류 계약과 executor의 반복/논리 결과/nullable cleanup을 자동 검증하고 작은 로컬 격리 실제 실행을 확인한다. 독립 검증 후 다음 P1 동일 조건 3회 기준선·회복 원인 분리로 연결한다.
+
 ## LT-1~LT-5 develop 통합·원격 반영 (2026-10-01)
 
 - 시작: 사용자 요청으로 LT-1~LT-5의 34개 파일을 `feature/load-test-harness`의 `bea88f32`에 커밋했다. 게시 대상은 `origin/feature/load-test-harness`와 `origin/develop`이다.
@@ -292,10 +317,10 @@
 ## 현재 요약
 
 - 최종 갱신일: 2026-10-01
-- 현재 단계: OBS-1·OBS-2·DB-1~DB-5·LT-1~LT-5 로컬 구현·도구·잠정 보고서 완료; 전체 부하 캠페인/SLO 미완료·실패/unknown 보존
+- 현재 단계: P0 접수 정책·bounded 로컬 기능·독립 검증·최종 리뷰 완료; 전체 부하 캠페인/SLO 미완료·실패/unknown 보존
 - 전체 상태: 진행
-- 반영 브랜치: `develop` (LT-1~LT-5와 최신 OBS-1 통합); `origin/develop` 원격 반영 완료
-- 다음 작업: 부하 보고서 P0 실행 정책 검토 → P1 동일 조건 3회 기준선·회복 원인 분리.
+- 반영 브랜치: `feature/run-admission-policy` (P0 미커밋); 기반 `develop`의 LT-1~LT-5·OBS-1 원격 반영 이력은 보존
+- 다음 작업: P1 동일 조건 3회 기준선·회복 원인 분리.
 
 상태는 `대기`, `진행`, `완료`, `차단` 중 하나만 사용한다. 완료 기준과 검증을 충족하기 전에는 `완료`로 변경하지 않는다.
 
@@ -328,6 +353,15 @@
 | EXT-1 | 비REST 프로토콜 확장 | P2 | 대기 | 사용자 수요 확인 |
 
 OBS-2의 상세 상태는 [`API 부하테스트 및 대시보드 개발 진행 기록`](api-load-test-progress.md)에서도 관리한다. 두 문서의 상태가 다르면 실제 검증 기록이 최신인 문서를 확인하고 같은 작업 안에서 동기화한다.
+
+## 현재 작업
+
+- 작업 ID: 보고서 후속 P0 실행 접수 정책
+- 목표: 동기 429·bounded async queue 안내 및 격리 반복 실행/정리 증거
+- 변경 파일: `jobs.py`, `main.py`, load harness/campaign/monitor/runner guard, k6 admission workload·관련 테스트·운영 문서·새 evidence·두 진행 기록
+- 시작 시각: 2026-10-01
+- 상태: 완료 (P0 로컬 기능·전체 Python 회귀·독립 HTTP/실부하/실패·정리 검증·주 에이전트 리뷰 완료)
+- 확인이 필요한 사항: 전체 campaign thread 회복 실패를 보존한다. 기본60초·최대안정용량·fullcampaign/SLO는미확정이며 다음 P1 동일조건3회 기준선·회복 원인 분리로 이어간다.
 
 ## 직전 작업
 
