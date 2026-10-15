@@ -82,6 +82,10 @@ class PostgresStorageTest(unittest.TestCase):
         store.initialize(False)
         return store
 
+    def test_project_cursor_pages_search_and_conditions(self):
+        from test_project_listing import exercise_pages
+        exercise_pages(self, self.store())
+
     def test_http_workspace_identity_roles_and_revocation(self):
         from fastapi.testclient import TestClient
         from api_test.main import create_app
