@@ -169,3 +169,10 @@ button { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; color
 .portal-sdk-job { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .portal-sdk-job [aria-live] { width: 100%; }
 .portal-operation label select { display: block; max-width: 100%; width: 100%; margin: 8px 0; }
+
+.project-list-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 20px 0; }
+.project-list-filters label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.project-list-filters input, .project-list-filters select { max-width: 100%; }
+
+.project-pagination { flex-wrap: wrap; margin-top: 20px; }
+.project-pagination button { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; }

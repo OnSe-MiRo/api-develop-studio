@@ -49,3 +49,10 @@ it('preserves the selected immutable release in the portal URL', () => {
   window.history.replaceState(null, '', url)
   expect(parseLocation()).toMatchObject({ tab: 'portal', activeProject: 'team/demo.json', releaseId: 'release-123' })
 })
+
+it('round-trips project list query and cursor without contaminating other routes', () => {
+  const projectFilters = { q: '한글 + %', sort: 'created_desc', page_size: '50', cursor: 'opaque/+=token' }
+  window.history.replaceState(null, '', buildUrl({ tab: 'project', projectFilters }))
+  expect(parseLocation()).toMatchObject({ tab: 'project', projectFilters })
+  expect(buildUrl({ tab: 'case-list', activeProject: 'a.json', projectFilters })).toBe('/cases?project=a')
+})

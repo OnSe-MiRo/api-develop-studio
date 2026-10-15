@@ -74,7 +74,7 @@ export function parseLocation() {
     return { tab: 'generator', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/projects') {
-    return { tab: 'project', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
+    return { tab: 'project', projectFilters: { q: query.get('q') || '', sort: query.get('sort') || 'reference_asc', page_size: query.get('page_size') || '20', cursor: query.get('cursor') || '' }, activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
   }
   if (pathname === '/') {
     return { tab: 'api-call', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
@@ -82,7 +82,7 @@ export function parseLocation() {
   return { tab: 'api-call', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
 }
 
-export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, runId, baselineId, candidateId, releaseId }) {
+export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, projectFilters = {}, runId, baselineId, candidateId, releaseId }) {
   const query = new URLSearchParams()
   const projectSlug = stripJson(activeProject)
   let pathname = '/api-call'
@@ -164,6 +164,9 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
       break
     case 'project':
       pathname = '/projects'
+      for (const name of ['q', 'sort', 'page_size', 'cursor']) {
+        if (projectFilters[name]) query.set(name, projectFilters[name])
+      }
       break
     default:
       pathname = '/api-call'

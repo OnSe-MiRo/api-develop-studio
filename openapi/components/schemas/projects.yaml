@@ -70,3 +70,18 @@ ProjectView:
   required:
   - name
   - base_url
+
+ProjectListResponse:
+  type: object
+  required: [items, details]
+  properties:
+    items:
+      type: array
+      items: {type: string}
+    details:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties: {type: string}
+    nextCursor: {type: string, nullable: true}
+    previousCursor: {type: string, nullable: true}

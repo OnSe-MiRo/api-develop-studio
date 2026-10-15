@@ -4,6 +4,15 @@ import json
 
 def list_documents(request, studio, kind):
     store = studio.collaboration_store()
+    if kind == 'projects' and any(name in request.request.query_params for name in ('page_size', 'q', 'sort', 'cursor')):
+        from api_test.project_listing import list_project_page
+        try:
+            result = list_project_page(store, page_size=request.query_value('page_size') or '20',
+                                       search=request.query_value('q') or '', sort=request.query_value('sort') or 'reference_asc',
+                                       cursor=request.query_value('cursor') or '', include_example=studio.example_project_enabled())
+        except ValueError as error:
+            raise studio.ApiError(str(error)) from error
+        return request.json_response(200, result)
     references = store.list_references(kind, request.query_value('project') if kind != 'projects' else None)
     if kind == 'projects' and not studio.example_project_enabled():
         references = [item for item in references if item != studio.EXAMPLE_PROJECT_REFERENCE]
