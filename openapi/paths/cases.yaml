@@ -10,7 +10,7 @@
         content:
           application/json:
             schema:
-              $ref: ../components/schemas/common.yaml#/ReferenceList
+              $ref: ../components/schemas/cases.yaml#/CaseListResponse
       '400':
         description: Invalid request
         content:
@@ -41,6 +41,25 @@
     x-studio-upload: false
     x-studio-alias: true
     parameters:
+    - name: page_size
+      in: query
+      description: Enables pagination; project is required in paginated mode. Omit all page parameters for legacy lists.
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    - name: q
+      in: query
+      description: Literal substring search of case name or tag/API/case reference.
+      schema: {type: string, maxLength: 100}
+    - name: tag
+      in: query
+      description: Exact first reference segment, within the selected project.
+      schema: {type: string, maxLength: 128}
+    - name: sort
+      in: query
+      schema: {type: string, enum: [name_asc, name_desc, created_desc], default: name_asc}
+    - name: cursor
+      in: query
+      description: Opaque cursor bound to workspace, project and filters; invalid values return 400.
+      schema: {type: string, maxLength: 4096}
     - name: project
       in: query
       required: false

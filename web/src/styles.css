@@ -176,3 +176,9 @@ button { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; color
 
 .project-pagination { flex-wrap: wrap; margin-top: 20px; }
 .project-pagination button { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; }
+
+.case-list-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 20px 0; }
+.case-list-filters label { min-width: 0; max-width: 100%; }
+.case-list-filters input, .case-list-filters select { width: 100%; }
+.case-pagination { flex-wrap: wrap; margin-top: 20px; }
+.case-pagination button { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; }

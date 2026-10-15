@@ -23,7 +23,7 @@ class CaseListProbe:
 
 
 def timed_case_list(request, studio, kind, trace: CaseListProbe, original):
-    if kind != "cases":
+    if kind != "cases" or any(name in request.request.query_params for name in ("page_size", "q", "tag", "sort", "cursor")):
         return original(request, studio, kind)
 
     started = time.perf_counter_ns()

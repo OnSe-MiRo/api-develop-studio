@@ -50,7 +50,7 @@ export function parseLocation() {
     return { tab: 'case-settings', activeProject: project, caseReference: ref, pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/cases') {
-    return { tab: 'case-list', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
+    return { tab: 'case-list', caseFilters: { q: query.get('q') || '', tag: query.get('tag') || '', sort: query.get('sort') || 'name_asc', page_size: query.get('page_size') || '20', cursor: query.get('cursor') || '' }, activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/pipelines/new') {
     return { tab: 'pipeline-settings', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
@@ -82,7 +82,7 @@ export function parseLocation() {
   return { tab: 'api-call', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
 }
 
-export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, projectFilters = {}, runId, baselineId, candidateId, releaseId }) {
+export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, projectFilters = {}, caseFilters = {}, runId, baselineId, candidateId, releaseId }) {
   const query = new URLSearchParams()
   const projectSlug = stripJson(activeProject)
   let pathname = '/api-call'
@@ -120,6 +120,9 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
     case 'case-list':
       pathname = '/cases'
       if (projectSlug) query.set('project', projectSlug)
+      for (const name of ['q', 'tag', 'sort', 'page_size', 'cursor']) {
+        if (caseFilters[name]) query.set(name, caseFilters[name])
+      }
       break
     case 'case-settings':
       if (caseReference) {

@@ -32,7 +32,7 @@ function StudioApp({ authSession, authActions }) {
   const [error, setError] = useState('')
   const [dashboardRefresh, setDashboardRefresh] = useState(0)
 
-  const refresh = async preferredProject => {
+  const refresh = async (preferredProject, targetTab = tab) => {
     if (tab === 'project' && !preferredProject) return
     try {
       const targetProject = preferredProject !== undefined ? preferredProject : (route.activeProject || activeProject)
@@ -40,7 +40,7 @@ function StudioApp({ authSession, authActions }) {
       const selectedProject = projectData.items.includes(targetProject) ? targetProject : (projectData.items[0] || '')
       const filter = selectedProject ? `?project=${encodeURIComponent(selectedProject)}` : '?project=__none__'
       const [cases, pipelines, selectedDocument] = await Promise.all([
-        api(`/api/cases${filter}`), api(`/api/pipelines${filter}`), selectedProject ? api(`/api/projects/${encodeURIComponent(selectedProject)}`) : Promise.resolve(null),
+        targetTab === 'case-list' ? Promise.resolve({ items: [] }) : api(`/api/cases${filter}`), targetTab === 'case-list' ? Promise.resolve({ items: [] }) : api(`/api/pipelines${filter}`), selectedProject ? api(`/api/projects/${encodeURIComponent(selectedProject)}`) : Promise.resolve(null),
       ])
       setProjects(projectData.items); setProjectDetails(projectData.details || {}); setActiveProject(selectedProject); setProject(selectedDocument); setCaseItems(cases.items); setPipelineItems(pipelines.items); setError('')
       if (selectedProject && !route.activeProject && tab !== 'project' && tab !== 'project-settings' && tab !== 'api-call' && tab !== 'dashboard' && tab !== 'load-tests' && tab !== 'load-test-result' && tab !== 'load-test-compare') {
@@ -63,7 +63,7 @@ function StudioApp({ authSession, authActions }) {
   }
   const openProject = async reference => {
     navigateTo({ tab: 'case-list', activeProject: reference })
-    await refresh(reference)
+    await refresh(reference, 'case-list')
   }
   const saveProjectAndOpen = async reference => { await openProject(reference) }
   const createProject = () => { navigateTo({ tab: 'project-settings', projectSettingsReference: '', activeProject: '' }) }
@@ -98,7 +98,7 @@ function StudioApp({ authSession, authActions }) {
   }
   return <StudioShell sessionControls={<SessionControls info={authSession} actions={authActions} onManage={() => setManaging(value => !value)} />} tab={tab} activeProject={activeProject} error={error} onNavigate={navigateTo} onRefresh={() => { refresh(); setDashboardRefresh(value => value + 1) }}>
     {managing && <WorkspaceMembers onClose={() => setManaging(false)} />}
-    {!managing && (tab === 'load-tests' || tab === 'load-test-result' || tab === 'load-test-compare' ? <LoadTestDashboard route={route} projects={projects} projectDetails={projectDetails} refreshKey={dashboardRefresh} /> : tab === 'dashboard' ? <ExecutionDashboard projects={projects} projectDetails={projectDetails} projectRef={route.activeProject || ''} onProjectChange={reference => navigateTo({ tab: 'dashboard', activeProject: reference })} onOpenCases={() => navigateTo({ tab: 'case-list', activeProject: route.activeProject })} refreshKey={dashboardRefresh} /> : tab === 'api-call' ? <ApiCallPage /> : tab === 'project' ? <ProjectList filters={route.projectFilters} onFiltersChange={projectFilters => navigateTo({ tab: 'project', projectFilters })} refreshKey={dashboardRefresh} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateProjectSection('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateProjectSection('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : tab === 'portal' ? <DeveloperPortal {...authorProps} releaseId={route.releaseId} onSelectRelease={releaseId => navigateTo({ tab: 'portal', activeProject, releaseId })} /> : <ClientGenerator {...authorProps} />)}
+    {!managing && (tab === 'load-tests' || tab === 'load-test-result' || tab === 'load-test-compare' ? <LoadTestDashboard route={route} projects={projects} projectDetails={projectDetails} refreshKey={dashboardRefresh} /> : tab === 'dashboard' ? <ExecutionDashboard projects={projects} projectDetails={projectDetails} projectRef={route.activeProject || ''} onProjectChange={reference => navigateTo({ tab: 'dashboard', activeProject: reference })} onOpenCases={() => navigateTo({ tab: 'case-list', activeProject: route.activeProject })} refreshKey={dashboardRefresh} /> : tab === 'api-call' ? <ApiCallPage /> : tab === 'project' ? <ProjectList filters={route.projectFilters} onFiltersChange={projectFilters => navigateTo({ tab: 'project', projectFilters })} refreshKey={dashboardRefresh} activeProject={activeProject} onOpenProject={openProject} onCreateProject={createProject} onEditProject={editProject} /> : tab === 'project-settings' ? <ProjectSettings projects={projects} projectReference={projectSettingsReference} onSaved={saveProjectAndOpen} onCancel={() => navigateTo({ tab: 'project' })} /> : tab === 'case-list' ? <CaseList {...editorProps} key={activeProject} filters={route.caseFilters} onFiltersChange={caseFilters => navigateTo({ tab: 'case-list', activeProject, caseFilters })} refreshKey={dashboardRefresh} onCreate={createCase} onOpen={openCase} /> : tab === 'case-settings' ? <CaseEditor {...editorProps} caseReference={caseReference} onBack={() => navigateProjectSection('cases')} /> : tab === 'pipeline-list' ? <PipelineList {...editorProps} onCreate={createPipeline} onOpen={openPipeline} /> : tab === 'pipeline-settings' ? <PipelineEditor {...editorProps} pipelineReference={pipelineReference} onBack={() => navigateProjectSection('pipeline')} /> : tab === 'api-list' ? <ApiList {...authorProps} onCreate={() => navigateTo({ tab: 'api-create', activeProject })} /> : tab === 'api-create' ? <ApiAuthorEditor {...authorProps} onSaved={() => navigateTo({ tab: 'api-list', activeProject })} /> : tab === 'portal' ? <DeveloperPortal {...authorProps} releaseId={route.releaseId} onSelectRelease={releaseId => navigateTo({ tab: 'portal', activeProject, releaseId })} /> : <ClientGenerator {...authorProps} />)}
   </StudioShell>
 }
 
