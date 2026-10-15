@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from api_test.reports import history_targets
+from api_test.request_scope import current_context, subprocess_environment
 
 import io
 import hashlib
@@ -99,7 +100,7 @@ class ApiError(ValueError):
 
 def execution_history() -> ExecutionHistory:
     database_path = Path(os.environ.get("STUDIO_DB_PATH", ROOT / "data" / "studio.db"))
-    return ExecutionHistory(database_path, context=LOCAL_CONTEXT)
+    return ExecutionHistory(database_path, context=current_context())
 
 
 def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[str, object]]]:
@@ -109,7 +110,7 @@ def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[st
     def add(kind: str, reference: str, document: object = None, preview: bool = False) -> None:
         if document is None:
             try:
-                root = CASE_ROOT if kind == "case" else PIPELINE_ROOT
+                root = document_root("cases") if kind == "case" else document_root("pipelines")
                 document = read_studio_document(root, reference)
             except (ApiError, OSError, json.JSONDecodeError):
                 document = {}
@@ -129,9 +130,9 @@ def execution_metadata(body: dict[str, object]) -> tuple[list[str], list[dict[st
                 add("case", reference)
         pipelines = [item for item in body.get("pipelines", []) if isinstance(item, str)]
         if not pipelines and not body.get("cases"):
-            pipelines = project_json_files(PIPELINE_ROOT, None)
+            pipelines = project_json_files(document_root("pipelines"), None)
             if not example_project_enabled():
-                example_pipelines = set(project_json_files(PIPELINE_ROOT, EXAMPLE_PROJECT_REFERENCE))
+                example_pipelines = set(project_json_files(document_root("pipelines"), EXAMPLE_PROJECT_REFERENCE))
                 pipelines = [reference for reference in pipelines if reference not in example_pipelines]
         for reference in pipelines:
             add("pipeline", reference)
@@ -142,7 +143,7 @@ def execution_environments(projects, environment):
     values = {}
     for reference in projects:
         try:
-            project = read_studio_document(PROJECT_ROOT, reference)
+            project = read_studio_document(document_root("projects"), reference)
             values[reference] = environment or project.get("default_environment") or ""
         except (ApiError, OSError, ValueError, AttributeError):
             values[reference] = environment or None
@@ -150,6 +151,8 @@ def execution_environments(projects, environment):
 
 
 def ensure_run_ready():
+    from api_test.request_scope import require_permission
+    require_permission(sys.modules[__name__], current_context(), "run")
     if postgres_enabled():
         store = collaboration_store()
         store.repair_projections()
@@ -171,8 +174,8 @@ def execute_studio_run(command: list[str], body: dict[str, object]) -> dict[str,
     try:
         with TemporaryDirectory(prefix="api-test-report-") as directory:
             report_path = Path(directory) / "result.json"
-            result = subprocess.run([*command, "--report-json", str(report_path), "--run-id", run_id],
-                                    cwd=ROOT, capture_output=True, text=True, timeout=300)
+            result = subprocess.run([*command, "--report-json", str(report_path), "--run-id", run_id, "--log-dir", str(Path(directory) / "logs")],
+                                    cwd=ROOT, capture_output=True, text=True, timeout=300, env=subprocess_environment())
             if report_path.is_file():
                 report = json.loads(report_path.read_text(encoding="utf-8"))
                 if report.get("runId") == run_id and report.get("exitCode") == result.returncode:
@@ -211,8 +214,9 @@ def collaboration_store() -> CollaborationStore:
     """Return the lazily initialized versioned document store."""
     global _COLLABORATION_STORE
     with _COLLABORATION_STORE_LOCK:
-        if _COLLABORATION_STORE is None:
-            database_path = Path(os.environ.get("STUDIO_DB_PATH", ROOT / "data" / "studio.db"))
+        database_path = Path(os.environ.get("STUDIO_DB_PATH", ROOT / "data" / "studio.db"))
+        roots = {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT}
+        if _COLLABORATION_STORE is None or _COLLABORATION_STORE.database_path != database_path or _COLLABORATION_STORE.roots != roots:
             store = CollaborationStore(
                 database_path,
                 {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT},
@@ -221,7 +225,25 @@ def collaboration_store() -> CollaborationStore:
             store.initialize(import_existing=True)
             ensure_example_project_security_key(store)
             _COLLABORATION_STORE = store
-    return _COLLABORATION_STORE
+    context = current_context()
+    if context == LOCAL_CONTEXT:
+        return _COLLABORATION_STORE
+    store = CollaborationStore(_COLLABORATION_STORE.database_path,
+        {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT}, context=context)
+    store._initialized = True  # Schema was initialized by the shared bootstrap above.
+    return store
+
+
+def document_root(kind):
+    base = {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT}[kind]
+    context = current_context()
+    if context.workspace_id == LOCAL_CONTEXT.workspace_id:
+        return base
+    parent = base / "_workspaces"
+    scoped = parent / context.workspace_id
+    if parent.is_symlink() or scoped.is_symlink():
+        raise ApiError("Workspace 파일 경로가 올바르지 않습니다.")
+    return scoped
 
 
 def storage_request(payload: dict[str, object]) -> tuple[dict[str, object], int | None]:
@@ -981,7 +1003,7 @@ def generate_openapi_archive(
             source_path = source_root / "openapi.yaml"
             source_path.write_text(yaml.safe_dump(document, allow_unicode=True, sort_keys=False), encoding="utf-8")
         command = openapi_generator_command(source_path, generator, output_path)
-        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300, env=subprocess_environment())
         if result.returncode != 0:
             details = (result.stderr or result.stdout).strip()
             raise ApiError(f"OpenAPI 클라이언트 생성 실패: {details[-2000:] or '알 수 없는 오류'}")
@@ -1005,8 +1027,10 @@ def generate_openapi_archive(
 
 
 def safe_file(root: Path, reference: str) -> Path:
+    if not isinstance(reference, str) or "_workspaces" in reference.replace(chr(92), "/").split("/"):
+        raise ApiError("예약된 Workspace 경로는 참조할 수 없습니다.")
     candidate = (root / reference).resolve()
-    if root.resolve() not in candidate.parents or candidate.suffix != ".json":
+    if root.resolve() not in candidate.parents or "_workspaces" in candidate.relative_to(root.resolve()).parts or candidate.suffix != ".json":
         raise ApiError("Invalid JSON file path")
     return candidate
 
@@ -1014,8 +1038,10 @@ def safe_file(root: Path, reference: str) -> Path:
 def safe_attachment_file(root: Path, reference: str) -> Path:
     """Allow binary form-data attachments only below case/{tag}/{api}/files/."""
     resolved_root = root.resolve()
+    if not isinstance(reference, str) or "_workspaces" in reference.replace(chr(92), "/").split("/"):
+        raise ApiError("예약된 Workspace 경로는 참조할 수 없습니다.")
     candidate = (root / reference).resolve()
-    if resolved_root not in candidate.parents:
+    if resolved_root not in candidate.parents or "_workspaces" in candidate.relative_to(resolved_root).parts:
         raise ApiError("Invalid attachment file path")
     relative = candidate.relative_to(resolved_root)
     if len(relative.parts) != 4 or relative.parts[2] != "files":
@@ -1025,19 +1051,19 @@ def safe_attachment_file(root: Path, reference: str) -> Path:
 
 def json_files(root: Path) -> list[str]:
     if postgres_enabled():
-        kind = next((kind for kind, path in {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT}.items() if path == root), None)
+        kind = next((kind for kind, path in {"projects": document_root("projects"), "cases": document_root("cases"), "pipelines": document_root("pipelines")}.items() if path == root), None)
         if kind:
             return collaboration_store().list_references(kind)
     if not root.exists():
         return []
     # API references are persisted and consumed by the browser, so keep their separator
     # stable even when the server runs on Windows.
-    return [path.relative_to(root).as_posix() for path in sorted(root.rglob("*.json"))]
+    return [path.relative_to(root).as_posix() for path in sorted(root.rglob("*.json")) if "_workspaces" not in path.relative_to(root).parts]
 
 
 def read_studio_document(root: Path, reference: str) -> dict:
     if postgres_enabled():
-        kind = next((kind for kind, path in {"projects": PROJECT_ROOT, "cases": CASE_ROOT, "pipelines": PIPELINE_ROOT}.items() if path == root), None)
+        kind = next((kind for kind, path in {"projects": document_root("projects"), "cases": document_root("cases"), "pipelines": document_root("pipelines")}.items() if path == root), None)
         if kind is not None:
             stored = collaboration_store().get(kind, reference)
             if stored is None:
@@ -1058,8 +1084,9 @@ def project_json_files(root: Path, project_reference: str | None) -> list[str]:
     return items
 
 
-def visible_project_files(root: Path = PROJECT_ROOT) -> list[str]:
+def visible_project_files(root: Path = None) -> list[str]:
     """List projects that may be shown in the browser for the current environment."""
+    root = root or document_root("projects")
     references = json_files(root)
     if example_project_enabled():
         return references
@@ -1243,7 +1270,7 @@ def validate_project_reference(payload: dict[str, object]) -> None:
     project_reference = payload.get("project")
     if not isinstance(project_reference, str) or not project_reference:
         raise ApiError("A project must be selected")
-    project_path = safe_file(PROJECT_ROOT, project_reference)
+    project_path = safe_file(document_root("projects"), project_reference)
     project_exists = collaboration_store().get("projects", project_reference) is not None if postgres_enabled() else project_path.is_file()
     if not project_exists:
         raise ApiError("Selected project does not exist")
@@ -1252,7 +1279,7 @@ def validate_project_reference(payload: dict[str, object]) -> None:
         return
     if not isinstance(base_url_name, str) or not base_url_name.strip():
         raise ApiError("Case base_url_name must be a non-empty string")
-    project = read_studio_document(PROJECT_ROOT, project_reference)
+    project = read_studio_document(document_root("projects"), project_reference)
     base_urls = project.get("base_urls", [])
     available_names = {
         item.get("name", "").strip()
@@ -1270,11 +1297,13 @@ def project_document_references(root: Path, project_reference: str) -> list[str]
     ]
 
 
-def project_has_cases(reference: str, case_root: Path = CASE_ROOT) -> bool:
+def project_has_cases(reference: str, case_root: Path = None) -> bool:
+    case_root = case_root or document_root("cases")
     return bool(project_document_references(case_root, reference))
 
 
-def delete_project_pipelines(reference: str, pipeline_root: Path = PIPELINE_ROOT) -> list[str]:
+def delete_project_pipelines(reference: str, pipeline_root: Path = None) -> list[str]:
+    pipeline_root = pipeline_root or document_root("pipelines")
     deleted: list[str] = []
     for pipeline_reference in project_document_references(pipeline_root, reference):
         safe_file(pipeline_root, pipeline_reference).unlink()
@@ -1333,13 +1362,20 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(body.get("url"), str) or not body["url"].strip():
         raise ApiError("URL을 입력하세요.")
     resolved_secrets = set()
+    oauth_profile_name = body.get("auth_profile")
+    oauth_profile = None
+    settings = None
     if not body.get("project") and (body.get("environment") or body.get("auth_profile")):
         raise ApiError("환경 또는 인증 프로필을 사용하려면 프로젝트를 선택하세요.")
     if body.get("project"):
         try:
-            settings = project_request_settings({"project": body["project"]}, PROJECT_ROOT, body.get("environment"))
+            settings = project_request_settings({"project": body["project"]}, document_root("projects"), body.get("environment"))
             body = resolve_auth_profile(body, settings.auth_profiles)
+            if isinstance(body.get("auth"), dict) and body["auth"].get("type") == "OAuth 2.0" and body["auth"].get("grantType"):
+                oauth_profile = body.pop("auth")
             body, resolved_secrets = resolve_project_references(body, settings.variables, settings.encrypted_variables)
+            if oauth_profile is not None:
+                body["auth"] = oauth_profile
             body["url"] = resolve_request_url(body.get("url", ""), settings.base_url)
         except (ProjectVariableError, CaseConfigurationError) as exc:
             raise ApiError(str(exc)) from exc
@@ -1453,10 +1489,24 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
         headers_dict.setdefault("Content-Type", "text/plain")
     if "form_data" in body:
         try:
-            data, content_type = encode_multipart_form_data(body["form_data"], CASE_ROOT)
+            data, content_type = encode_multipart_form_data(body["form_data"], document_root("cases"))
             headers_dict["Content-Type"] = content_type
         except CaseConfigurationError as exc:
             raise ApiError(str(exc)) from exc
+    oauth_token = None
+    if oauth_profile is not None:
+        if not isinstance(oauth_profile_name, str) or not oauth_profile_name or settings is None:
+            raise ApiError("OAuth 2.0 requires a saved project authentication profile")
+        if url.startswith("http://") and proxy_url and not no_proxy:
+            raise ApiError("OAuth loopback HTTP resource cannot use a proxy")
+        from api_test.oauth_service import OAuthError, resource_token
+        try:
+            oauth_token = resource_token(body["project"], settings.environment_name, oauth_profile_name,
+                                         oauth_profile, settings.encrypted_variables, settings.base_url, url)
+        except OAuthError as exc:
+            raise ApiError(str(exc), status_code=exc.status_code) from exc
+        auth = {"type": "Bearer Token", "token": oauth_token}
+        sensitive_values.update(sensitive_value_variants({oauth_token}))
     try:
         authorized = apply_authorization(url, method, headers_dict, auth, data)
     except AuthorizationError as exc:
@@ -1466,7 +1516,7 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     sensitive_values = sensitive_value_variants(sensitive_values)
     guarded = not local_policy()["skip_verification"]
     if guarded:
-        execution_guard(body.get("project"), PROJECT_ROOT)(url, method)
+        execution_guard(body.get("project"), document_root("projects"))(url, method)
 
     timeout_seconds = 10.0
     if body.get("timeout"):
@@ -1480,8 +1530,10 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
             "method": method, "headers": headers_dict, "data": data,
             "timeout_seconds": timeout_seconds, "verify_ssl": True,
         }
-        if guarded:
+        if guarded or oauth_token is not None:
             execute_options["allow_redirects"] = False
+        if oauth_token is not None and url.startswith("http://"):
+            no_proxy = True  # Do not pass a local Bearer token to ambient HTTP_PROXY.
         if proxy_url:
             execute_options["proxy_url"] = proxy_url
         if no_proxy:
@@ -1546,6 +1598,9 @@ class StudioRequest:
 
     def json_response(self, status: int, payload: object):
         headers = {"Cache-Control": "no-store"}
+        context = getattr(self, "context", None)
+        if context and context.request_id:
+            headers["X-Request-ID"] = context.request_id
         if self.ownership_cookie:
             headers["Set-Cookie"] = self.ownership_cookie
         return Response(json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -1578,7 +1633,7 @@ class StudioRequest:
 
     def actor_id(self) -> str:
         """Only the server supplies identity until verified authentication is added."""
-        return LOCAL_CONTEXT.user_id
+        return getattr(self, "context", current_context()).user_id
 
     def check_request_origin(self):
         host = self.headers.get("Host", "")
@@ -1615,7 +1670,7 @@ class StudioRequest:
         if not stored:
             raise OwnershipError("저장된 프로젝트를 선택하세요.")
         body = self.read_body()
-        service = OwnershipStore()
+        service = OwnershipStore(context=current_context())
         action = parts[2] if len(parts) == 3 else ""
         if action == "issue":
             result = service.issue(project, stored.document, body.get("url"), session)

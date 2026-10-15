@@ -240,6 +240,9 @@ def _serve(root: Path, ready: Path) -> None:
     if os.environ.get("STUDIO_LT4_STUB") == "true":
         from api_test.load_test_campaigns import install_stub
         install_stub(application)
+    if os.environ.get("STUDIO_P1_CASE_TRACE"):
+        from api_test.load_test_baseline_diagnostics import install_diagnostics
+        install_diagnostics(application, Path(os.environ["STUDIO_P1_CASE_TRACE"]))
     server = uvicorn.Server(uvicorn.Config(application, log_level="info", access_log=True, proxy_headers=False))
     base_url = f"http://127.0.0.1:{listener.getsockname()[1]}"
     if os.environ.get("STUDIO_MUTATION_MODE") == "target":
@@ -466,7 +469,7 @@ def main(argv=None) -> int:
             run.add_argument("--concurrency", type=int, choices=(5, 20, 50), default=5)
         if mode == "target":
             run.add_argument("--validation-vus", type=int, choices=(1, 2), help="reduced 1-to-N VUs, requires shortened validation mode")
-    for mode in ("stress", "spike", "soak", "run-capacity", "fault"):
+    for mode in ("stress", "spike", "soak", "run-capacity", "run-sustained", "fault"):
         campaign = commands.add_parser(mode)
         campaign.add_argument("--fixture", type=Path, required=True)
         campaign.add_argument("--output", type=Path, required=True)
@@ -483,7 +486,7 @@ def main(argv=None) -> int:
             result = generate_fixture(args.root, args.dataset, args.seed, args.case_revisions)
         elif args.command == "verify":
             result = verify_fixture(args.root)
-        elif args.command in ("stress", "spike", "soak", "run-capacity", "fault"):
+        elif args.command in ("stress", "spike", "soak", "run-capacity", "run-sustained", "fault"):
             from api_test.load_test_campaigns import run_campaign
             result = run_campaign(args.fixture, args.output, args.k6, args.command, args.validation_seconds, args.validation_vus, args.validation_stop_seconds)
         elif args.command in ("probe", "smoke", "baseline", "target", "unique", "contention"):

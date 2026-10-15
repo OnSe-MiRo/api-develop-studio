@@ -1,6 +1,6 @@
 import packageJson from '../../package.json'
 
-function StudioShell({ tab, activeProject, error, onNavigate, onRefresh, children }) {
+function StudioShell({ tab, activeProject, error, onNavigate, onRefresh, sessionControls, children }) {
   const isApiCallTab = tab === 'api-call'
   const isDashboardTab = tab === 'dashboard'
   const isLoadTestTab = tab === 'load-tests' || tab === 'load-test-result' || tab === 'load-test-compare'
@@ -13,6 +13,7 @@ function StudioShell({ tab, activeProject, error, onNavigate, onRefresh, childre
         <button className={isDashboardTab ? 'selected' : ''} onClick={() => onNavigate({ tab: 'dashboard', activeProject: '' })}>대시보드</button>
         <button className={isLoadTestTab ? 'selected' : ''} onClick={() => onNavigate({ tab: 'load-tests' })}>부하테스트</button>
       </nav>
+      {sessionControls}
       <button className="ghost refresh" onClick={onRefresh}>↻ 새로고침</button>
     </header>
     {error && <div className="connection-error" role="alert">{error} — Python 서버를 먼저 실행하세요: <code>python3 react_server.py</code></div>}

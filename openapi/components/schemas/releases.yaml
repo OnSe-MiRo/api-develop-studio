@@ -1,0 +1,145 @@
+ReleaseCreateRequest:
+  type: object
+  required:
+  - version
+  - projectRevision
+  properties:
+    version:
+      type: string
+    projectRevision:
+      type: integer
+    notes:
+      type: string
+    baselineId:
+      type: string
+      nullable: true
+ReleaseTransitionRequest:
+  type: object
+  required:
+  - state
+  - revision
+  - reason
+  properties:
+    state:
+      type: string
+      enum:
+      - published
+      - deprecated
+      - retired
+    revision:
+      type: integer
+    reason:
+      type: string
+    acknowledgeChanges:
+      type: boolean
+ApiRelease:
+  type: object
+  required:
+  - id
+  - project
+  - version
+  - state
+  - revision
+  - projectRevision
+  - sourceDigest
+  properties:
+    id:
+      type: string
+    project:
+      type: string
+    version:
+      type: string
+    state:
+      type: string
+    revision:
+      type: integer
+    projectRevision:
+      type: integer
+    sourceDigest:
+      type: string
+    notes:
+      type: string
+    comparison:
+      type: object
+      additionalProperties: true
+    events:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    deprecatedOperations:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+ApiReleaseList:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ApiRelease'
+    nextCursor:
+      type: string
+      nullable: true
+ApiReleaseSource:
+  type: object
+  properties:
+    releaseId:
+      type: string
+    projectRevision:
+      type: integer
+    sourceDigest:
+      type: string
+    source:
+      type: object
+      additionalProperties: true
+ReleasePortal:
+  type: object
+  properties:
+    release:
+      $ref: '#/ApiRelease'
+    document:
+      type: object
+      additionalProperties: true
+    environments:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    artifacts:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    permissions:
+      type: object
+      additionalProperties:
+        type: boolean
+ReleaseSdkRequest:
+  type: object
+  required:
+  - language
+  properties:
+    language:
+      type: string
+      enum:
+      - python
+      - javascript
+      - typescript
+      - java
+      - kotlin
+      - go
+      - csharp
+ReleaseSdkPurgeRequest:
+  type: object
+  required:
+  - reason
+  properties:
+    reason:
+      type: string
+ReleaseSdkPurgeResult:
+  type: object
+  properties:
+    purged:
+      type: boolean

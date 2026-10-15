@@ -248,6 +248,8 @@ def _run_case_with_project_settings(
         no_proxy=project_settings.no_proxy if project_settings else False,
         project_variables=project_settings.variables if project_settings else None,
         encrypted_project_variables=project_settings.encrypted_variables if project_settings else None,
+        oauth_project_reference=case_document.get("project"),
+        oauth_environment=project_settings.environment_name if project_settings else "",
     )
 
 
@@ -396,6 +398,12 @@ def run_case_file(
 
 
 def main() -> int:
+    from api_test.request_scope import bind_context, runner_context
+    with bind_context(runner_context()):
+        return _main()
+
+
+def _main() -> int:
     parser = argparse.ArgumentParser(description="Run API test pipelines and direct case files.")
     parser.add_argument("pipelines", nargs="*", type=Path, help="One or more pipeline JSON files")
     parser.add_argument("--case-root", type=Path, default=Path("case"), help="Root directory containing test cases")
@@ -411,7 +419,7 @@ def main() -> int:
     args = parser.parse_args()
     report_result = RunReport(args.environment, args.run_id)
     if not args.case_references and not args.pipelines:
-        args.pipelines = [path for path in sorted(Path("pipelines").rglob("*.json")) if not is_disabled_example_pipeline(path)]
+        args.pipelines = [path for path in sorted(Path("pipelines").rglob("*.json")) if "_workspaces" not in path.relative_to(Path("pipelines")).parts and not is_disabled_example_pipeline(path)]
         if not args.pipelines:
             parser.error("no pipeline files found under pipelines/; provide a pipeline file or --case")
         print(f"No pipeline specified. Running all {len(args.pipelines)} pipeline file(s) under pipelines/.")

@@ -33,6 +33,34 @@ it('runs a selected environment and saves the same request with a profile refere
   expect(saved.environment).toBeUndefined()
   expect(saved.request).toMatchObject({ url: sent.url, method: sent.method, auth_profile: sent.auth_profile, headers: sent.headers })
 })
+it('uses an OAuth profile reference without exposing a browser token', async () => {
+  let connected = false
+  api.mockImplementation(async url => {
+    if (url === '/api/projects') return { items: ['sample.json'] }
+    if (url === '/api/projects/sample.json') return { auth_profiles: { login: { type: 'OAuth 2.0', grantType: 'client_credentials', issuer: 'https://idp.example' } } }
+    if (url === '/api/projects/sample.json/oauth/profiles/login') return { configured: true, connected, grantType: 'client_credentials', expiresAt: connected ? '2030-01-01T00:00:00Z' : '2020-01-01T00:00:00Z', accessToken: 'hidden' }
+    return {}
+  })
+  const fetch = vi.fn().mockImplementation(async () => { connected = true; return { ok: true, json: async () => ({ status: 200, elapsedMs: 1, sizeBytes: 2, body: {}, headers: {} }) } })
+  vi.stubGlobal('fetch', fetch)
+  render(<ApiCallPage />)
+  await screen.findByRole('option', { name: 'sample.json' })
+  fireEvent.change(screen.getByLabelText('소유권 확인 프로젝트'), { target: { value: 'sample.json' } })
+  await screen.findByRole('option', { name: 'login' })
+  fireEvent.change(screen.getByLabelText('공통 인증 프로필'), { target: { value: 'login' } })
+  expect(await screen.findByText('실행 시 발급')).toBeInTheDocument()
+  expect(screen.getByText(/API 실행 시 토큰을 자동 발급합니다/)).toBeInTheDocument()
+  expect(screen.queryByText('hidden')).not.toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Request URL'), { target: { value: '/echo' } })
+  fireEvent.click(screen.getByRole('button', { name: '실행' }))
+  await screen.findByText('200')
+  expect(await screen.findByText('연결됨')).toBeInTheDocument()
+  expect(api.mock.calls.filter(([path]) => path === '/api/projects/sample.json/oauth/profiles/login').length).toBe(2)
+  const sent = JSON.parse(fetch.mock.calls[0][1].body)
+  expect(sent.auth_profile).toBe('login')
+  expect(sent.auth).toBeUndefined()
+  expect(JSON.stringify(sent)).not.toContain('hidden')
+})
 it('cancels response waiting and enables rerun', async () => {
   vi.stubGlobal('fetch', vi.fn((url, options) => new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))))))
   render(<ApiCallPage />)

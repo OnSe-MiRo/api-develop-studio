@@ -381,7 +381,7 @@ class TestMockReviewRegressions(unittest.IsolatedAsyncioTestCase):
         mock_store.return_value.get.return_value = SimpleNamespace(
             document={'docs_file': {'document': studio.example_openapi_document()}}
         )
-        client = TestClient(app)
+        client = TestClient(app, base_url="http://127.0.0.1:8765")
         proj_ref = "example-api.json"
 
         # 1. Start server with seed="invalid" -> 400 (not 500)

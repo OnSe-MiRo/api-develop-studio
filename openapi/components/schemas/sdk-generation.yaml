@@ -1,0 +1,86 @@
+SdkGenerationRequest:
+  type: object
+  additionalProperties: false
+  required:
+  - project
+  - language
+  - projectRevision
+  properties:
+    project:
+      type: string
+    language:
+      type: string
+      enum:
+      - python
+      - javascript
+      - typescript
+      - java
+      - kotlin
+      - go
+      - csharp
+    projectRevision:
+      type: integer
+      minimum: 1
+      description: Revision of the saved project whose source configuration will be
+        captured.
+SdkArtifactMetadata:
+  type: object
+  nullable: true
+  additionalProperties: false
+  required:
+  - sizeBytes
+  - sha256
+  - expiresAt
+  properties:
+    sizeBytes:
+      type: integer
+      format: int64
+      minimum: 1
+    sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    expiresAt:
+      type: string
+      format: date-time
+      description: Latest retention deadline. Capacity limits or server shutdown may
+        remove the artifact earlier.
+SdkGenerationMetadata:
+  type: object
+  additionalProperties: false
+  required:
+  - project
+  - language
+  - projectRevision
+  - sourceKind
+  - sourceDigest
+  - fetchedAt
+  - artifactReady
+  - artifact
+  properties:
+    project:
+      type: string
+    language:
+      type: string
+    projectRevision:
+      type: integer
+      minimum: 1
+    sourceKind:
+      type: string
+      enum:
+      - bundle
+      - file
+      - url
+    sourceDigest:
+      type: string
+      nullable: true
+      pattern: ^[0-9a-f]{64}$
+      description: Captured source digest; URL source is unknown until fetched by
+        the worker.
+    fetchedAt:
+      type: string
+      format: date-time
+      nullable: true
+    artifactReady:
+      type: boolean
+    artifact:
+      $ref: '#/SdkArtifactMetadata'

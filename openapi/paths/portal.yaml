@@ -1,0 +1,354 @@
+/api/projects/{reference}/portal:
+  get:
+    operationId: list_portal_releases
+    tags:
+    - portal
+    summary: list portal releases
+    x-studio-handler: portal.list_portal_releases
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/portal
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    - name: before
+      in: query
+      schema:
+        type: string
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/releases.yaml#/ApiReleaseList
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Role denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Release or artifact conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Capacity exceeded
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+/api/projects/{reference}/portal/{releaseId}:
+  get:
+    operationId: get_portal
+    tags:
+    - portal
+    summary: get portal
+    x-studio-handler: portal.get_portal
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/portal/{releaseId}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: releaseId
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/releases.yaml#/ReleasePortal
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Role denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Release or artifact conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Capacity exceeded
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+/api/projects/{reference}/portal/{releaseId}/sdk:
+  post:
+    operationId: submit_release_sdk
+    tags:
+    - portal
+    summary: submit release sdk
+    x-studio-handler: portal.submit_release_sdk
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/portal/{releaseId}/sdk
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: releaseId
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '202':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunJob
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Role denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Release or artifact conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Capacity exceeded
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/releases.yaml#/ReleaseSdkRequest
+/api/projects/{reference}/portal/{releaseId}/sdk/{language}:
+  get:
+    operationId: download_release_sdk
+    tags:
+    - portal
+    summary: download release sdk
+    x-studio-handler: portal.download_release_sdk
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/portal/{releaseId}/sdk/{language}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: releaseId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: language
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '200':
+        description: Success
+        content:
+          application/zip:
+            schema:
+              type: string
+              format: binary
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Role denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Release or artifact conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Capacity exceeded
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+/api/projects/{reference}/portal/{releaseId}/sdk/{language}/purge:
+  post:
+    operationId: purge_release_sdk
+    tags:
+    - portal
+    summary: purge release sdk
+    x-studio-handler: portal.purge_release_sdk
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/portal/{releaseId}/sdk/{language}/purge
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: releaseId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: language
+      in: path
+      required: true
+      schema:
+        type: string
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/releases.yaml#/ReleaseSdkPurgeResult
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Role denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Release or artifact conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Capacity exceeded
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/releases.yaml#/ReleaseSdkPurgeRequest

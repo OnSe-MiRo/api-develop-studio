@@ -42,3 +42,10 @@ describe('router', () => {
     expect(buildUrl({ tab: 'load-tests', loadFilters: filters })).toContain('project=demo')
   })
 })
+
+it('preserves the selected immutable release in the portal URL', () => {
+  const url = buildUrl({ tab: 'portal', activeProject: 'team/demo.json', releaseId: 'release-123' })
+  expect(url).toBe('/portal?project=team%2Fdemo&release=release-123')
+  window.history.replaceState(null, '', url)
+  expect(parseLocation()).toMatchObject({ tab: 'portal', activeProject: 'team/demo.json', releaseId: 'release-123' })
+})

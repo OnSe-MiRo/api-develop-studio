@@ -9,9 +9,9 @@ def list_documents(request, studio, kind):
         references = [item for item in references if item != studio.EXAMPLE_PROJECT_REFERENCE]
     result = {'items': references}
     if kind == 'projects':
-        result['details'] = studio.project_summaries(studio.PROJECT_ROOT, references)
+        result['details'] = studio.project_summaries(studio.document_root("projects"), references)
     elif kind == 'cases':
-        result['details'] = studio.case_summaries(studio.CASE_ROOT, references)
+        result['details'] = studio.case_summaries(studio.document_root("cases"), references)
     return request.json_response(200, result)
 
 
@@ -60,10 +60,11 @@ def save_document(request, studio, kind):
         studio.validate_project_document(payload)
     stored = store.save(kind, reference, payload, expected_revision=expected_revision, actor_id=request.actor_id())
     if kind == 'projects' and (existing is None or studio.fingerprint(existing) != studio.fingerprint(payload)):
-        studio.OwnershipStore().revoke(reference)
-    root = {'cases': studio.CASE_ROOT, 'pipelines': studio.PIPELINE_ROOT, 'projects': studio.PROJECT_ROOT}[kind]
+        studio.OwnershipStore(context=studio.current_context()).revoke(reference)
+    root = {'cases': studio.document_root("cases"), 'pipelines': studio.document_root("pipelines"), 'projects': studio.document_root("projects")}[kind]
     path = studio.safe_file(root, reference)
-    return request.json_response(200, {'path': path.relative_to(studio.ROOT).as_posix(), '_storage': stored.metadata()})
+    prefix = {'cases': 'case', 'pipelines': 'pipelines', 'projects': 'projects'}[kind]
+    return request.json_response(200, {'path': f'{prefix}/{reference}', '_storage': stored.metadata()})
 
 
 def delete_document(request, studio, kind):
@@ -82,6 +83,6 @@ def delete_document(request, studio, kind):
             store.delete('pipelines', pipeline, actor_id=request.actor_id())
     store.delete(kind, reference, actor_id=request.actor_id())
     if kind == 'projects':
-        studio.OwnershipStore().revoke(reference, remove=True)
+        studio.OwnershipStore(context=studio.current_context()).revoke(reference, remove=True)
     root = {'cases': 'case', 'pipelines': 'pipelines', 'projects': 'projects'}[kind]
     return request.json_response(200, {'deleted': f'{root}/{reference}', 'deleted_pipelines': deleted_pipelines})

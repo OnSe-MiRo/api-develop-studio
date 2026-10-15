@@ -1,6 +1,7 @@
 """Application composition for the generated Studio API."""
 from __future__ import annotations
 import json
+import logging
 import os
 import subprocess
 from copy import deepcopy
@@ -14,6 +15,22 @@ from fastapi import APIRouter, FastAPI, Depends
 from fastapi.exceptions import RequestValidationError
 from api_test.database import DATABASE_ERRORS
 from api_test.dependencies import request_context
+
+
+class _OAuthCallbackAccessFilter(logging.Filter):
+    """Keep callback code/state out of Uvicorn's request-line access log."""
+
+    def filter(self, record):
+        if isinstance(record.args, tuple):
+            args = list(record.args)
+            for index, value in enumerate(args):
+                if isinstance(value, str) and value.startswith("/api/oauth/callback/"):
+                    args[index] = value.split("?", 1)[0]
+            record.args = tuple(args)
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_OAuthCallbackAccessFilter())
 
 
 def resolve_openapi_refs(value, source_path: Path, cache=None):
@@ -53,7 +70,9 @@ def public_openapi_spec(path: Path) -> dict:
     return resolved
 
 
-def create_app(studio) -> FastAPI:
+def create_app(studio, *, current_user_provider=None) -> FastAPI:
+    from api_test.login_logging import install_access_filter
+    install_access_filter()
     manager = JobManager.from_environment()
 
     @asynccontextmanager
@@ -69,8 +88,16 @@ def create_app(studio) -> FastAPI:
 
     app = FastAPI(lifespan=lifespan, title="API Develop Studio", docs_url=None, redoc_url=None,
                   openapi_url="/api/schema.json", redirect_slashes=False)
+    app.state.current_user_provider = current_user_provider
     app.state.studio = studio
     app.state.jobs = manager
+    from api_test.security_headers import SecurityHeaders
+    app.add_middleware(SecurityHeaders)
+
+    @app.get('/health', include_in_schema=False)
+    async def health():
+        return {"status": "ok"}
+
     def error_response(request, exc):
         context = getattr(request.state, "studio", None) or studio.StudioRequest(request, b"")
         status, payload = 400, {"error": str(exc)}
@@ -87,13 +114,17 @@ def create_app(studio) -> FastAPI:
             status, payload = 403, {"error": str(exc), "code": "OWNERSHIP_POLICY_DENIED"}
         elif isinstance(exc, studio.ApiError):
             status = exc.status_code
+        if isinstance(exc, PermissionError):
+            status, payload = 403, {"error": "Workspace 접근 권한이 없습니다."}
         if isinstance(exc, JobError):
             status = exc.status_code
+            if exc.code:
+                payload.update(code=exc.code, admission={"accepted": False, "guidance": exc.guidance})
         if isinstance(exc, DATABASE_ERRORS):
             status, payload = 503, {"error": "저장소에 연결할 수 없습니다. 잠시 후 다시 시도하세요."}
         return context.json_response(status, payload)
 
-    for error in (JobError, studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
+    for error in (PermissionError, JobError, studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
                   OSError, json.JSONDecodeError, subprocess.TimeoutExpired, RequestValidationError, *DATABASE_ERRORS):
         app.add_exception_handler(error, error_response)
 
@@ -134,9 +165,9 @@ studio.app = app
 
 def run():
     host = os.environ.get('API_TEST_HOST', '127.0.0.1')
-    if studio.local_policy()['local_server'] and host not in ('127.0.0.1', '::1', 'localhost'):
+    if (studio.local_policy()['local_server'] or os.environ.get('STUDIO_AUTH_MODE', 'local') == 'local') and host not in ('127.0.0.1', '::1', 'localhost'):
         raise SystemExit('LOCAL_SERVER=true에서는 loopback 주소로만 실행할 수 있습니다.')
-    uvicorn.run(app, host=host, port=int(os.environ.get('API_TEST_PORT', '8765')), workers=1, proxy_headers=False)
+    uvicorn.run(app, host=host, port=int(os.environ.get('API_TEST_PORT', '8765')), workers=1, proxy_headers=False, access_log=False)
 
 
 if __name__ == '__main__':

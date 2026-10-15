@@ -78,6 +78,45 @@ class ContractTests(unittest.TestCase):
             self.assertFalse(result['compatible'], result)
             self.assertIn(code, [item['code'] for item in result['changes']], result)
 
+    def test_openapi_31_ref_sibling_write_only_respects_response_read_context(self):
+        doc = document('3.1.0')
+        doc['components']['schemas']['Name'] = {'type': 'string'}
+        response_schema = doc['paths']['/items/{id}']['get']['responses']['200']['content']['application/json']['schema']
+        response_schema.clear()
+        response_schema.update({'type': 'object', 'required': ['secret'], 'properties': {
+            'secret': {'$ref': '#/components/schemas/Name', 'writeOnly': True}}})
+        self.assertEqual(lint(doc), [])
+        self.assertTrue(validate_response(doc, 'GET', '/items/1', 200,
+            {'Content-Type': 'application/json', 'X-Count': '1'}, {})['valid'])
+        doc['components']['schemas']['Base'] = {'type': 'string'}
+        doc['components']['schemas']['Name'] = {'$ref': '#/components/schemas/Base', 'writeOnly': True}
+        response_schema['properties']['secret'] = {'$ref': '#/components/schemas/Name'}
+        self.assertEqual(lint(doc), [])
+        self.assertTrue(validate_response(doc, 'GET', '/items/1', 200,
+            {'Content-Type': 'application/json', 'X-Count': '1'}, {})['valid'])
+
+    def test_openapi_31_schema_ref_sibling_change_requires_review(self):
+        old = document('3.1.0')
+        old['paths']['/items/{id}']['get']['requestBody'] = {'content': {
+            'application/json': {'schema': {'$ref': '#/components/schemas/Name'}}}}
+        old['components']['schemas']['Name'] = {'type': 'string'}
+        new = deepcopy(old)
+        new['paths']['/items/{id}']['get']['requestBody']['content']['application/json']['schema']['minLength'] = 10
+        self.assertEqual(lint(new), [])
+        result = compare(old, new)
+        self.assertFalse(result['compatible'])
+        self.assertIn('schema_ref_siblings_changed', [change['code'] for change in result['changes']])
+        annotation_only = deepcopy(old)
+        annotation_only['paths']['/items/{id}']['get']['requestBody']['content']['application/json']['schema']['description'] = 'Name'
+        self.assertNotIn('schema_ref_siblings_changed', [change['code'] for change in compare(old, annotation_only)['changes']])
+        aliased = deepcopy(old)
+        aliased['components']['schemas']['Base'] = {'type': 'string'}
+        aliased['components']['schemas']['Name'] = {'$ref': '#/components/schemas/Base', 'minLength': 1}
+        changed_alias = deepcopy(aliased)
+        changed_alias['components']['schemas']['Name']['minLength'] = 10
+        self.assertEqual(lint(changed_alias), [])
+        self.assertIn('schema_ref_siblings_changed', [change['code'] for change in compare(aliased, changed_alias)['changes']])
+
     def test_request_required_and_enum_direction(self):
         old = document()
         old['paths']['/items/{id}']['get']['requestBody'] = {'content': {'application/json': {'schema': {'type': 'object', 'properties': {'name': {'type': 'string', 'enum': ['a', 'b']}}}}}}

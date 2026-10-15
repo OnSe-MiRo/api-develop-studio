@@ -90,6 +90,9 @@ class FunctionalHistoryTest(unittest.TestCase):
         self.assertEqual(self.history.dashboard(search='FLOWs/fail')['total'], 2)
         self.assertEqual(self.history.dashboard(search="' OR 1=1 --")['total'], 0)
         self.assertEqual(self.history.dashboard(search='missing')['summary']['total'], 2)
+        with self.history.connect() as db:
+            db.execute("INSERT INTO workspaces(id,name,created_at) VALUES ('other','Other','now')")
+            db.execute("INSERT INTO memberships(workspace_id,user_id,role,created_at) VALUES ('other','local-user','viewer','now')")
         other = ExecutionHistory(self.history.path, context=RequestContext('other', 'local-user'))
         self.assertIsNone(other.detail('run_100%'))
         self.assertEqual(other.dashboard()['total'], 0)
@@ -101,7 +104,7 @@ class FunctionalHistoryTest(unittest.TestCase):
         pipelines = self.root / 'pipelines'
         (pipelines / 'flows').mkdir(parents=True)
         (pipelines / 'flows/fail.json').write_text('{}')
-        with patch('react_server.execution_history', return_value=self.history), patch('react_server.PIPELINE_ROOT', pipelines), TestClient(app) as client:
+        with patch('react_server.execution_history', return_value=self.history), patch('react_server.PIPELINE_ROOT', pipelines), TestClient(app, base_url="http://127.0.0.1:8765") as client:
             self.assertEqual(client.get('/api/executions/missing').status_code, 404)
             self.assertEqual(client.post('/api/executions/run-failed/rerun', content=b'x' * (1024 * 1024 + 1)).status_code, 413)
             self.assertEqual(client.get('/api/executions/run-failed').json()['environment'], 'qa')
@@ -120,7 +123,7 @@ class FunctionalHistoryTest(unittest.TestCase):
         pipelines = self.root / 'pipelines'
         (pipelines / 'flows').mkdir(parents=True)
         (pipelines / 'flows/fail.json').write_text('{}')
-        with patch('react_server.execution_history', return_value=self.history), patch('react_server.PIPELINE_ROOT', pipelines), patch('api_test.services.execution.execute_job', return_value={'status': 'passed'}) as execute, TestClient(app) as client:
+        with patch('react_server.execution_history', return_value=self.history), patch('react_server.PIPELINE_ROOT', pipelines), patch('api_test.services.execution.execute_job', return_value={'status': 'passed'}) as execute, TestClient(app, base_url="http://127.0.0.1:8765") as client:
             response = client.post('/api/executions/run-failed/rerun', json={})
             self.assertEqual(response.status_code, 202)
             run_id = response.json()['runId']

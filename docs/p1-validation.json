@@ -1,0 +1,383 @@
+{
+  "formatVersion": 1,
+  "date": "2026-10-04",
+  "branch": "feature/load-test-baseline-recovery",
+  "scope": "isolated warmed Medium SQLite fixture on one macOS host; 5 VU read baseline, three serial 300-second runs, and same-server pre/post 300-second recovery diagnosis",
+  "commitSha": "40a852f751f8dbeb17fd688e1c739e90f7a8b428",
+  "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+  "sourceSha256": {
+    "api_test/load_test_baseline.py": "26d7293aee1d780f95b483b168ad85564f212839a6e7cba951e07314a10368c7",
+    "api_test/load_test_baseline_diagnostics.py": "d14e20a12ce8433cdcec51695eb96f8de02a11d1ac077ded75228cb215c4629a",
+    "api_test/load_test_campaigns.py": "5865e87563c25d9b2a92e585d53baa661558aa7df5b2b7d9f9576ab74d8692be",
+    "api_test/load_test_monitor.py": "e23d859c5175753fa935ae3ab37c926885c47a58db1a94f3ff799fa23f524877",
+    "api_test/load_test_harness.py": "ab96a06c699d627d84ece034e6ed1bb9fe71a866f52b4b51736c9eebbf9e4e1c",
+    "api_test/load_test_mutations.py": "d5cc14a51332748e4c36f80175ebd0dbb1eecb66878abc9a7efe88c3cc4d38c8",
+    "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+    "api_test/services/documents.py": "0bca2dabd4da8c17a3ff31f723ed11e0be431ddec6081ca0c312c3d1542c3c50",
+    "api_test/services/studio.py": "b8edf38416fcecd5fd61d6632ca3f80f3f2f4535df6f884bb6078e3282b98cc0",
+    "api_test/collaboration_store.py": "8ee141e8adfe53ef58fa2cc7e3ca89479b9dc9bef31467ee7204216e7a6da282",
+    "api_test/database.py": "800e5277665cc223cea2fd705cf78fe52683ca3cbb3923c47a7af92e92d175e9",
+    "api_test/jobs.py": "9db31fc61a3e200a066cb566143ac7dab979de7625a3b16dabc67f198b63b5bf",
+    "api_test/job_runner.py": "98624b9baa2088cb91a98058509624b0c69435647e26abadaa6bfa80e85241e8",
+    "api_test/services/execution.py": "50c9ed23df74c519e963c29be57bd0d92a22117f49fc0df0184acf6020f499ff",
+    "api_test/main.py": "3ab79d9a85afeda252270dad8d7ab9bf8e61ebf67b166dffc658948cc88681ea",
+    "api_test/dependencies.py": "6816f0a7fbde7796dea69679320b4823810444ebeebd40dba24352fe298a9ddd",
+    "api_test/cli.py": "1b188ff3a6fddd3726d6e1d7d09814c2f33e01c6dbdd30e27893e616f1f72985",
+    "api_test/runner.py": "af09c4db59e9e9a6458baeadc2773578091da1073a56b71ea2800ce38138b726",
+    "api_test/reports.py": "6b7267b30e92ae212ed5e2795703b354692b013555d10d51cecaf488c97a3231",
+    "api_test/ownership.py": "5fa0abef2ebd1ca314fbe517fa8debc52477b400cec4f8fe72fb1001e6a1aff9",
+    "api_test/request_profiles.py": "a8b0544ca7fea41351c295cef44a6cbdd0cc5990fda2fdadb8f4f49b04984049",
+    "api_test/project_variables.py": "e012ab0f6a225e30d8ef44ea6f3e33eaf59a216a6c71c310578772b97f0dcae9",
+    "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+    "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+    "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+    "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+    "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e",
+    "web/package.json": "6dd9b76f186cd9924c44dcf0383e661a6cef359812ba9e18b9ccc954018732b2"
+  },
+  "evidenceFiles": {
+    "p1-baseline-evidence.json": {
+      "path": "p1-baseline-evidence.json",
+      "sha256": "b4a1f8cf28f460a47aeacf08a229365bd8dda398a8fafcdd85157df8fd53b53e"
+    },
+    "p1-recovery-evidence.json": {
+      "path": "p1-recovery-evidence.json",
+      "sha256": "fc066a937992d02e7c1d0af5b84cdd427a67dfa0015c0f9027d9a8fedb32f63d"
+    }
+  },
+  "repeatBaseline": {
+    "status": "passed",
+    "validationMode": false,
+    "serverPid": 53274,
+    "serverStopped": true,
+    "comparison": {
+      "status": "comparable",
+      "reasons": [],
+      "runLevelMedianRps": 2.437879,
+      "runLevelMedianP95Ms": 30.8635,
+      "scope": "actual_3x300"
+    },
+    "runs": [
+      {
+        "runId": "run_lt4_22465e0935c747e4ba1906d85b3c3563",
+        "requests": 756,
+        "rps": 2.437879,
+        "p95Ms": 30.2825,
+        "errorRate": 0.0,
+        "activeVus": 5,
+        "traceRequests": 108,
+        "traceStatus": "passed",
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "serverCpuPercent": 0.18029977296938296,
+        "generatorCpuPercent": 0.12636997139898296,
+        "rawSha256": "10473216a1c79988c2b9174c1919bc94908efb1b174ed49abccc84b6e2cf3316"
+      },
+      {
+        "runId": "run_lt4_a4770f706b044563ab23dfd0d5a9daef",
+        "requests": 756,
+        "rps": 2.437863,
+        "p95Ms": 30.8635,
+        "errorRate": 0.0,
+        "activeVus": 5,
+        "traceRequests": 108,
+        "traceStatus": "passed",
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "serverCpuPercent": 0.18810973512272175,
+        "generatorCpuPercent": 0.1323525491508372,
+        "rawSha256": "17b28780748c93e4e41ac5603c304b98329c07c9450baa0a771fa1597acdc0b7"
+      },
+      {
+        "runId": "run_lt4_454f05315fb54cdc8f0ab02a3890bd3f",
+        "requests": 756,
+        "rps": 2.437929,
+        "p95Ms": 36.12325,
+        "errorRate": 0.0,
+        "activeVus": 5,
+        "traceRequests": 108,
+        "traceStatus": "passed",
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "serverCpuPercent": 0.2294059796472697,
+        "generatorCpuPercent": 0.1383926503772039,
+        "rawSha256": "fac56a64572ddae9c3d3d221289248a9e4289e09a1c09360e5fa9148825e7841"
+      }
+    ]
+  },
+  "recoveryDiagnosis": {
+    "status": "passed",
+    "validationMode": false,
+    "serverPid": 60572,
+    "serverStopped": true,
+    "before": {
+      "runId": "run_lt4_f5f44a8ed76042fa97078efb653bcbf9",
+      "requests": 756,
+      "rps": 2.437909,
+      "p95Ms": 29.35825,
+      "errorRate": 0.0,
+      "activeVus": 5,
+      "traceRequests": 108,
+      "traceStatus": "passed",
+      "cleanup": {
+        "childProcesses": 0,
+        "tempEntries": 0,
+        "status": "passed"
+      },
+      "serverCpuPercent": 0.2023372040780552,
+      "generatorCpuPercent": 0.13017198557708876,
+      "rawSha256": "ab0c2401d7e972635f34d55d8a59937a96d0b86a00f1f4e9844f12bcad8394f8"
+    },
+    "after": {
+      "runId": "run_lt4_29a7540e3a48481abcdf1e0bc1953149",
+      "requests": 756,
+      "rps": 2.437903,
+      "p95Ms": 31.466,
+      "errorRate": 0.0,
+      "activeVus": 5,
+      "traceRequests": 108,
+      "traceStatus": "passed",
+      "cleanup": {
+        "childProcesses": 0,
+        "tempEntries": 0,
+        "status": "passed"
+      },
+      "serverCpuPercent": 0.19695480651789457,
+      "generatorCpuPercent": 0.1326065767684393,
+      "rawSha256": "ab91753b9d1058111370621eaf40f31a4421aeee9f75ec34e00473406a811852"
+    },
+    "comparison": {
+      "comparison": {
+        "p95Ms": {
+          "before": 29.35825,
+          "after": 31.466,
+          "verdict": "passed"
+        },
+        "errorRate": {
+          "before": 0.0,
+          "after": 0.0,
+          "verdict": "passed"
+        },
+        "cpuPercent": {
+          "before": 0.2023372040780552,
+          "after": 0.19695480651789457,
+          "verdict": "passed"
+        },
+        "memoryMb": {
+          "before": 85.9140625,
+          "after": 87.17317708333333,
+          "verdict": "passed"
+        },
+        "threads": {
+          "before": 5.666666666666667,
+          "after": 4.75,
+          "verdict": "passed"
+        },
+        "handles": {
+          "before": 16.916666666666668,
+          "after": 16.916666666666668,
+          "verdict": "passed"
+        },
+        "childProcesses": {
+          "before": 0,
+          "after": 0,
+          "verdict": "passed"
+        }
+      },
+      "status": "passed",
+      "factor": 1.2
+    },
+    "asyncBatches": [
+      {
+        "accepted": 5,
+        "terminalPassed": 5,
+        "childProcesses": 0,
+        "tempEntries": 0
+      },
+      {
+        "accepted": 5,
+        "terminalPassed": 5,
+        "childProcesses": 0,
+        "tempEntries": 0
+      }
+    ],
+    "studioWorkerNativeIdsStable": true,
+    "anyioWorkerCounts": [
+      3,
+      2,
+      2,
+      1
+    ],
+    "psThreadCounts": {
+      "before": 6,
+      "after": 4
+    }
+  },
+  "independentRawAudits": {
+    "repeatBaseline": {
+      "status": "passed",
+      "samePid": 53274,
+      "rawMetricChecks": [
+        {
+          "requests": 756,
+          "rps": 2.437879,
+          "p95": 30.2825,
+          "errorRate": 0.0,
+          "activeVus": 5,
+          "checksFailed": 0,
+          "traceRequests": 108,
+          "caseTraceMeanMs": {
+            "lookupMs": 2.870169,
+            "pathResolutionMs": 7.823678861111111,
+            "projectionReadMs": 12.025715703703703,
+            "utf8DecodeMs": 0.2723319166666667,
+            "jsonParseMs": 4.338192444444444,
+            "fieldSelectionMs": 0.06153059259259259,
+            "serializationMs": 0.08957636111111111,
+            "otherMs": 0.08996328703703704,
+            "handlerMs": 27.571158166666667
+          }
+        },
+        {
+          "requests": 756,
+          "rps": 2.437863,
+          "p95": 30.8635,
+          "errorRate": 0.0,
+          "activeVus": 5,
+          "checksFailed": 0,
+          "traceRequests": 108,
+          "caseTraceMeanMs": {
+            "lookupMs": 2.7801759074074073,
+            "pathResolutionMs": 7.685555342592592,
+            "projectionReadMs": 13.683613842592594,
+            "utf8DecodeMs": 0.2677199907407407,
+            "jsonParseMs": 4.217349212962962,
+            "fieldSelectionMs": 0.06292814814814815,
+            "serializationMs": 0.09065820370370371,
+            "otherMs": 0.09223280555555556,
+            "handlerMs": 28.880233453703706
+          }
+        },
+        {
+          "requests": 756,
+          "rps": 2.437929,
+          "p95": 36.12325,
+          "errorRate": 0.0,
+          "activeVus": 5,
+          "checksFailed": 0,
+          "traceRequests": 108,
+          "caseTraceMeanMs": {
+            "lookupMs": 3.09993525,
+            "pathResolutionMs": 9.047094787037038,
+            "projectionReadMs": 13.784033472222221,
+            "utf8DecodeMs": 0.31726049074074075,
+            "jsonParseMs": 5.070397944444444,
+            "fieldSelectionMs": 0.07320705555555557,
+            "serializationMs": 0.10053550925925926,
+            "otherMs": 0.10874735185185186,
+            "handlerMs": 31.60121186111111
+          }
+        }
+      ],
+      "comparison": {
+        "status": "comparable",
+        "reasons": [],
+        "runLevelMedianRps": 2.437879,
+        "runLevelMedianP95Ms": 30.8635,
+        "scope": "actual_3x300"
+      },
+      "scope": "independent raw count/failure/checks/active-VU/percentile/RPS and SHA verification"
+    },
+    "recoveryDiagnosis": {
+      "status": "passed",
+      "phases": [
+        {
+          "phase": "baseline-1",
+          "requests": 756,
+          "rps": 2.437909,
+          "p95Ms": 29.35825,
+          "checksFailed": 0,
+          "traceRequests": 108,
+          "serverAndGeneratorAggregates": "matched"
+        },
+        {
+          "phase": "recovery-baseline",
+          "requests": 756,
+          "rps": 2.437903,
+          "p95Ms": 31.466,
+          "checksFailed": 0,
+          "traceRequests": 108,
+          "serverAndGeneratorAggregates": "matched"
+        }
+      ],
+      "recoveryP95Ratio": 1.071794129418477,
+      "jobNativeIdsStable": true,
+      "asyncTerminalPassed": 10,
+      "serverStopped": true,
+      "scope": "independent raw metrics, time windows, server/generator aggregates, SHA and job identity checks"
+    }
+  },
+  "verification": {
+    "pythonUnittestDiscovery": {
+      "tests": 406,
+      "skipped": 0,
+      "status": "passed",
+      "localLog": "/tmp/p1-parent-final-tests.log",
+      "elapsedSeconds": 44.827
+    },
+    "focusedBaselineTests": {
+      "tests": 8,
+      "status": "passed"
+    },
+    "generatedReportChecks": {
+      "baseline": "passed",
+      "recovery": "passed"
+    },
+    "gitDiffCheck": "passed",
+    "interruptCleanup": {
+      "status": "passed",
+      "exitCode": -2,
+      "observedPids": [
+        65720,
+        65753,
+        66195
+      ],
+      "remainingLivePids": {},
+      "resultStatus": "error",
+      "error": "KeyboardInterrupt: ",
+      "serverStopped": true,
+      "phaseComplete": false,
+      "phaseStatus": "error",
+      "rawPreserved": true,
+      "bundleExists": false,
+      "tmpRemaining": []
+    }
+  },
+  "limits": [
+    "The historical LT-2 fresh-server baseline is a different protocol and is not pooled with warmed P1 runs.",
+    "A 5 VU read baseline does not establish maximum stable RPS or sustained run concurrency.",
+    "Handler spans exclude trace write, ASGI transport, network and client time; component means do not explain whole HTTP p95.",
+    "Raw k6 JSONL is local and identified by SHA-256 in the checked-in evidence, but is not included in this checkout.",
+    "macOS/SQLite/local Medium evidence does not establish PostgreSQL, Windows, device IOPS, production, or long Target/Soak SLO performance.",
+    "Stable two studio-run native IDs in this run and changing AnyIO IDs do not prove the sole cause of historical recovery failures."
+  ],
+  "sourceProvenance": "commitSha is the clean P0 base 40a852f; P1 runtime files are uncommitted and exact tested bytes are identified by sourceSha256",
+  "measuredReadTotals": {
+    "complete300SecondPhases": 5,
+    "httpRequests": 3780,
+    "caseListTraces": 540,
+    "excludes": [
+      "25-second warmup phases",
+      "async job submission and polling requests"
+    ]
+  }
+}

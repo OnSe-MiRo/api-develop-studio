@@ -14,6 +14,25 @@
 
 완료 결과는 RUN-1 `result`이고 최상위 `runId`와 같다. 취소·전체 timeout은 완결된 CLI 보고서가 없어 `result: null`, `exitCode: null`이다. `cancelled` 확정은 실행 프로세스 정리 후에만 공개한다. 입력 오류는 400, 1 MiB 초과 입력은 413, 한도 초과는 429, 미존재·다른 소유자·만료 ID는 404, 종료 중 제출은 503이다.
 
+## 실행 접수 정책
+
+worker 기본값 2를 유지한다. `/api/run`은 비동기 실행과 공유하는 실행 slot을 즉시 확보할 때만 시작하며 대기열에 들어가지 않는다. 모든 slot이 사용 중이면 HTTP 429를 반환하고 CLI나 job을 만들지 않는다. 바로 결과를 기다리는 호환 호출에 사용하며, 순차 실행하거나 caller가 동시 요청을 제한한다.
+
+대기를 허용할 실행은 처음부터 `POST /api/runs`로 한 번 제출한다. HTTP 202는 **접수**이며 실행 성공이 아니다. 응답의 `runId`를 보관해 `GET /api/runs/{runId}`로 `passed/failed/error/timeout/cancelled`까지 조회한다. 취소는 해당 ID로 요청한다. 대기열이 포화되면 이 API도 429를 반환하며 거부된 요청에 Run ID는 없다.
+
+429 응답은 기존 `error` 문자열을 유지하고 다음 필드를 추가한다. `admission.accepted: false`는 실행/접수가 시작되지 않았음을 뜻한다. `admission.guidance`는 다음 행동 안내다. `Retry-After`는 제공하지 않으며 종료 시각을 추정하지 않는다.
+
+| `code` | 거부 조건 | 다음 행동 |
+| --- | --- | --- |
+| `RUN_WORKERS_BUSY` | 동기 `/api/run` 실행 slot 없음 | 진행 중 실행 완료 후 명시적으로 다시 실행하거나, 대기가 필요하면 `/api/runs`로 한 번 제출 |
+| `RUN_CAPACITY_EXCEEDED` | 전체 미완료 async job 한도 | 기존 Run ID의 완료 확인 후 새 제출 |
+| `RUN_USER_LIMIT_EXCEEDED` | 사용자 미완료 async job 한도 | 본인의 기존 Run ID 완료 확인 후 새 제출 |
+| `RUN_PROJECT_LIMIT_EXCEEDED` | 프로젝트 미완료 async job 한도 | 해당 프로젝트 작업 완료 후 새 제출 |
+
+둘 이상 한도를 초과하면 전체 → 사용자 → 프로젝트 순서로 사유를 반환한다. queue/user/project 한도는 async의 `queued/running/cancelling` 미완료 job을 센다. 동기 실행은 이 job 수에 포함되지 않지만 실제 실행 slot을 공유하므로 async worker가 기다릴 수 있다. 혼합 호출의 엄격한 FIFO나 starvation 방지는 보장하지 않는다.
+
+서버와 기능 화면은 접수 실패 후 자동 재제출이나 동기→비동기 fallback을 수행하지 않는다. 클라이언트도 202 이후 같은 payload를 다시 제출하지 말고 반환된 ID를 조회한다. 응답이 유실되거나 network timeout이면 이미 접수/실행됐을 수 있으므로 재전송은 중복 실행을 만들 수 있다. 이 API에는 idempotency key 계약이 없으며 자동 재시도를 추가하지 않는다. 프로세스 재시작이나 보관 만료 후 404도 새 제출의 안전성을 보장하지 않는다.
+
 ## 설정
 
 서버 시작 환경변수로 설정한다. Compose는 기존 `.env`를 읽는다.

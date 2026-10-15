@@ -51,4 +51,29 @@ describe('async execution', () => {
     expect(result.current.result.error).toContain('만료')
     expect(sessionStorage.getItem('studio-run:case')).toBe(null)
   })
+
+  it('keeps in-flight SDK submissions separate when the selected language changes', async () => {
+    let resolvePython, resolveGo
+    api.mockImplementation((path, options) => {
+      if (path === '/api/generations') return new Promise(resolve => {
+        if (JSON.parse(options.body).language === 'python') resolvePython = resolve
+        else resolveGo = resolve
+      })
+      return Promise.resolve({ runId: 'go-job', status: 'passed' })
+    })
+    const { result, rerender } = renderHook(({ scope }) => useRunJob(scope), { initialProps: { scope: 'sdk:p.json:python' } })
+    let python
+    act(() => { python = result.current.start({ language: 'python' }, '/api/generations') })
+    rerender({ scope: 'sdk:p.json:go' })
+    await act(async () => {})
+    let go
+    act(() => { go = result.current.start({ language: 'go' }, '/api/generations') })
+    expect(api.mock.calls.filter(([path]) => path === '/api/generations')).toHaveLength(2)
+    await act(async () => { resolvePython({ runId: 'python-job', status: 'queued' }); await python })
+    expect(sessionStorage.getItem('studio-run:sdk:p.json:python')).toBe('python-job')
+    expect(result.current.result?.runId).not.toBe('python-job')
+    await act(async () => { resolveGo({ runId: 'go-job', status: 'queued' }); await go })
+    expect(sessionStorage.getItem('studio-run:sdk:p.json:go')).toBe('go-job')
+    expect(result.current.result?.runId).toBe('go-job')
+  })
 })

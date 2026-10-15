@@ -1,0 +1,850 @@
+{
+  "schemaVersion": 1,
+  "scope": "P0 bounded local admission functionality; macOS same host SQLite Small, validation 10 seconds per sync phase; not maximum stable capacity",
+  "command": ".venv/bin/python -m api_test.load_test_harness run-sustained --fixture /private/tmp/p0-admission-small-20261001 --output /private/tmp/p0-admission-sustained-final-20261001 --validation-seconds 10 --k6 /private/tmp/lt1-k6-bin/k6-v2.3.0-macos-arm64/k6",
+  "rawRoot": "/private/tmp/p0-admission-sustained-final-20261001",
+  "rawRootRequiredForReportReading": false,
+  "configuration": {
+    "mode": "run-sustained",
+    "validationMode": true,
+    "baselineSeconds": 25,
+    "sampleIntervalSeconds": 1,
+    "windowSeconds": 60,
+    "resourceSustainSeconds": 120,
+    "scaledStopTimers": false,
+    "configuredVus": 2,
+    "selectionStride": 2,
+    "contentionRequests": 5,
+    "durationSeconds": 10,
+    "queueBatchSize": 5,
+    "queueStubDelayMs": 500
+  },
+  "commitSha": "fb75a467fba8c430f6da4a8e215d1c0f3b995470",
+  "workingTreeDirty": true,
+  "sourceSha256": {
+    "api_test/jobs.py": "9db31fc61a3e200a066cb566143ac7dab979de7625a3b16dabc67f198b63b5bf",
+    "api_test/main.py": "3ab79d9a85afeda252270dad8d7ab9bf8e61ebf67b166dffc658948cc88681ea",
+    "api_test/services/execution.py": "50c9ed23df74c519e963c29be57bd0d92a22117f49fc0df0184acf6020f499ff",
+    "api_test/job_runner.py": "98624b9baa2088cb91a98058509624b0c69435647e26abadaa6bfa80e85241e8",
+    "load-tests/k6/run-admission.js": "20eaf355e203119fca2d00e67296252c53d1894f26d6955b59c0859644dea377",
+    "api_test/load_test_campaigns.py": "1f7405332fb58074224277ebf0d6a63472b2a13f775c13ec359b970804a1debd",
+    "api_test/load_test_monitor.py": "0c88e1d286cfb067c083f40db78186fa727aaf90933c9d2c6f9cedf5246e06a2",
+    "api_test/load_test_mutations.py": "d5cc14a51332748e4c36f80175ebd0dbb1eecb66878abc9a7efe88c3cc4d38c8",
+    "api_test/load_test_harness.py": "282a829a202874443b6d84a3ae7d64b1658453a0beafe532903218cca020ef1d",
+    "api_test/load_results.py": "979bb07ef37e7bbab1ada185f7619ee8f05e18a12c283ae51d060d57b437a3ac",
+    "load-tests/k6/mixed.js": "7ff23e410869bd7848c868c1e91949a2a55dc7071b32cfe6a2f7b3ad40973366",
+    "load-tests/k6/mixed-model.js": "771887396366bd4f83f04202a30ebf99322e0fb67b3d11493518a91bdfc79340",
+    "load-tests/k6/read-model.js": "455d19b5cf01bb4fc8f52d8af0bf7f721fd45479ef58eace9a0b8d9899421d78",
+    "load-tests/k6/campaign-model.js": "8175331e4fe3f0b57e333068debcae88da66b281b2fc3e86f98f5fd7c8adc9b5",
+    "load-tests/k6/studio-summary.js": "beb6614ffb0bda9aa509b7038a96b5ec58957da5dfc6174dfcec4e3f294d142e"
+  },
+  "k6Version": "k6 v2.3.0 (commit/e088784614, go1.26.8, darwin/arm64)",
+  "appVersion": "1.0.1",
+  "fixture": {
+    "dataset": "small",
+    "seed": 20260929,
+    "counts": {
+      "projects": 1,
+      "cases": 10,
+      "pipelines": 2
+    },
+    "caseRevisions": 1,
+    "revisionCount": 13,
+    "bodyCounts": {
+      "1024": 4,
+      "10240": 3,
+      "102400": 3
+    },
+    "fixtureSha256": "6c11f5f30f9729567e8411504daa02ebd7cbf15cea7d621273e042575b2254a5",
+    "databaseBytes": 516096,
+    "projectionBytes": 344780,
+    "revisionContentBytes": 344767,
+    "integrity": "passed"
+  },
+  "postOriginalFingerprint": "6c11f5f30f9729567e8411504daa02ebd7cbf15cea7d621273e042575b2254a5",
+  "sourceHashesVerifiedCurrent": true,
+  "status": "failed",
+  "admissionStatus": "passed",
+  "serverPid": 57527,
+  "serverStopped": true,
+  "phases": [
+    {
+      "phase": {
+        "mode": "run-sustained",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 2,
+        "selectionStride": 2,
+        "contentionRequests": 5,
+        "durationSeconds": 25,
+        "queueBatchSize": 5,
+        "queueStubDelayMs": 500,
+        "phase": "baseline"
+      },
+      "serverPid": 57527,
+      "status": "passed",
+      "complete": true,
+      "stopReason": null,
+      "elapsedSeconds": 31.40666620794218,
+      "client": {
+        "sustainedSuccessWindowsByVu": {},
+        "sustainedRunsByVu": {},
+        "asyncJobs": {
+          "accepted": 0,
+          "queued": 0,
+          "running": 0,
+          "passed": 0
+        },
+        "windowRequests": 70,
+        "networkOr5xxRate": 0.0,
+        "runExitFailures": 0,
+        "capacity429": 0,
+        "httpStatuses": {
+          "200": 70
+        },
+        "faultObservations": 0,
+        "correctnessFailures": 0
+      },
+      "postRequestCleanup": {
+        "childProcesses": 0,
+        "tempEntries": 0,
+        "status": "passed"
+      },
+      "admissionValidation": null,
+      "artifacts": {
+        "/private/tmp/p0-admission-sustained-final-20261001/before/phase.json": "a55384af175c3f0b427bcf3ca015981878647ede7e3b263f1023c8808174fcba",
+        "/private/tmp/p0-admission-sustained-final-20261001/before/raw.jsonl": "165a87a56702193df423d4c7d15629f45754374a9cbe6b4847847b1cb7232c15",
+        "/private/tmp/p0-admission-sustained-final-20261001/before/studio-summary.json": "214f91b1c2f0c3858747e14ded9ee4d79a7fff090ef4c9ef49e2b2941af84721",
+        "/private/tmp/p0-admission-sustained-final-20261001/before/bundle.json": "cf7df037da71bad7eb4b9f632a649212cc9a4dd88f5fd04e315cd1f228ace6ab"
+      }
+    },
+    {
+      "phase": {
+        "mode": "run-sustained",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 2,
+        "selectionStride": 2,
+        "contentionRequests": 5,
+        "durationSeconds": 10,
+        "queueBatchSize": 5,
+        "queueStubDelayMs": 500,
+        "phase": "sustained",
+        "vus": 1
+      },
+      "serverPid": 57527,
+      "status": "passed",
+      "complete": true,
+      "stopReason": null,
+      "elapsedSeconds": 10.138112709042616,
+      "client": {
+        "sustainedSuccessWindowsByVu": {
+          "1": {
+            "firstSucceededAt": 1790816883.633476,
+            "lastSucceededAt": 1790816893.281174,
+            "observedSpanSeconds": 9.647697925567627
+          }
+        },
+        "sustainedRunsByVu": {
+          "1": 32
+        },
+        "asyncJobs": {
+          "accepted": 0,
+          "queued": 0,
+          "running": 0,
+          "passed": 0
+        },
+        "windowRequests": 32,
+        "networkOr5xxRate": 0.0,
+        "runExitFailures": 0,
+        "capacity429": 0,
+        "httpStatuses": {
+          "200": 32
+        },
+        "faultObservations": 0,
+        "correctnessFailures": 0
+      },
+      "postRequestCleanup": {
+        "childProcesses": 0,
+        "tempEntries": 0,
+        "status": "passed"
+      },
+      "admissionValidation": {
+        "status": "passed",
+        "reason": null
+      },
+      "artifacts": {
+        "/private/tmp/p0-admission-sustained-final-20261001/sustained-1/phase.json": "fb30e983b9fe715c77c11ed8cd9b1ad4e17a6d37a18f6dbf8833450b63830bea",
+        "/private/tmp/p0-admission-sustained-final-20261001/sustained-1/raw.jsonl": "89d5b9e1d456855b11f84fe5a0bed677e511d20629737e498e8a9d31bcc4fd7d",
+        "/private/tmp/p0-admission-sustained-final-20261001/sustained-1/studio-summary.json": "7255069067239bc5732c31ecf7ffc82467cc75a438ae6b5bdf227540f97b4c99",
+        "/private/tmp/p0-admission-sustained-final-20261001/sustained-1/bundle.json": "0a5e945086d19cfad5644ec33b1e4187c3ef693e06300f605fb06c86d7c11904"
+      }
+    },
+    {
+      "phase": {
+        "mode": "run-sustained",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 2,
+        "selectionStride": 2,
+        "contentionRequests": 5,
+        "durationSeconds": 10,
+        "queueBatchSize": 5,
+        "queueStubDelayMs": 500,
+        "phase": "sustained",
+        "vus": 2
+      },
+      "serverPid": 57527,
+      "status": "passed",
+      "complete": true,
+      "stopReason": null,
+      "elapsedSeconds": 10.438113292097114,
+      "client": {
+        "sustainedSuccessWindowsByVu": {
+          "1": {
+            "firstSucceededAt": 1790816893.73479,
+            "lastSucceededAt": 1790816903.680145,
+            "observedSpanSeconds": 9.94535493850708
+          },
+          "2": {
+            "firstSucceededAt": 1790816893.73578,
+            "lastSucceededAt": 1790816903.681567,
+            "observedSpanSeconds": 9.945786952972412
+          }
+        },
+        "sustainedRunsByVu": {
+          "1": 31,
+          "2": 31
+        },
+        "asyncJobs": {
+          "accepted": 0,
+          "queued": 0,
+          "running": 0,
+          "passed": 0
+        },
+        "windowRequests": 62,
+        "networkOr5xxRate": 0.0,
+        "runExitFailures": 0,
+        "capacity429": 0,
+        "httpStatuses": {
+          "200": 62
+        },
+        "faultObservations": 0,
+        "correctnessFailures": 0
+      },
+      "postRequestCleanup": {
+        "childProcesses": 0,
+        "tempEntries": 0,
+        "status": "passed"
+      },
+      "admissionValidation": {
+        "status": "passed",
+        "reason": null
+      },
+      "artifacts": {
+        "/private/tmp/p0-admission-sustained-final-20261001/sustained-2/phase.json": "b95ce3ffd15818d019e8721160f49d4aad1de21ca2a991841cea28bebcb06075",
+        "/private/tmp/p0-admission-sustained-final-20261001/sustained-2/raw.jsonl": "c0840591937d128ca73102699541e304a53da392bce9a4a7093cd00e93ddac36",
+        "/private/tmp/p0-admission-sustained-final-20261001/sustained-2/studio-summary.json": "2ff03b6a3a7f39a55f0738bb0f95846c4e3458a5e4c4b12c33f0ee345b381747",
+        "/private/tmp/p0-admission-sustained-final-20261001/sustained-2/bundle.json": "0bd4f2041c74a52246c1482776118747c8b207e87c57a68d8b19576c1e7f6d1f"
+      }
+    },
+    {
+      "phase": {
+        "mode": "run-sustained",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 2,
+        "selectionStride": 2,
+        "contentionRequests": 5,
+        "durationSeconds": 10,
+        "queueBatchSize": 5,
+        "queueStubDelayMs": 500,
+        "phase": "queue",
+        "vus": 1
+      },
+      "serverPid": 57527,
+      "status": "passed",
+      "complete": true,
+      "stopReason": null,
+      "elapsedSeconds": 2.447559457970783,
+      "client": {
+        "sustainedSuccessWindowsByVu": {},
+        "sustainedRunsByVu": {},
+        "asyncJobs": {
+          "accepted": 5,
+          "queued": 28,
+          "running": 36,
+          "passed": 5
+        },
+        "windowRequests": 74,
+        "networkOr5xxRate": 0.0,
+        "runExitFailures": 0,
+        "capacity429": 0,
+        "httpStatuses": {
+          "202": 5,
+          "200": 69
+        },
+        "faultObservations": 0,
+        "correctnessFailures": 0
+      },
+      "postRequestCleanup": {
+        "childProcesses": 0,
+        "tempEntries": 0,
+        "status": "passed"
+      },
+      "admissionValidation": {
+        "status": "passed",
+        "reason": null
+      },
+      "artifacts": {
+        "/private/tmp/p0-admission-sustained-final-20261001/queue/phase.json": "8f4c80a67ac6cd890896d807207063ef7838aaf65993a7c8f47461fc21066c4f",
+        "/private/tmp/p0-admission-sustained-final-20261001/queue/raw.jsonl": "690ac66b22609250425b5a89eaf9b7c0f6e9f76d62fdc13843403eedde6cf84d",
+        "/private/tmp/p0-admission-sustained-final-20261001/queue/studio-summary.json": "0d268492131f237995e126bbba42fb6dd0830bbba72fc3072c3886e3df8244c8",
+        "/private/tmp/p0-admission-sustained-final-20261001/queue/bundle.json": "fe01012b49a9d7bed3fd42e462783eabe098c00e2bfc7bbdea9ca466d9c85348"
+      }
+    },
+    {
+      "phase": {
+        "mode": "run-sustained",
+        "validationMode": true,
+        "baselineSeconds": 25,
+        "sampleIntervalSeconds": 1,
+        "windowSeconds": 60,
+        "resourceSustainSeconds": 120,
+        "scaledStopTimers": false,
+        "configuredVus": 2,
+        "selectionStride": 2,
+        "contentionRequests": 5,
+        "durationSeconds": 25,
+        "queueBatchSize": 5,
+        "queueStubDelayMs": 500,
+        "phase": "baseline"
+      },
+      "serverPid": 57527,
+      "status": "passed",
+      "complete": true,
+      "stopReason": null,
+      "elapsedSeconds": 31.306747124996036,
+      "client": {
+        "sustainedSuccessWindowsByVu": {},
+        "sustainedRunsByVu": {},
+        "asyncJobs": {
+          "accepted": 0,
+          "queued": 0,
+          "running": 0,
+          "passed": 0
+        },
+        "windowRequests": 70,
+        "networkOr5xxRate": 0.0,
+        "runExitFailures": 0,
+        "capacity429": 0,
+        "httpStatuses": {
+          "200": 70
+        },
+        "faultObservations": 0,
+        "correctnessFailures": 0
+      },
+      "postRequestCleanup": {
+        "childProcesses": 0,
+        "tempEntries": 0,
+        "status": "passed"
+      },
+      "admissionValidation": null,
+      "artifacts": {
+        "/private/tmp/p0-admission-sustained-final-20261001/after/phase.json": "749c69260e8c7d45bd3c5a1d9e95f275784ec45f95965e58f3aee761ef557781",
+        "/private/tmp/p0-admission-sustained-final-20261001/after/raw.jsonl": "369419884b3a8e5262869e952ab6f9ebe83dd11b68adeedde8b9e2645a69187c",
+        "/private/tmp/p0-admission-sustained-final-20261001/after/studio-summary.json": "9d4cb640cc217c64697e6905af50dd61eaa0f5e1691ab0cd52693eafbef04f1c",
+        "/private/tmp/p0-admission-sustained-final-20261001/after/bundle.json": "3d3f2fb2d90f82bf15a06336ca2fd91b062ebf36b6ee2a27ea8cff88a77a8960"
+      }
+    }
+  ],
+  "recovery": {
+    "comparison": {
+      "p95Ms": {
+        "before": 30.07545,
+        "after": 14.0229,
+        "verdict": "passed"
+      },
+      "errorRate": {
+        "before": 0.0,
+        "after": 0.0,
+        "verdict": "passed"
+      },
+      "cpuPercent": {
+        "before": 0.0891436024963538,
+        "after": 0.08259676554035088,
+        "verdict": "passed"
+      },
+      "memoryMb": {
+        "before": 69.58723958333333,
+        "after": 48.13701923076923,
+        "verdict": "passed"
+      },
+      "threads": {
+        "before": 4.5,
+        "after": 5.461538461538462,
+        "verdict": "failed"
+      },
+      "handles": {
+        "before": 16.916666666666668,
+        "after": 16.923076923076923,
+        "verdict": "passed"
+      },
+      "childProcesses": {
+        "before": 0,
+        "after": 0,
+        "verdict": "passed"
+      }
+    },
+    "status": "failed",
+    "factor": 1.2
+  },
+  "maximumStableConcurrency": null,
+  "diagnostic": {
+    "rawRoot": "/private/tmp/p0-admission-sustained-20261001",
+    "status": "failed",
+    "reason": "k6 tag submetric threshold absent from raw importer metrics; replaced only with aggregate threshold plus per-VU raw verdict; intermediate source diagnostic, never presented as final-source capacity result",
+    "sync1Successes": {
+      "1": 33
+    },
+    "cleanup": {
+      "childProcesses": 0,
+      "tempEntries": 0,
+      "status": "passed"
+    },
+    "recovery": {
+      "comparison": {
+        "p95Ms": {
+          "before": 29.82375,
+          "after": 13.38695,
+          "verdict": "passed"
+        },
+        "errorRate": {
+          "before": 0.0,
+          "after": 0.0,
+          "verdict": "passed"
+        },
+        "cpuPercent": {
+          "before": 0.08472691494777644,
+          "after": 0.10313973484800534,
+          "verdict": "failed"
+        },
+        "memoryMb": {
+          "before": 70.82451923076923,
+          "after": 71.49879807692308,
+          "verdict": "passed"
+        },
+        "threads": {
+          "before": 3.0,
+          "after": 3.0,
+          "verdict": "passed"
+        },
+        "handles": {
+          "before": 16.53846153846154,
+          "after": 16.923076923076923,
+          "verdict": "passed"
+        },
+        "childProcesses": {
+          "before": 0,
+          "after": 0,
+          "verdict": "passed"
+        }
+      },
+      "status": "failed",
+      "factor": 1.2
+    }
+  },
+  "tests": {
+    "relatedPython": {
+      "count": 51,
+      "seconds": 2.56,
+      "status": "passed"
+    },
+    "finalAddedRawAndLogBoundary": {
+      "count": 17,
+      "status": "passed"
+    },
+    "nodeAdmission": {
+      "count": 5,
+      "status": "passed"
+    },
+    "historicalReportCheck": "passed",
+    "nodeExisting": {
+      "campaignAssertions": 6,
+      "mixed": 7,
+      "read": 6,
+      "summary": "passed"
+    }
+  },
+  "limitations": [
+    "full default 60-second sync phases not executed",
+    "bounded Small validation is not sustained production capacity or SLO proof",
+    "historical Target/Stress429 and Spike/Stress recovery failures and unknown stable capacity unchanged",
+    "physical disk IOPS/latency and actual Windows child trees unverified",
+    "campaign thread recovery failed; no tuning or rerun to replace failure"
+  ],
+  "independentVerification": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "xhigh",
+    "scope": "P0 admission functionality; isolated macOS same-host SQLite Small; validation10 seconds per sync phase",
+    "outcome": "Functional admission and failure/cleanup handling verified; campaign recovery failure preserved; no product findings requiring changes",
+    "checks": [
+      {
+        "command": ".venv/bin/python -m unittest discover -s tests -v",
+        "status": "passed",
+        "exitCode": 0,
+        "currentDiscoveryCount": 398,
+        "countSource": "Separate discovery after successful execution; final unittest stderr summary was inside truncated verbose output",
+        "durationSeconds": null,
+        "coverage": "Full suite including real dedicated PostgreSQL/Redis and loopback/process tests",
+        "skipEvidence": "No skip decorators active in current same-environment discovery and no runtime skipTest/SkipTest use in tests"
+      },
+      {
+        "command": ".venv/bin/python scripts/generate_server.py --check",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "command": ".venv/bin/python -m api_test.load_test_report --check",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "command": "node --test load-tests/k6/*.test.mjs",
+        "status": "passed",
+        "exitCode": 0,
+        "filesPassed": 5,
+        "newAdmissionInternalScenariosPassed": 5
+      },
+      {
+        "command": "PYTHONPATH=/Users/kwondaehoon/Desktop/Project/api-develop-studio .venv/bin/python /private/tmp/p0-independent-contract.py",
+        "status": "passed",
+        "exitCode": 0,
+        "evidence": "Default2/20/10/10, shared2slots, sync aliases429/error/code/no job, actual queuedGET, repeated queuedcancel, recovery200, closed503, capacity/user/project429/code/noRunId, spoofed body identity ignored, explicit resubmission202 after completion"
+      },
+      {
+        "status": "passed",
+        "adversarialVerdictMutations": 20,
+        "evidence": "Failed/error/aborted/incomplete/stopped/logical failure/429/network unknown/error/missing VU/one execution/short raw span/short duration/cleanup failed rejected; cleanup unknown preserved; missing queue accepted/passed/queued/running rejected"
+      },
+      {
+        "command": "git diff --check",
+        "status": "passed",
+        "exitCode": 0
+      }
+    ],
+    "frontend": {
+      "run": false,
+      "reason": "No frontend source changes"
+    },
+    "loads": [
+      {
+        "name": "positive",
+        "rawRoot": "/private/tmp/p0-independent-positive-20261001",
+        "exitCode": 1,
+        "campaignStatus": "failed",
+        "admissionStatus": "passed",
+        "serverStopped": true,
+        "remainingLiveObservedPids": {},
+        "tempEntries": [],
+        "sourceSha256VerifiedCurrent": 15,
+        "originalAndSnapshotIntegrity": "passed",
+        "artifactSha256": {
+          "/private/tmp/p0-independent-positive-20261001/campaign.json": "a1b7a3107c687dda0591d0c41b432ef1a71ba6304b24d17c5dd5d8a07b39955d",
+          "/private/tmp/p0-independent-positive-review.json": "93332fb687823eda0bdc973f92685ef4bf0ca654f8d778abfc1df5565bb6dafa"
+        },
+        "phases": [
+          {
+            "directory": "queue",
+            "status": "passed",
+            "complete": true,
+            "stopReason": null,
+            "admissionValidation": {
+              "status": "passed",
+              "reason": null
+            },
+            "postRequestCleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "successByVu": {},
+            "bundlePresent": true
+          },
+          {
+            "directory": "sustained-1",
+            "status": "passed",
+            "complete": true,
+            "stopReason": null,
+            "admissionValidation": {
+              "status": "passed",
+              "reason": null
+            },
+            "postRequestCleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "successByVu": {
+              "1": {
+                "count": 32,
+                "observedSpanSeconds": 9.680574178695679
+              }
+            },
+            "bundlePresent": true
+          },
+          {
+            "directory": "sustained-2",
+            "status": "passed",
+            "complete": true,
+            "stopReason": null,
+            "admissionValidation": {
+              "status": "passed",
+              "reason": null
+            },
+            "postRequestCleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "successByVu": {
+              "1": {
+                "count": 30,
+                "observedSpanSeconds": 9.902693033218384
+              },
+              "2": {
+                "count": 30,
+                "observedSpanSeconds": 9.9027738571167
+              }
+            },
+            "bundlePresent": true
+          }
+        ],
+        "recovery": {
+          "comparison": {
+            "p95Ms": {
+              "before": 31.4819,
+              "after": 16.65695,
+              "verdict": "passed"
+            },
+            "errorRate": {
+              "before": 0.0,
+              "after": 0.0,
+              "verdict": "passed"
+            },
+            "cpuPercent": {
+              "before": 0.06573001161373056,
+              "after": 0.07378159299459099,
+              "verdict": "passed"
+            },
+            "memoryMb": {
+              "before": 72.79807692307692,
+              "after": 39.51081730769231,
+              "verdict": "passed"
+            },
+            "threads": {
+              "before": 3.6153846153846154,
+              "after": 4.769230769230769,
+              "verdict": "failed"
+            },
+            "handles": {
+              "before": 16.923076923076923,
+              "after": 16.615384615384617,
+              "verdict": "passed"
+            },
+            "childProcesses": {
+              "before": 0,
+              "after": 0,
+              "verdict": "passed"
+            }
+          },
+          "status": "failed",
+          "factor": 1.2
+        }
+      },
+      {
+        "name": "500",
+        "rawRoot": "/private/tmp/p0-independent-500-20261001",
+        "exitCode": 1,
+        "campaignStatus": "failed",
+        "admissionStatus": "failed",
+        "serverStopped": true,
+        "remainingLiveObservedPids": {},
+        "tempEntries": [],
+        "sourceSha256VerifiedCurrent": 15,
+        "originalAndSnapshotIntegrity": "passed",
+        "artifactSha256": {
+          "/private/tmp/p0-independent-500-20261001/campaign.json": "0b4b75e76080cb8b9d244897f2b1196490a08e1c3d1e202aef70fc98bde2dd44",
+          "/private/tmp/p0-independent-500-review.json": "e8161ecbad93aeb51d6a4e59c7dcc3df609062016feb2df18b193d8a475247a6"
+        },
+        "phases": [
+          {
+            "directory": "sustained-1",
+            "status": "aborted",
+            "complete": false,
+            "stopReason": "semantic_correctness_failure",
+            "admissionValidation": {
+              "status": "failed",
+              "reason": "execution_or_threshold_failure"
+            },
+            "postRequestCleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "successByVu": {},
+            "bundlePresent": false
+          }
+        ]
+      },
+      {
+        "name": "timeout",
+        "rawRoot": "/private/tmp/p0-independent-timeout-20261001",
+        "exitCode": 1,
+        "campaignStatus": "failed",
+        "admissionStatus": "failed",
+        "serverStopped": true,
+        "remainingLiveObservedPids": {},
+        "tempEntries": [],
+        "sourceSha256VerifiedCurrent": 15,
+        "originalAndSnapshotIntegrity": "passed",
+        "artifactSha256": {
+          "/private/tmp/p0-independent-timeout-20261001/campaign.json": "5995cf4480b4481bcb3c3c82e93addd99cfa512f2a23443e497644ecc544489f",
+          "/private/tmp/p0-independent-timeout-review.json": "113bbb5252e95a66a631d3eb5e5678e4050cb6a0a24cdb51db3e286083ee8e58"
+        },
+        "phases": [
+          {
+            "directory": "sustained-1",
+            "status": "aborted",
+            "complete": false,
+            "stopReason": "semantic_correctness_failure",
+            "admissionValidation": {
+              "status": "failed",
+              "reason": "execution_or_threshold_failure"
+            },
+            "postRequestCleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "successByVu": {},
+            "bundlePresent": false
+          }
+        ]
+      },
+      {
+        "name": "sigint",
+        "rawRoot": "/private/tmp/p0-independent-sigint-20261001",
+        "exitCode": -2,
+        "campaignStatus": "error",
+        "admissionStatus": null,
+        "serverStopped": true,
+        "remainingLiveObservedPids": {},
+        "tempEntries": [],
+        "sourceSha256VerifiedCurrent": 15,
+        "originalAndSnapshotIntegrity": "passed",
+        "artifactSha256": {
+          "/private/tmp/p0-independent-sigint-20261001/campaign.json": "b4a8f354697610f7bf9ee56ea1f0353fd62aa56e46378a125c6a748218e7bce3",
+          "/private/tmp/p0-independent-sigint-review.json": "5ccfa5a03e529a6049e3c9aec5d5637e471e79a5c9261fc6cb55e783da0afdcd"
+        },
+        "phases": [
+          {
+            "directory": "sustained-1",
+            "status": "error",
+            "complete": false,
+            "stopReason": null,
+            "admissionValidation": null,
+            "postRequestCleanup": {
+              "childProcesses": null,
+              "tempEntries": null,
+              "status": "unknown"
+            },
+            "successByVu": {},
+            "bundlePresent": false
+          }
+        ],
+        "scopeNote": "Initial diagnostic: PID count proved observed process cleanup; actual runner ancestry not captured. Preserved, final sigint-runner supersedes ancestry assertion."
+      },
+      {
+        "name": "sigint-runner",
+        "rawRoot": "/private/tmp/p0-independent-sigint-runner-20261001",
+        "exitCode": -2,
+        "campaignStatus": "error",
+        "admissionStatus": null,
+        "serverStopped": true,
+        "remainingLiveObservedPids": {},
+        "tempEntries": [],
+        "sourceSha256VerifiedCurrent": 15,
+        "originalAndSnapshotIntegrity": "passed",
+        "artifactSha256": {
+          "/private/tmp/p0-independent-sigint-runner-20261001/campaign.json": "0962311be46d1bbfa16367f27eff873b93fbb08b8d3b6d80cffcb8b1780ba6cf",
+          "/private/tmp/p0-independent-sigint-runner-review.json": "bf5f553914dd2fefc00a16bc2e276ddbd9935a0c2025f799071291979bfc37cd"
+        },
+        "phases": [
+          {
+            "directory": "sustained-1",
+            "status": "error",
+            "complete": false,
+            "stopReason": null,
+            "admissionValidation": null,
+            "postRequestCleanup": {
+              "childProcesses": null,
+              "tempEntries": null,
+              "status": "unknown"
+            },
+            "successByVu": {},
+            "bundlePresent": false
+          }
+        ],
+        "runnersAtTrigger": [
+          67525
+        ],
+        "runnerAncestry": [
+          {
+            "pid": 67525,
+            "ppid": 66940,
+            "command": "/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python"
+          }
+        ],
+        "scopeNote": "SIGINT phase cleanup remains unknown; separate external observer verified all sampled PIDs exited and tmp empty after shutdown."
+      }
+    ],
+    "limitations": [
+      "Small dataset, same-host macOS SQLite,10-second sync phase validation; default60-second and Medium/production/Windows/PostgreSQL load not exercised",
+      "Maximum stable RPS/concurrency, full campaign/SLO,3-run baseline median and long-term queue throughput/fairness remain unestablished",
+      "Positive admission passed but thread recovery3.6153846 to4.7692308 exceeded1.2 and campaign remains failed",
+      "Physical disk IOPS/latency and children entirely between sampler snapshots remain unmeasured; external observer covers sampled PIDs",
+      "Whole-suite final duration/unittest total line unavailable due tool truncation; exit0 and separate current398-case discovery confirmed"
+    ],
+    "fullReportPath": "/private/tmp/p0-independent-verification.json",
+    "fullReportSha256": "2e9484281e6d2bec9ce8cb407c44e3a44aaadbb32445a66bfea779acf1795421"
+  },
+  "rootReview": {
+    "status": "completed",
+    "findingsRequiringChanges": [],
+    "checked": [
+      "final product/test/document diff",
+      "15 source hashes against current files",
+      "all independent artifact hashes across five runs",
+      "admission success separate from campaign recovery failure",
+      "SIGINT phase cleanup unknown separate from post-shutdown observer cleanup"
+    ],
+    "conclusion": "P0 local functionality verified; recovery and capacity remain follow-up P1 scope"
+  }
+}

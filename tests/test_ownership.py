@@ -161,7 +161,7 @@ class OwnershipTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "OWNERSHIP_POLICY_DENIED")
         with patch.dict(os.environ, {"LOCAL_SERVER": "true"}):
             response = client.get("/api/projects", headers={"Host": "rebind.example:8765"})
-            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.status_code, 403)
 
     def fixture(self, steps):
         projects, cases = self.root / "projects", self.root / "case"
@@ -216,6 +216,10 @@ class OwnershipTest(unittest.TestCase):
             call.assert_not_called()
 
     def test_server_external_approval_key_required(self):
+        from api_test.request_scope import CurrentUser
+        from http_client import prepare_local_identity
+        prepare_local_identity()
+        self.enterContext(patch.object(app.state, 'current_user_provider', lambda request: CurrentUser('local-user','default'), create=True))
         client = TestClient(app, base_url="https://studio.example.com")
         client.cookies.set("studio_ownership", "a" * 43)
         headers = {"Origin": "https://studio.example.com"}

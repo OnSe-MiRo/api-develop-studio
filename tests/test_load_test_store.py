@@ -240,7 +240,7 @@ class LoadTestStoreTests(unittest.TestCase):
 class LoadTestApiTests(unittest.TestCase):
     def test_real_asgi_contract_and_error_status(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict("os.environ", {"STUDIO_DB_PATH": str(Path(directory) / "studio.db"), "STUDIO_DATABASE_URL": ""}):
-            client = TestClient(app)
+            client = TestClient(app, base_url="http://127.0.0.1:8765")
             value = bundle()
             run_id = value["run"]["id"]
             self.assertEqual(client.post("/api/load-tests/runs", json=value).status_code, 201)

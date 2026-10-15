@@ -13,7 +13,8 @@
 
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
+from datetime import date, datetime
+from typing import Annotated, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, StrictBool, StrictFloat, StrictInt, StrictStr
 
 
@@ -46,4 +47,3 @@ class QuickRequest(BaseModel):
     @classmethod
     def from_dict(cls, value):
         return cls.model_validate(value)
-

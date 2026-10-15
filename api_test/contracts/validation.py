@@ -43,7 +43,7 @@ def lint(document):
             continue
         if '$schema' in value and (not isinstance(value['$schema'], str) or value['$schema'] not in allowed_dialects):
             issues.append(issue('unsupported_schema_dialect', path))
-        if '$ref' in value and len(set(value) - {'$ref', 'description', 'summary'}) > 0:
+        if '$ref' in value and not document['openapi'].startswith('3.1.') and len(set(value) - {'$ref', 'description', 'summary'}) > 0:
             issues.append(issue('unsupported_ref_siblings', path))
         for keyword in ('$id', '$dynamicRef', '$dynamicAnchor', '$anchor'):
             if keyword in value:
@@ -79,8 +79,20 @@ def schema_errors(document, schema, value, location):
         if not validator.is_type(instance, 'object'):
             return
         for name in required:
-            prop = resolve(document, current_schema.get('properties', {}).get(name, {}))
-            if name not in instance and not (isinstance(prop, dict) and prop.get('writeOnly')):
+            raw_prop = current_schema.get('properties', {}).get(name, {})
+            prop = resolve(document, raw_prop)
+            sibling_write_only = False
+            if document['openapi'].startswith('3.1.'):
+                seen_refs = set()
+                wrapper = raw_prop
+                while isinstance(wrapper, dict):
+                    sibling_write_only |= wrapper.get('writeOnly') is True
+                    reference = wrapper.get('$ref')
+                    if not isinstance(reference, str) or reference in seen_refs:
+                        break
+                    seen_refs.add(reference)
+                    wrapper = pointer(document, reference)
+            if name not in instance and not (isinstance(prop, dict) and prop.get('writeOnly')) and not sibling_write_only:
                 yield ValidationError('Required response property is missing')
     cls = extend(cls, {'required': read_required})
     registry = Registry().with_resource('urn:studio:contract', Resource(document, DRAFT202012))

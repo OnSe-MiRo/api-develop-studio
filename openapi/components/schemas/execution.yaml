@@ -91,22 +91,38 @@ RunResponse:
       type: string
     result:
       type: object
-      description: Version 1 sanitized execution report with run metadata and per-case assertions.
+      description: Version 1 sanitized execution report with run metadata and per-case
+        assertions.
       additionalProperties: true
     historyWarning:
       type: string
   required:
   - runId
-
 RunJob:
   type: object
-  required: [runId, status, createdAt]
+  required:
+  - runId
+  - status
+  - createdAt
   properties:
+    kind:
+      type: string
+      description: SDK generation jobs use sdk_generation; existing functional run fields remain unchanged.
+    generation:
+      $ref: ./sdk-generation.yaml#/SdkGenerationMetadata
     runId:
       type: string
     status:
       type: string
-      enum: [queued, running, cancelling, passed, failed, error, timeout, cancelled]
+      enum:
+      - queued
+      - running
+      - cancelling
+      - passed
+      - failed
+      - error
+      - timeout
+      - cancelled
     createdAt:
       type: string
     startedAt:
@@ -128,3 +144,6 @@ RunJob:
       type: string
     historyWarning:
       type: string
+    release:
+      type: object
+      additionalProperties: true

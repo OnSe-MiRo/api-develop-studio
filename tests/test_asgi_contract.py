@@ -163,9 +163,11 @@ class AsgiContractTest(unittest.TestCase):
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as archive:
             archive.writestr("README.md", "contract")
-        with patch.object(studio, "project_openapi_document", return_value={}), patch.object(
-            studio, "generate_openapi_archive", return_value=(buffer.getvalue(), "contract-python.zip")
-        ):
+        self.store.save("projects", "p.json", {**self.project, "docs_file": {"name": "openapi.json",
+            "document": {"openapi": "3.0.3", "info": {"title": "Contract", "version": "1"}, "paths": {}}}}, expected_revision=1)
+        with patch("api_test.services.sdk_generation.execute_snapshot", return_value={
+            "status": "passed", "_artifact": buffer.getvalue(), "_artifact_filename": "contract-python.zip"
+        }):
             response = self.client.post("/api/generate", json={"project": "p.json", "language": "python"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, buffer.getvalue())
@@ -184,7 +186,9 @@ class AsgiContractTest(unittest.TestCase):
             with patch.object(studio, "handle_api_request", side_effect=studio.ApiError("network failure", status)):
                 response = self.client.post("/api/request", json={})
             self.assertEqual(response.status_code, status)
-        with patch.object(studio, "generate_openapi_archive", side_effect=timeout), patch.object(studio, "project_openapi_document", return_value={}):
+        self.store.save("projects", "p.json", {**self.project, "docs_file": {"name": "openapi.json",
+            "document": {"openapi": "3.0.3", "info": {"title": "Contract", "version": "1"}, "paths": {}}}}, expected_revision=1)
+        with patch("api_test.services.sdk_generation.execute_snapshot", return_value={"status": "timeout"}):
             response = self.client.post("/api/generate", json={"project": "p.json", "language": "python"})
         self.assertEqual(response.status_code, 504)
         self.assertIn("OpenAPI", response.json()["error"])

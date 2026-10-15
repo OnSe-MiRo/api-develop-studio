@@ -66,9 +66,25 @@ def encrypt_secret(value: str) -> str:
     return _fernet().encrypt(value.encode("utf-8")).decode("ascii")
 
 
-def decrypt_secret(token: str) -> str:
+def decrypt_secret(token: str, *, _audit_info=None) -> str:
     if not isinstance(token, str) or not token:
         raise ProjectVariableError("Stored encrypted project variable is invalid")
+    from api_test.request_scope import current_context
+    context = current_context()
+    if context.request_id:
+        from api_test.identity_store import IdentityStore
+        from api_test.database import require_membership, DATABASE_ERRORS
+        from pathlib import Path
+        path = Path(os.environ.get('STUDIO_DB_PATH', Path(__file__).resolve().parents[1] / 'data' / 'studio.db'))
+        try:
+            store = IdentityStore(path)
+            with store.connection() as db, db:
+                if require_membership(db, context) not in ('owner', 'admin', 'editor', 'runner'):
+                    raise PermissionError('Execution role required')
+                store._audit(db, context.workspace_id, context.user_id, 'secret.read_requested',
+                             detail=_audit_info or {'scope': 'managed-variable'}, request_id=context.request_id)
+        except (OSError, *DATABASE_ERRORS) as exc:
+            raise ProjectVariableError('Secret access authorization or audit is unavailable') from exc
     if _encryption_service_url():
         return _service_request("decrypt", "token", token)
     try:
@@ -277,7 +293,7 @@ def resolve_project_references(
             return plain[name]
         if name in encrypted:
             if name not in cache:
-                cache[name] = decrypt_secret(encrypted[name])
+                cache[name] = decrypt_secret(encrypted[name], _audit_info={'scope': 'project', 'name': name})
             used_secrets.add(cache[name])
             return cache[name]
         raise ProjectVariableError(f"Project variable is not defined: {name}")
@@ -306,7 +322,7 @@ def resolve_case_references(value: Any, encrypted: dict[str, str]) -> tuple[Any,
         if name not in encrypted:
             raise ProjectVariableError(f"Case variable is not defined: {name}")
         if name not in cache:
-            cache[name] = decrypt_secret(encrypted[name])
+            cache[name] = decrypt_secret(encrypted[name], _audit_info={'scope': 'case', 'name': name})
         used_secrets.add(cache[name])
         return cache[name]
 

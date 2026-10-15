@@ -111,3 +111,85 @@ ContractCheckResponse:
       items:
         type: object
         additionalProperties: true
+
+
+OpenApiEditorSource:
+  type: object
+  description: Raw owner documents. Bundle rawFiles text is authoritative for exact export and import.
+  properties:
+    kind:
+      type: string
+      enum: [file, bundle]
+    entrypoint:
+      type: string
+    files:
+      type: object
+      additionalProperties: true
+    rawFiles:
+      type: object
+      additionalProperties:
+        type: string
+  required: [kind, entrypoint]
+OpenApiEditorEdit:
+  type: object
+  properties:
+    file:
+      type: string
+    op:
+      type: string
+      enum: [add, replace, remove]
+    path:
+      type: string
+      description: JSON Pointer in the raw owner file, starting with '#/'.
+    value: {}
+  required: [file, op, path]
+OpenApiEditorRequest:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [preview, apply]
+    sourceDigest:
+      type: string
+      minLength: 64
+      maxLength: 64
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata
+    edits:
+      type: array
+      items:
+        $ref: '#/OpenApiEditorEdit'
+    source:
+      $ref: '#/OpenApiEditorSource'
+  required: [action, sourceDigest, _storage]
+OpenApiEditorResponse:
+  type: object
+  properties:
+    valid:
+      type: boolean
+    issues:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    changedFiles:
+      type: array
+      items:
+        type: string
+    affectedOperations:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    catalog:
+      type: object
+      additionalProperties: true
+    source:
+      $ref: '#/OpenApiEditorSource'
+    sourceDigest:
+      type: string
+    nextSourceDigest:
+      type: string
+    _storage:
+      $ref: ./common.yaml#/StorageMetadata
+  required: [source, sourceDigest, _storage]
