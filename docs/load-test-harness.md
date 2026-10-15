@@ -217,3 +217,51 @@ k6 원본 형식과 system tags는 [JSON output](https://grafana.com/docs/k6/lat
 VU metric 의미는 [k6 metrics reference](https://grafana.com/docs/k6/latest/using-k6/metrics/reference/)를 따른다.
 
 시나리오 종료와 grace는 [k6 graceful stop](https://grafana.com/docs/k6/latest/using-k6/scenarios/concepts/graceful-stop/), executor 설정은 [k6 scenarios](https://grafana.com/docs/k6/latest/using-k6/scenarios/)를 따른다.
+
+## P0 반복 실행과 비동기 접수 검증
+
+기존 `run-capacity`는 1/2/5/10의 단일 동시 batch이며 지속 실행 증거와 구분한다. 다음 명령은 같은 격리 서버에서 before Baseline → sync 1 VU 반복 → sync 2 VU 반복 → async 5개 제출/조회 → after Baseline을 기록한다.
+
+```bash
+python -m api_test.load_test_harness run-sustained --fixture data/lt-fixtures/medium-01 --output data/load-tests/admission-sustained-01
+python -m api_test.load_test_harness run-sustained --fixture data/lt-fixtures/medium-01 --output data/load-tests/admission-sustained-validation-01 --validation-seconds 10
+```
+
+sync phase는 기본 각 60초, 명시적 validation은 각 10~120초다. VU는 1→2 고정이며 worker 기본 2를 증가시키지 않는다. 매 HTTP 200 응답의 exit 0, report/response Run ID 일치, 준비된 case의 terminal passed와 대상 HTTP 200을 확인한다. raw에서 **VU별** 성공 수와 첫/마지막 성공 시각·span을 기록하고, 각 VU가 최소 2회 성공하며 성공 span이 설정 시간의 절반 이상인 경우만 반복 실행 검증을 통과한다. phase elapsed에는 startup·정리가 포함되므로 이것만으로 실행 지속 시간을 판정하지 않는다. 정확히 60초 동안 모든 순간의 동시 실행이나 최대 안정 용량을 입증하는 시험은 아니다.
+
+queue phase는 준비된 local stub의 지연을 500ms로 고정한 뒤 5개를 한 번씩 제출한다. 202/고유 Run ID 5개, **GET에서 실제 queued와 running 관측**, 동일 ID/report의 terminal passed/exit 0 5개를 요구한다. 한 번의 batch이므로 queue의 장시간 처리량·공정성을 판정하지 않는다. 조회 deadline은 15초이며 조회 round 사이에서 확인한다. round 안의 최대 5개 GET은 각각 timeout 5초이므로 15초에서 즉시 끝남을 보장하지 않는다. 전체 queue workload는 k6 최대 30초와 grace 5초로 제한한다. 접수 실패·network ambiguity·terminal 오류는 새 제출로 재시도하지 않는다. phase 종료 후 child/tmp가 0으로 검증되지 않으면 다음 VU/queue로 진행하지 않는다. 실패는 failed, 누락된 cleanup 관측은 unknown이며 둘 다 증가를 막는다.
+
+`campaign.json`의 `admissionStatus`와 각 `admissionValidation`은 반복 실행/queue/정리 판정이다. 기존 `status`는 전후 읽기·CPU/RSS/thread/FD 회복 판정도 반영하므로 admission이 passed여도 recovery 실패면 campaign은 failed다. raw·summary·phase·source hash·실행 PID와 원본 fixture 불변성을 보존한다. `maximumStableConcurrency`는 null이다. 과거 LT-5 생성 보고서의 실패/unknown은 이 검증으로 덮어쓰지 않으며, 다음 P1 동일 조건 3회 기준선과 회복 원인 분리에서 추가 판단한다.
+
+실행 API 선택·429와 중복 제출 주의사항은 [접수 정책](async-runs.md#실행-접수-정책)을 따른다.
+
+2026-10-01 Small/각10초 실제 검증은 admission passed지만 thread 회복 4.5→5.461538(121.37%)로 전체 campaign failed다. sync1 32회·sync2 각31회, async5개 terminal passed·모든 phase child/tmp0을 확인했다. [별도 검증 기록](run-admission-validation.json)의 진단 실패와 최종 실행을 함께 보존한다.
+
+## P1 동일 조건 기준선과 회복 진단
+
+```bash
+python -m api_test.load_test_baseline repeat-baseline --fixture data/lt-fixtures/medium-01 --output data/load-tests/p1-repeat-01 --k6 k6
+python -m api_test.load_test_baseline recovery-diagnose --fixture data/lt-fixtures/medium-01 --output data/load-tests/p1-recovery-01 --k6 k6
+```
+
+`repeat-baseline`은 격리된 한 서버·DB에서 async worker 1건을 먼저 terminal/정리까지 확인하고, 읽기25초로 cache를 준비한 뒤 **5 VU·300초 Baseline 3회**를 직렬로 실행한다. source 파일과 k6 binary SHA256, 원본 fixture, app/commit/Python/k6 버전, OS·CPU·메모리·디스크 device를 각 실행 전후 확인한다. 요청·threshold·resource interval·worker native ID·case 목록 trace가 모두 맞는 3회에서만 RPS와 p95의 **실행별 중앙값**을 계산한다. 과거 LT-2의 새 서버 단일 Baseline이나 짧은 P1 실행을 합쳐 중앙값을 만들지 않는다.
+
+`recovery-diagnose`는 같은 서버에서 사전 준비→읽기 기준선→async 5개 batch 2회→읽기 회복을 측정한다. census의 Python thread 이름/native ID와 `ps`의 thread 수를 구분하며, AnyIO worker 이름이 같아도 native ID 교체를 기록한다. async worker를 미리 만드는 것은 과거 P0의 회복 실패를 지우거나 단독 원인을 증명하기 위한 조치가 아니다.
+
+개발 검증에는 `--validation-seconds 25`부터120초까지만 사용한다. 이 값은 명시적으로 validation으로 표시하며 **3×300초 기준선**으로 판정하지 않는다. 출력 디렉터리는 매번 새 경로이고 `/tmp` 원본·resource/trace는 private 증거다.
+
+case 목록의 진단은 하네스 프로세스에만 설치된다. 기준 구현과 같은 200 응답을 유지하며 `list_references`의 연결+SQL+row 반환, 경로 검사, 파일 읽기, UTF-8 해독, JSON 파싱, 필드 추출, `json_response` 직렬화를 exclusive 구간으로 측정한다. 로그에는 참조·본문·URL을 넣지 않고 건수·byte·시간만 남긴다. 응답 전 trace 쓰기와 ASGI 전송·네트워크·클라이언트 시간은 handler 구간에 포함되지 않으며 각 구간의 p95를 더하지 않는다. 서버 process tree와 k6 발생기 tree의 CPU/RSS는 다른 표본이다. CPU는 host의 논리 CPU 수로 나눈 값이고 sample 사이에 종료한 자식 CPU나 device IOPS/latency, host 전체 CPU는 미수집이다.
+
+P1 결과를 동일한 input에서 사람이 읽는 Markdown으로 다시 만들거나 검증하려면 아래 명령을 사용한다. `--check`는 보고서를 바꾸지 않고 일치 여부만 확인하며, 저장된 3회 비교값도 개별 실행 증거에서 다시 계산한다.
+
+```bash
+python -m api_test.load_test_baseline render --result data/load-tests/p1-repeat-01/p1-result.json --output docs/p1-baseline-recovery-report.md
+python -m api_test.load_test_baseline render --result data/load-tests/p1-repeat-01/p1-result.json --output docs/p1-baseline-recovery-report.md --check
+```
+
+2026-10-04의 정규 Medium 실측 증거는 [3×300초 Baseline JSON](p1-baseline-evidence.json), [Baseline 보고서](p1-baseline-report.md), [300초 전후 회복 JSON](p1-recovery-evidence.json), [회복 보고서](p1-recovery-report.md)에 있다. 새 checkout에서는 아래 두 명령으로 보고서가 저장된 증거와 일치하는지 확인할 수 있다. 원시 `raw.jsonl`은 당시 로컬 실행 디렉터리에 남아 있으며 JSON 안의 SHA-256은 그 원본의 식별자다. 문서만으로 원시 표본을 다시 분석할 수 있다고 주장하지 않는다.
+
+```bash
+python -m api_test.load_test_baseline render --result docs/p1-baseline-evidence.json --output docs/p1-baseline-report.md --check
+python -m api_test.load_test_baseline render --result docs/p1-recovery-evidence.json --output docs/p1-recovery-report.md --check
+```

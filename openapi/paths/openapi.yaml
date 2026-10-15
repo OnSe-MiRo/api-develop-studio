@@ -1,3 +1,57 @@
+/api/projects/{reference}/openapi/editor:
+  get:
+    operationId: get_openapi_editor
+    tags: [openapi]
+    summary: Inspect raw OpenAPI owner files and editable catalog
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema: {type: string}
+    responses:
+      '200':
+        description: Raw source and current revision
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/openapi.yaml#/OpenApiEditorResponse
+      '400': {description: Saved source is unavailable}
+      '404': {description: Project not found}
+    x-studio-handler: openapi.get_openapi_editor
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/openapi/editor
+    x-studio-upload: false
+    x-studio-alias: true
+  post:
+    operationId: edit_openapi_editor
+    tags: [openapi]
+    summary: Preview or apply raw-owner OpenAPI edits
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema: {type: string}
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/openapi.yaml#/OpenApiEditorRequest
+    responses:
+      '200':
+        description: Preview or saved source and whole-document diagnostics
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/openapi.yaml#/OpenApiEditorResponse
+      '400': {description: Invalid pointer or contract}
+      '404': {description: Project not found}
+      '409': {description: Revision or source digest conflict}
+    x-studio-handler: openapi.edit_openapi_editor
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/openapi/editor
+    x-studio-upload: false
+    x-studio-alias: true
 /api/projects/{reference}/openapi/operations:
   post:
     operationId: author_operation

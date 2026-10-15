@@ -42,7 +42,7 @@ def rerun_execution(request, studio, run_id):
     body = failed_run_request(history_run(studio, run_id))
     if body is None:
         raise studio.ApiError("재실행 가능한 저장된 실패 대상이 없습니다.", 409)
-    for kind, root in (('cases', studio.CASE_ROOT), ('pipelines', studio.PIPELINE_ROOT)):
+    for kind, root in (('cases', studio.document_root("cases")), ('pipelines', studio.document_root("pipelines"))):
         for reference in body[kind]:
             if not studio.safe_file(root, reference).is_file():
                 raise studio.ApiError("재실행 대상이 삭제되었습니다. 케이스와 파이프라인을 확인하세요.", 409)

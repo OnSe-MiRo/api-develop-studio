@@ -6,8 +6,9 @@ from .project_variables import ProjectVariableError, normalize_project_variables
 AUTH_FIELDS = {
     'No Auth': set(), 'API Key': {'key', 'value', 'addTo'},
     'Basic Auth': {'username', 'password'}, 'Bearer Token': {'token'},
+    'OAuth 2.0': {'grantType', 'clientId', 'clientSecret', 'tokenUrl', 'authorizationUrl', 'scopes', 'clientAuthMethod', 'issuer'},
 }
-SECRET_FIELDS = {'value', 'password', 'token'}
+SECRET_FIELDS = {'value', 'password', 'token', 'clientSecret'}
 
 
 def validate_auth_profiles(profiles):
@@ -18,6 +19,39 @@ def validate_auth_profiles(profiles):
             raise ProjectVariableError('Invalid authentication profile')
         if set(auth) - AUTH_FIELDS[auth['type']] - {'type'}:
             raise ProjectVariableError('Unsupported authentication profile field')
+        if auth['type'] == 'OAuth 2.0':
+            grant = auth.get('grantType')
+            method = auth.get('clientAuthMethod')
+            if grant not in ('client_credentials', 'authorization_code') or method not in ('basic', 'post', 'none'):
+                raise ProjectVariableError('OAuth grantType or clientAuthMethod is invalid')
+            if not isinstance(auth.get('clientId'), str) or not auth['clientId'].strip():
+                raise ProjectVariableError('OAuth clientId is required')
+            if method == 'none' and grant != 'authorization_code':
+                raise ProjectVariableError('Public OAuth clients require authorization_code')
+            if method != 'none' and not PROJECT_VARIABLE_PATTERN.fullmatch(auth.get('clientSecret', '') if isinstance(auth.get('clientSecret'), str) else ''):
+                raise ProjectVariableError('OAuth clientSecret must reference an encrypted project variable')
+            if method == 'none' and 'clientSecret' in auth:
+                raise ProjectVariableError('Public OAuth clients must not carry clientSecret')
+            if grant == 'authorization_code' and not auth.get('authorizationUrl'):
+                raise ProjectVariableError('OAuth authorizationUrl is required')
+            if grant == 'client_credentials' and auth.get('authorizationUrl'):
+                raise ProjectVariableError('client_credentials must not carry authorizationUrl')
+            scopes = auth.get('scopes', [])
+            if not isinstance(scopes, list) or any(not isinstance(scope, str) or not scope or any(char.isspace() for char in scope) for scope in scopes) or len(set(scopes)) != len(scopes):
+                raise ProjectVariableError('OAuth scopes must be unique non-empty strings')
+            from .oauth_transport import OAuthTransportError, validate_endpoint
+            try:
+                for field in ('tokenUrl', 'authorizationUrl'):
+                    if field == 'tokenUrl' or grant == 'authorization_code':
+                        validate_endpoint(auth.get(field))
+                if auth.get('issuer') is not None:
+                    validate_endpoint(auth['issuer'])
+            except OAuthTransportError as exc:
+                raise ProjectVariableError(str(exc)) from exc
+            for field, value in auth.items():
+                if field not in ('type', 'scopes') and not isinstance(value, str):
+                    raise ProjectVariableError('OAuth profile values must be strings')
+            continue
         for field, value in auth.items():
             if not isinstance(value, str):
                 raise ProjectVariableError('Authentication values must be strings')
@@ -62,7 +96,7 @@ def normalize_profiles(document, existing=None):
         for auth in effective['auth_profiles'].values():
             for field in SECRET_FIELDS & auth.keys():
                 match = PROJECT_VARIABLE_PATTERN.fullmatch(auth[field])
-                if match.group(1) not in secret:
+                if match is None or match.group(1) not in secret:
                     raise ProjectVariableError('Profile credentials must reference encrypted variables')
     return result
 

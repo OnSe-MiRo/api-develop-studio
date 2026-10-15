@@ -1,3 +1,4 @@
+import { jobNamespace } from '../auth/session.js'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../utils/studio.js'
 
@@ -6,11 +7,11 @@ const remember = (key, id) => { try { sessionStorage.setItem(key, id) } catch { 
 const restore = key => { try { return sessionStorage.getItem(key) || '' } catch { return '' } }
 
 export function useRunJob(scope) {
-  const key = `studio-run:${scope}`
+  const key = `studio-run:${jobNamespace()}${scope}`
   const [result, setResult] = useState(null)
   const [runId, setRunId] = useState('')
   const [busy, setBusy] = useState(false)
-  const submitting = useRef(false)
+  const submitting = useRef(new Set())
   const generation = useRef(0)
 
   useEffect(() => {
@@ -51,8 +52,8 @@ export function useRunJob(scope) {
   }, [runId, key])
 
   const start = async (body, endpoint = '/api/runs') => {
-    if (submitting.current || busy) return
-    submitting.current = true
+    if (submitting.current.has(key) || busy) return
+    submitting.current.add(key)
     setBusy(true)
     const current = generation.current
     try {
@@ -62,7 +63,7 @@ export function useRunJob(scope) {
     } catch (error) {
       if (generation.current === current) { setBusy(false); setResult({ error: error.message }) }
       throw error
-    } finally { submitting.current = false }
+    } finally { submitting.current.delete(key) }
   }
   const cancel = async () => {
     const current = generation.current

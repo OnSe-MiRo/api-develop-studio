@@ -1,0 +1,75 @@
+OAuthProfileStatus:
+  type: object
+  additionalProperties: false
+  description: OAuth connection metadata only. Access tokens, refresh tokens and client
+    secrets are never returned.
+  required:
+  - configured
+  - connected
+  - grantType
+  - expiresAt
+  - canRefresh
+  - callbackUri
+  properties:
+    configured:
+      type: boolean
+    connected:
+      type: boolean
+    grantType:
+      type: string
+      enum:
+      - client_credentials
+      - authorization_code
+    expiresAt:
+      type: integer
+      format: int64
+      nullable: true
+      description: Access-token expiry as Unix seconds, or null if the provider did
+        not supply expiry.
+    canRefresh:
+      type: boolean
+    callbackUri:
+      type: string
+      nullable: true
+      description: Exact URI to register with the authorization provider; null for
+        client credentials.
+OAuthTokenRequest:
+  type: object
+  additionalProperties: false
+  required:
+  - action
+  properties:
+    environment:
+      type: string
+      maxLength: 128
+      description: Saved environment name. Empty or omitted selects project-common
+        configuration.
+    action:
+      type: string
+      enum:
+      - issue
+      - refresh
+OAuthAuthorizeRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    environment:
+      type: string
+      maxLength: 128
+      description: Saved environment name. Empty or omitted selects project-common
+        configuration.
+OAuthAuthorizeResponse:
+  type: object
+  additionalProperties: false
+  required:
+  - authorizationUrl
+  - callbackUri
+  properties:
+    authorizationUrl:
+      type: string
+      format: uri
+      description: One-time authorization request URL with S256 PKCE challenge and
+        state; no token or verifier.
+    callbackUri:
+      type: string
+      format: uri

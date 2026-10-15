@@ -62,6 +62,7 @@ class ProjectRequestSettings:
     variables: dict[str, str] = field(default_factory=dict)
     encrypted_variables: dict[str, str] = field(default_factory=dict)
     auth_profiles: dict[str, Any] = field(default_factory=dict)
+    environment_name: str = ""
 
 
 @dataclass
@@ -110,9 +111,11 @@ def read_json(path: Path) -> dict[str, Any]:
 
 
 def resolve_case_path(case_root: Path, reference: str) -> Path:
+    if not isinstance(reference,str) or '_workspaces' in reference.replace(chr(92),'/').split('/'):
+        raise CaseConfigurationError('Reserved workspace reference')
     candidate = (case_root / reference).resolve()
     root = case_root.resolve()
-    if root not in candidate.parents:
+    if root not in candidate.parents or "_workspaces" in candidate.relative_to(root).parts:
         raise CaseConfigurationError(f"Case path escapes root: {reference}")
     if not candidate.is_file():
         raise CaseConfigurationError(f"Case file not found: {reference}")
@@ -120,9 +123,11 @@ def resolve_case_path(case_root: Path, reference: str) -> Path:
 
 
 def resolve_attachment_path(file_root: Path, reference: str) -> Path:
+    if not isinstance(reference,str) or '_workspaces' in reference.replace(chr(92),'/').split('/'):
+        raise CaseConfigurationError('Reserved workspace attachment reference')
     candidate = (file_root / reference).resolve()
     root = file_root.resolve()
-    if root not in candidate.parents or not candidate.is_file():
+    if root not in candidate.parents or "_workspaces" in candidate.relative_to(root).parts or not candidate.is_file():
         raise CaseConfigurationError(f"Attachment file not found: {reference}")
     return candidate
 
@@ -175,7 +180,9 @@ def project_request_settings(case: dict[str, Any], project_root: Path, environme
         raise CaseConfigurationError("case.project must be a non-empty project JSON reference")
     project_path = resolve_case_path(project_root, project_reference)
     try:
-        project = select_environment(read_json(project_path), environment)
+        source_project = read_json(project_path)
+        selected_environment = environment or source_project.get("default_environment", "")
+        project = select_environment(source_project, environment)
     except ProjectVariableError as exc:
         raise CaseConfigurationError(str(exc)) from exc
     base_url_name = None if environment or project.get("default_environment") else case.get("base_url_name")
@@ -257,6 +264,7 @@ def project_request_settings(case: dict[str, Any], project_root: Path, environme
         verify_ssl=verify_ssl,
         variables=variables,
         encrypted_variables=encrypted_variables,
+        environment_name=selected_environment,
     )
 
 
@@ -794,6 +802,8 @@ class ApiTestRunner:
         project_variables: dict[str, str] | None = None,
         encrypted_project_variables: dict[str, str] | None = None,
         auth_profiles: dict[str, Any] | None = None,
+        oauth_project_reference: str | None = None,
+        oauth_environment: str = "",
     ) -> CaseResult:
         request_definition = case.get("request")
         expected = case.get("expected")
@@ -815,8 +825,12 @@ class ApiTestRunner:
         from .test_data import resolve
         resolved_request = resolve(copy.deepcopy(request_definition), getattr(self, 'run_variables', {}))
         resolved_request = resolve_references(resolved_request, context or {})
+        profile_reference = resolved_request.get("auth_profile")
+        oauth_profile = None
         try:
             resolved_request = resolve_auth_profile(resolved_request, auth_profiles or {})
+            if isinstance(resolved_request.get("auth"), dict) and resolved_request["auth"].get("type") == "OAuth 2.0" and resolved_request["auth"].get("grantType"):
+                oauth_profile = resolved_request.pop("auth")
             case_plain, case_secret = stored_project_variables(case, case_id)
             plain = {**(project_variables or {}), **case_plain}
             encrypted = {**(encrypted_project_variables or {}), **case_secret}
@@ -837,15 +851,31 @@ class ApiTestRunner:
             from .authorization import sensitive_value_variants
             from .test_data import sensitive_strings
             sensitive_values.update(sensitive_value_variants(sensitive_strings(getattr(self, 'run_variables', {}))))
+            if oauth_profile is not None:
+                resolved_request["auth"] = oauth_profile
         except ProjectVariableError as exc:
             raise CaseConfigurationError(str(exc)) from exc
         resolved_request["url"] = resolve_request_url(resolved_request["url"], base_url)
+        oauth_token = None
+        if oauth_profile is not None:
+            if not isinstance(profile_reference, str) or not profile_reference or not oauth_project_reference or not base_url:
+                raise CaseConfigurationError("OAuth 2.0 requires a saved project authentication profile")
+            if resolved_request["url"].startswith("http://") and not no_proxy and (proxy_url or proxy_urls):
+                raise CaseConfigurationError("OAuth loopback HTTP resource cannot use a proxy")
+            from .oauth_service import OAuthError, resource_token
+            try:
+                oauth_token = resource_token(oauth_project_reference, oauth_environment, profile_reference,
+                                             oauth_profile, encrypted_project_variables or {}, base_url,
+                                             resolved_request["url"])
+            except OAuthError as exc:
+                raise CaseConfigurationError(str(exc)) from exc
+            sensitive_values.update(sensitive_value_variants({oauth_token}))
         attempts = max(0, retry) + 1
         last_result: CaseResult | None = None
         for attempt in range(1, attempts + 1):
             result = self._run_once(
                 case_id, resolved_request, expected, attempt, proxy_url, verify_ssl,
-                file_root, proxy_urls, no_proxy, sensitive_values, timeout_seconds,
+                file_root, proxy_urls, no_proxy, sensitive_values, timeout_seconds, oauth_token,
             )
             if result.status == "passed":
                 return result
@@ -859,7 +889,7 @@ class ApiTestRunner:
         self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int,
         proxy_url: str | None = None, verify_ssl: bool = True, file_root: Path | None = None,
         proxy_urls: dict[str, str] | None = None, no_proxy: bool = False, sensitive_values: set[str] | None = None,
-        timeout_seconds: float | None = None,
+        timeout_seconds: float | None = None, oauth_token: str | None = None,
     ) -> CaseResult:
         method = str(request_definition.get("method", "GET")).upper()
         headers = {str(key): str(value) for key, value in request_definition.get("headers", {}).items()}
@@ -877,7 +907,7 @@ class ApiTestRunner:
         elif payload is not None:
             data = json.dumps(payload).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
-        auth = request_definition.get("auth")
+        auth = {"type": "Bearer Token", "token": oauth_token} if oauth_token is not None else request_definition.get("auth")
         try:
             authorized = apply_authorization(request_definition["url"], method, headers, auth, data)
         except AuthorizationError as exc:
@@ -892,6 +922,11 @@ class ApiTestRunner:
         if self.request_guard is not None:
             self.request_guard(authorized.url, method)
             transport_options["allow_redirects"] = False
+        if oauth_token is not None:
+            transport_options["allow_redirects"] = False
+            verify_ssl = True
+            if authorized.url.startswith("http://"):
+                no_proxy = True  # Prevent ambient HTTP_PROXY from receiving a local Bearer token.
         try:
             status, response_headers, raw_body, _elapsed = execute_http_call(
                 authorized.url, method=method, headers=authorized.headers, data=data,

@@ -67,6 +67,9 @@ export function parseLocation() {
   if (pathname === '/apis') {
     return { tab: 'api-list', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
+  if (pathname === '/portal') {
+    return { tab: 'portal', activeProject: project, releaseId: query.get('release') || '', caseReference: '', pipelineReference: '', projectSettingsReference: '' }
+  }
   if (pathname === '/generator') {
     return { tab: 'generator', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
@@ -79,7 +82,7 @@ export function parseLocation() {
   return { tab: 'api-call', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
 }
 
-export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, runId, baselineId, candidateId }) {
+export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, runId, baselineId, candidateId, releaseId }) {
   const query = new URLSearchParams()
   const projectSlug = stripJson(activeProject)
   let pathname = '/api-call'
@@ -149,6 +152,11 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
     case 'api-create':
       pathname = '/apis/new'
       if (projectSlug) query.set('project', projectSlug)
+      break
+    case 'portal':
+      pathname = '/portal'
+      if (projectSlug) query.set('project', projectSlug)
+      if (releaseId) query.set('release', releaseId)
       break
     case 'generator':
       pathname = '/generator'

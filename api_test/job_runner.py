@@ -48,7 +48,7 @@ def execute_job(job, command, studio, projects, targets, environment=None):
                 if job.cancel.is_set():
                     response['status'] = 'cancelled'
                 else:
-                    process = subprocess.Popen(command, cwd=studio.ROOT, stdout=output, stderr=subprocess.STDOUT, **options)
+                    process = subprocess.Popen(command, cwd=studio.ROOT, env=studio.subprocess_environment(), stdout=output, stderr=subprocess.STDOUT, **options)
                     while process.poll() is None:
                         if job.cancel.wait(0.05):
                             response['status'] = 'cancelled'

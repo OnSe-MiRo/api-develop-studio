@@ -162,3 +162,62 @@ class JobApiTests(unittest.TestCase):
             self.assertEqual(client.post('/api/runs', json={'cases': []}).status_code, 429)
             self.assertIn(client.post(f'/api/runs/{first}/cancel').json()['status'], ('cancelling', 'cancelled'))
             eventually(lambda: client.get('/api/runs/' + first).json()['status'] == 'cancelled')
+
+class AdmissionPolicyTests(unittest.TestCase):
+    def test_rejection_reasons_never_create_jobs_and_limits_recover(self):
+        for options, code in (({'capacity': 1}, 'RUN_CAPACITY_EXCEEDED'),
+                              ({'user_limit': 1}, 'RUN_USER_LIMIT_EXCEEDED'),
+                              ({'project_limit': 1}, 'RUN_PROJECT_LIMIT_EXCEEDED')):
+            with self.subTest(code=code):
+                manager = JobManager(workers=1, **options)
+                try:
+                    first = manager.submit(lambda job: (job.cancel.wait(3), {'status': 'cancelled'})[1])['runId']
+                    with self.assertRaises(JobError) as rejected:
+                        manager.submit(lambda job: {'status': 'passed'})
+                    self.assertEqual(rejected.exception.code, code)
+                    self.assertEqual(set(manager.jobs), {first})
+                    manager.cancel(first)
+                    eventually(lambda: manager.get(first)['status'] == 'cancelled')
+                    resumed = manager.submit(lambda job: {'status': 'passed'})['runId']
+                    eventually(lambda: manager.get(resumed)['status'] == 'passed')
+                finally:
+                    manager.close()
+
+    def test_sync_429_guidance_and_async_queue_share_slots_without_fallback(self):
+        app = create_app(studio)
+        app.state.jobs = JobManager(workers=1)
+        started = threading.Event()
+        def blocked(job, *args):
+            started.set()
+            job.cancel.wait(3)
+            return {'status': 'cancelled'}
+        with patch('api_test.services.execution.execute_job', side_effect=blocked), TestClient(app, base_url='http://127.0.0.1:8765') as client:
+            first = client.post('/api/runs', json={'cases': []}).json()['runId']
+            self.assertTrue(started.wait(2))
+            with patch.object(studio, 'execute_studio_run') as runner:
+                rejected = client.post('/api/run', json={'cases': []})
+                self.assertEqual(rejected.status_code, 429)
+                self.assertEqual(rejected.json()['error'], '동시 실행 한도를 초과했습니다.')
+                self.assertEqual(rejected.json()['code'], 'RUN_WORKERS_BUSY')
+                self.assertFalse(rejected.json()['admission']['accepted'])
+                self.assertIn('POST /api/runs', rejected.json()['admission']['guidance'])
+                runner.assert_not_called()
+                self.assertEqual(set(app.state.jobs.jobs), {first})
+            second = client.post('/api/runs', json={'cases': []})
+            self.assertEqual(second.status_code, 202)
+            self.assertEqual(second.json()['status'], 'queued')
+            client.post('/api/runs/' + second.json()['runId'] + '/cancel')
+            client.post('/api/runs/' + first + '/cancel')
+
+    def test_queue_429_response_preserves_error_and_contains_no_run_id(self):
+        app = create_app(studio)
+        app.state.jobs = JobManager(workers=1, capacity=1)
+        with patch('api_test.services.execution.execute_job', side_effect=lambda job, *args: (job.cancel.wait(3), {'status': 'cancelled'})[1]), TestClient(app, base_url='http://127.0.0.1:8765') as client:
+            first = client.post('/api/runs', json={'cases': []}).json()['runId']
+            rejected = client.post('/api/runs', json={'cases': []})
+            self.assertEqual(rejected.status_code, 429)
+            self.assertEqual(rejected.json()['code'], 'RUN_CAPACITY_EXCEEDED')
+            self.assertFalse(rejected.json()['admission']['accepted'])
+            self.assertNotIn('runId', rejected.json())
+            self.assertEqual(set(app.state.jobs.jobs), {first})
+            client.post('/api/runs/' + first + '/cancel')

@@ -29,9 +29,8 @@ class ExecutionHistory:
         try:
             migrate_studio_database(connection)
             with connection:
-                if postgres_enabled():
-                    initialize_local_context(connection)
-                    require_membership(connection, self.context)
+                initialize_local_context(connection)
+                require_membership(connection, self.context)
                 yield connection
         finally:
             connection.close()
@@ -58,6 +57,9 @@ class ExecutionHistory:
         detail["projectEnvironments"] = dict(project_environments or {})
         projects = sorted(set(projects) | {o["project"] for o in detail["outcomes"] if isinstance(o.get("project"), str) and o["project"]})
         with self.connect() as connection:
+            role = require_membership(connection, self.context)
+            if role not in ('owner','admin','editor','runner'):
+                raise PermissionError('Execution role required')
             connection.execute(
                 """INSERT INTO executions
                    (run_id, started_at, finished_at, duration_ms, status, exit_code, projects, targets, workspace_id, requested_by, detail_json)

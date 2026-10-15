@@ -5,7 +5,7 @@ def get_ownership(request, studio):
     stored = studio.collaboration_store().get('projects', project or '')
     if not stored:
         raise studio.OwnershipError('저장된 프로젝트를 선택하세요.')
-    return request.json_response(200, studio.OwnershipStore().status(project, stored.document))
+    return request.json_response(200, studio.OwnershipStore(context=studio.current_context()).status(project, stored.document))
 
 
 def perform_action(request, studio):

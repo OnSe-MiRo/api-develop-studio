@@ -26,13 +26,13 @@ class GeneratedServerTest(unittest.TestCase):
         self.assertEqual(path_files, {
             'projects.yaml', 'cases.yaml', 'pipelines.yaml', 'openapi.yaml',
             'execution.yaml', 'dashboard.yaml', 'ownership.yaml',
-            'uploads.yaml', 'example.yaml', 'mock.yaml', 'load-tests.yaml',
+            'uploads.yaml', 'example.yaml', 'mock.yaml', 'load-tests.yaml', 'portal.yaml', 'identity.yaml', 'oauth.yaml', 'sdk-generation.yaml', 'interoperability.yaml', 'releases.yaml',
         })
         schema_files = {path.name for path in (ROOT / 'openapi/components/schemas').glob('*.yaml')}
         self.assertEqual(schema_files, {
             'common.yaml', 'projects.yaml', 'cases.yaml', 'pipelines.yaml',
             'execution.yaml', 'openapi.yaml', 'dashboard.yaml', 'ownership.yaml',
-            'uploads.yaml', 'example.yaml', 'mock.yaml',
+            'uploads.yaml', 'example.yaml', 'mock.yaml', 'identity.yaml', 'oauth.yaml', 'sdk-generation.yaml', 'interoperability.yaml', 'releases.yaml',
         })
         for path, value in source['paths'].items():
             self.assertEqual(len(value), 1)
@@ -61,7 +61,7 @@ class GeneratedServerTest(unittest.TestCase):
         self.assertEqual(set(routes), expected_ids)
 
     def test_published_schema_has_named_inputs_and_no_internal_binding_details(self):
-        with TestClient(app) as client:
+        with TestClient(app, base_url="http://127.0.0.1:8765") as client:
             result = client.get('/api/schema.json')
         self.assertEqual(result.status_code, 200)
         spec = result.json()

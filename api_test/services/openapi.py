@@ -30,6 +30,46 @@ def inspect_document(request, studio):
     return request.json_response(200, {"operations": studio.normalize_openapi_value(operations)})
 
 
+def get_openapi_editor(request, studio):
+    from api_test.openapi_editor import inspect
+    reference = request.request.path_params["reference"]
+    studio.ensure_example_project_enabled(reference)
+    current = studio.collaboration_store().get("projects", reference)
+    if current is None:
+        raise studio.DocumentNotFoundError("Project not found")
+    return request.json_response(200, inspect(current.document, current.metadata(), studio))
+
+
+def edit_openapi_editor(request, studio):
+    from api_test.openapi_editor import preview
+    reference = request.request.path_params["reference"]
+    studio.ensure_example_project_enabled(reference)
+    payload, expected_revision = studio.storage_request(request.read_body())
+    store = studio.collaboration_store()
+    current = store.get("projects", reference)
+    if current is None:
+        raise studio.DocumentNotFoundError("Project not found")
+    if expected_revision is None:
+        raise studio.RevisionRequiredError(current.revision)
+    if expected_revision != current.revision:
+        raise studio.RevisionConflictError(expected_revision, current.revision)
+    if payload.get("action") not in ("preview", "apply"):
+        raise studio.ApiError("action은 preview 또는 apply여야 합니다.")
+    updated, result = preview(current.document, current.metadata(), payload, studio)
+    if payload["action"] == "preview":
+        return request.json_response(200, result)
+    studio.ensure_example_document_writable("projects", reference, current.document, updated)
+    if not result["valid"]:
+        return request.json_response(400, result)
+    if not result["changedFiles"]:
+        raise studio.ApiError("적용할 OpenAPI 원본 변경이 없습니다.")
+    stored = store.save("projects", reference, updated, expected_revision=expected_revision,
+                        actor_id=request.actor_id(), action="edit_openapi_document")
+    result["_storage"] = stored.metadata()
+    result["sourceDigest"] = result["nextSourceDigest"]
+    return request.json_response(200, result)
+
+
 def author_operation(request, studio):
     reference = request.request.path_params["reference"]
     studio.ensure_example_project_enabled(reference)
@@ -59,25 +99,8 @@ def author_operation(request, studio):
 
 
 def generate_client(request, studio):
-    body = request.read_body()
-    project_reference = body.get("project")
-    language = body.get("language")
-    if not isinstance(project_reference, str) or not project_reference:
-        raise studio.ApiError("생성할 프로젝트를 선택하세요.")
-    if not isinstance(language, str):
-        raise studio.ApiError("생성 언어를 선택하세요.")
-    studio.ensure_example_project_enabled(project_reference)
-    stored = studio.collaboration_store().get("projects", project_reference)
-    if stored is None:
-        raise studio.ApiError("선택한 프로젝트를 찾을 수 없습니다.")
-    document = studio.project_openapi_document(stored.document)
-    project_name = stored.document.get("name", project_reference.removesuffix(".json"))
-    bundle = stored.document.get("docs_bundle")
-    archive, filename = studio.generate_openapi_archive(
-        document, language, project_name if isinstance(project_name, str) else project_reference,
-        bundle if isinstance(bundle, dict) else None,
-    )
-    return request.attachment_response(archive, filename)
+    from api_test.services.sdk_generation import generate_client as generate_sdk_client
+    return generate_sdk_client(request, studio)
 
 
 

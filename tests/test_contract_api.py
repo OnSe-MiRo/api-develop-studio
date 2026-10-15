@@ -45,6 +45,13 @@ class ContractApiTests(unittest.TestCase):
 
     def test_revision_workspace_boundary(self):
         other = CollaborationStore(self.store.database_path, self.store.roots, context=RequestContext(workspace_id='other', user_id='other'))
+        with self.assertRaises(PermissionError):
+            other.revision_document('projects', 'contract.json', 1)
+        from contextlib import closing
+        with closing(self.store.connect()) as db, db:
+            db.execute("INSERT INTO workspaces(id,name,created_at) VALUES ('other','Other','now')")
+            db.execute("INSERT INTO users(id,display_name,created_at) VALUES ('other','Other','now')")
+            db.execute("INSERT INTO memberships(workspace_id,user_id,role,created_at) VALUES ('other','other','viewer','now')")
         with self.assertRaises(DocumentNotFoundError):
             other.revision_document('projects', 'contract.json', 1)
 

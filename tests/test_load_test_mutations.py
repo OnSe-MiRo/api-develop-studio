@@ -124,3 +124,24 @@ class LoadTestMutationTests(unittest.TestCase):
                 finally:
                     os.chdir(previous)
             self.assertFalse((root.parent / "escape.json").exists())
+
+    def test_async_runner_log_directory_is_pinned_and_unknown_extra_options_rejected(self):
+        from api_test import cli
+        with tempfile.TemporaryDirectory() as directory:
+            root = (Path(directory) / "fixture").resolve()
+            generate_fixture(root, "small")
+            (root / "tmp").mkdir()
+            prepare_runner(root, "http://127.0.0.1:12345", REPOSITORY)
+            previous = Path.cwd()
+            base = ["runner", "--case", RUN_CASE, "--report-json", str(root / "tmp/result.json"), "--run-id", "run_test"]
+            try:
+                os.chdir(root)
+                for extra in (["--log-dir", str(root.parent / "escape")], ["--external", str(root / "tmp")]):
+                    with patch("sys.argv", base + extra), patch.object(cli, "main") as runner:
+                        with self.assertRaisesRegex(ValueError, "async logs"):
+                            run_isolated_case()
+                        runner.assert_not_called()
+                with patch("sys.argv", base + ["--log-dir", str(root / "tmp/logs")]), patch.object(cli, "main", return_value=0), patch.object(cli, "execution_guard"), patch.object(cli, "local_policy"):
+                    self.assertEqual(run_isolated_case(), 0)
+            finally:
+                os.chdir(previous)

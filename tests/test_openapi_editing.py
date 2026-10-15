@@ -73,4 +73,5 @@ class OperationEditingTest(unittest.TestCase):
         with patch('react_server.collaboration_store') as store:
             request.send('POST')
         self.assertNotEqual(request.response.status_code, 200)
-        store.assert_not_called()
+        store.return_value.save.assert_not_called()
+        store.return_value.delete.assert_not_called()

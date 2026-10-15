@@ -1,0 +1,82 @@
+SessionInfo:
+  type: object
+  properties:
+    mode:
+      type: string
+    authenticated:
+      type: boolean
+    loginAvailable:
+      type: boolean
+    userId:
+      type: string
+    displayName:
+      type: string
+    workspace:
+      type: object
+      nullable: true
+      additionalProperties: true
+    workspaces:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    csrfToken:
+      type: string
+      nullable: true
+    expiresAt:
+      type: number
+    error:
+      type: string
+WorkspaceSelectRequest:
+  type: object
+  required:
+  - workspaceId
+  properties:
+    workspaceId:
+      type: string
+MemberChangeRequest:
+  type: object
+  required:
+  - userId
+  - role
+  - status
+  - reason
+  - revision
+  properties:
+    userId:
+      type: string
+    role:
+      type: string
+      enum:
+      - owner
+      - admin
+      - editor
+      - runner
+      - viewer
+    status:
+      type: string
+      enum:
+      - active
+      - disabled
+    reason:
+      type: string
+    revision:
+      type: integer
+IdentityResult:
+  type: object
+  properties:
+    saved:
+      type: boolean
+    loggedOut:
+      type: boolean
+IdentityItems:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    nextCursor:
+      type: string
+      nullable: true

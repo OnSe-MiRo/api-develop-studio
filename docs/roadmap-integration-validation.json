@@ -1,0 +1,220 @@
+{
+  "date": "2026-10-13",
+  "branch": "feature/roadmap-integration",
+  "base": "fb75a467fba8c430f6da4a8e215d1c0f3b995470",
+  "status": "local integration, actual browser flows and final regression verified; deployment and remaining roadmap gates pending",
+  "validation": {
+    "pythonFull": {
+      "tests": 552,
+      "skipped": 0,
+      "seconds": 78.093,
+      "timing": "before final shutdown regression fix"
+    },
+    "finalJobRegression": {
+      "tests": 45,
+      "seconds": 8.685,
+      "result": "passed"
+    },
+    "combinedPostgresMigration": {
+      "tests": 1,
+      "seconds": 0.299,
+      "result": "passed"
+    },
+    "frontend": {
+      "tests": 111,
+      "build": "passed"
+    },
+    "generatedServer": "passed",
+    "diffCheck": "passed",
+    "finalStateRegression": {
+      "date": "2026-10-13",
+      "timing": "after final shutdown fix, browser validation; no product code changed in this continuation",
+      "pythonFull": {
+        "tests": 554,
+        "skipped": 0,
+        "seconds": 142.777,
+        "result": "passed",
+        "log": "/tmp/roadmap-integration-final-python.log"
+      },
+      "frontend": {
+        "tests": 111,
+        "files": 27,
+        "result": "passed",
+        "build": "passed",
+        "log": "/tmp/roadmap-integration-final-web.log",
+        "buildLog": "/tmp/roadmap-integration-final-build.log"
+      },
+      "generatedServer": {
+        "result": "passed",
+        "log": "/tmp/roadmap-integration-final-generated.log"
+      },
+      "diffCheck": "passed"
+    },
+    "preCommit20261015": {
+      "python": {
+        "tests": 554,
+        "seconds": 137.74,
+        "skipped": 0,
+        "status": "passed"
+      },
+      "frontend": {
+        "initial": "110 passed, 1 failed: OAuth test clicked disabled loading button",
+        "fix": "Wait for connect button to be enabled before firing click; no runtime code changed",
+        "focusedTests": 5,
+        "finalTests": 111,
+        "status": "passed"
+      },
+      "productionBuild": "passed",
+      "generatedServer": "passed",
+      "diffCheck": "passed",
+      "logPrefix": "/tmp/roadmap-precommit-",
+      "browserEvidenceDate": "2026-10-13"
+    }
+  },
+  "realHttp": {
+    "oauthQuickAndRealRunnerTwoWorkspaces": "passed",
+    "executionHistoryIsolation": "passed",
+    "actualJavaSdk": {
+      "status": "passed",
+      "bytes": 26943,
+      "sha256": "16d1bc092c4f9b5def5c4cf0c4c4b2eb2483e236bd15cd51b1b4f0c25b50db88"
+    },
+    "actualJavaReleaseSdk": {
+      "status": "passed",
+      "bytes": 15224,
+      "sourceDigest": "f45a3b2989f857a72128aa719fd8c14571c514da41417e824840616be7ed0e68",
+      "sha256": "35853651c6d2eb0e57cb006323f8312cfc93b2e77da2491f3d2689ae9be40470"
+    },
+    "artifactSurvivesJobManagerRestart": "passed"
+  },
+  "realFlow": {
+    "oauthQuickAndRealRunnerTwoWorkspaces": "passed",
+    "executionHistoryIsolation": "passed",
+    "realPipelineTwoWorkspaces": "passed",
+    "httpImportExportIsolation": "passed"
+  },
+  "realOidcHttps": {
+    "realTLS": true,
+    "certificateVerification": true,
+    "PKCE": "passed",
+    "login": "passed",
+    "CSRF": "passed",
+    "workspaceSwitch": "passed",
+    "staleWorkspaceHeader": "blocked",
+    "roleClaimIgnored": "passed",
+    "logout": "passed",
+    "replay": "blocked",
+    "callbackLogRedaction": "passed",
+    "tokensAbsentFromDatabase": true
+  },
+  "sourcePreservation": {
+    "entries": 521,
+    "changed": 0
+  },
+  "limits": [
+    "Production issuer/client registration and external TLS deployment are not performed",
+    "Real integrated Java generation covered Python and Go; other languages have earlier isolated-worktree evidence",
+    "P1 historical measurements are preserved and are not measurements of the integrated source",
+    "Common pagination and remaining OAS-2 and LT campaign items are not completed by integration"
+  ],
+  "git": {
+    "committed": false,
+    "developMerged": false,
+    "pushed": false
+  },
+  "realJavaLifecycle": {
+    "cancel": {
+      "status": "cancelled",
+      "seconds": 0.497,
+      "realJavaProcesses": 1,
+      "supervisedProcesses": 2,
+      "remainingProcesses": 0,
+      "remainingTemporaryDirectories": 0,
+      "artifactPublished": false
+    },
+    "timeout": {
+      "status": "timeout",
+      "seconds": 2.062,
+      "realJavaProcesses": 1,
+      "supervisedProcesses": 2,
+      "remainingProcesses": 0,
+      "remainingTemporaryDirectories": 0,
+      "artifactPublished": false
+    }
+  },
+  "browserGate": {
+    "status": "passed",
+    "url": "http://127.0.0.1:5182",
+    "previousReason": "A saved user permission setting blocks this action",
+    "currentObservation": "Normal cua_repl in-app browser access and temporary OIDC login succeeded in the new chat; previous block did not reproduce",
+    "userSettingErrorConfirmed": false,
+    "workaroundAttempted": false
+  },
+  "browserValidation": {
+    "date": "2026-10-13",
+    "tool": "cua_repl, Codex in-app browser",
+    "isolatedFixture": true,
+    "loginLogoutRelogin": "passed",
+    "workspaceSwitch": "passed",
+    "curlPreviewApplyReload": "passed",
+    "releaseDraftPublishSource": "passed",
+    "portalReloadBackNavigation": "passed",
+    "releaseSdkGenerationDownload": "passed",
+    "generalSdkJobReloadDownload": "passed",
+    "workspaceIsolation": {
+      "teamBCases": 0,
+      "teamBPublishedReleases": 0,
+      "teamASdkJobVisibleInTeamB": false
+    },
+    "executionRestore": {
+      "runId": "cdfeef4b-b047-4294-9da4-0ce09b9d0a66",
+      "sameRunAfterReload": true,
+      "terminalStatus": "error",
+      "reason": "configuration_error: ownership proof absent for fixture target",
+      "interpretation": "Expected ownership gate; successful API execution was not established by this browser case"
+    },
+    "sdkJobId": "9ad0c5ea-13fe-4b7f-a1f8-ceffe7ae24b2",
+    "releaseId": "1df76b5f-cf38-49df-be36-5acb5b7ac750",
+    "sourceDigest": "e37f94f1db51811a14d3217e893f75413c10efde49619ddea6480dd77b2df859",
+    "productDefectsObserved": [],
+    "cleanup": {
+      "loggedOut": true,
+      "browserTabClosed": true,
+      "temporaryServerExitCode": 0
+    },
+    "screenshots": [
+      "roadmap-integration-browser-portal.jpg",
+      "roadmap-integration-browser-sdk.jpg"
+    ],
+    "downloads": [
+      {
+        "filename": "release-demo-1-0-0-browser-python-client.zip",
+        "browserDownloadCompleted": true,
+        "bytes": 32707,
+        "sha256": "602bcee3e7a59bfa78e6d58c93150dd021935c7cc24f8239c5703bb002e56bfc",
+        "zipCrc": "passed"
+      },
+      {
+        "filename": "team-a-typescript-client.zip",
+        "browserDownloadCompleted": true,
+        "bytes": 9619,
+        "sha256": "3feb07d9304a4356925049d345b7a1a4268da356b9dd2cc147978767e8952ba8",
+        "zipCrc": "passed"
+      }
+    ]
+  },
+  "sourcePreservationRecheck": {
+    "entries": 521,
+    "changedSincePreviousManifest": [
+      {
+        "source": "P1",
+        "path": "docs/api-development-progress.md"
+      },
+      {
+        "source": "P1",
+        "path": "docs/api-load-test-progress.md"
+      }
+    ],
+    "explanation": "Progress notes added by the preceding user request in the original repository; no original worktree files modified during this integration continuation"
+  }
+}

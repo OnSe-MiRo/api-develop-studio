@@ -1,0 +1,73 @@
+ImportRequest:
+  type: object
+  required:
+  - project
+  - format
+  - source
+  properties:
+    project:
+      type: string
+    format:
+      type: string
+      enum:
+      - curl
+      - postman
+      - har
+      - environment
+    source:
+      type: string
+      maxLength: 1048576
+    tag:
+      type: string
+      pattern: "^[a-z0-9][a-z0-9_-]{0,59}$"
+      default: imported
+    index:
+      type: integer
+      minimum: 0
+    digest:
+      type: string
+    overwrite:
+      type: boolean
+ImportPreview:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    environment:
+      type: object
+      nullable: true
+      additionalProperties: true
+    warnings:
+      type: array
+      items:
+        type: string
+    projectRevision:
+      type: integer
+ImportResult:
+  type: object
+  properties:
+    reference:
+      type: string
+    revision:
+      type: integer
+    kind:
+      type: string
+CurlExportRequest:
+  type: object
+  required:
+  - reference
+  properties:
+    reference:
+      type: string
+CurlExportResponse:
+  type: object
+  properties:
+    curl:
+      type: string
+    warnings:
+      type: array
+      items:
+        type: string

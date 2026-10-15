@@ -128,6 +128,7 @@ def require_membership(connection, context, *, write=False):
     ).fetchone()
     if row is None or (write and row["role"] not in ("owner", "admin", "editor")):
         raise PermissionError("Active workspace membership with the required role is required")
+    return row["role"]
 
 try:
     from psycopg import Error as PostgresError

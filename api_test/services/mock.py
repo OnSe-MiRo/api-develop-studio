@@ -7,6 +7,8 @@ import time
 from typing import Any, Dict, Optional
 import uvicorn
 from api_test.mock_engine import MockApp
+from api_test.request_scope import current_context
+from api_test.database import LOCAL_CONTEXT
 
 LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
@@ -260,9 +262,14 @@ class MockServerManager:
         self._lock = threading.Lock()
         self._instances: Dict[str, MockServerInstance] = {}
 
+    @staticmethod
+    def scope_key(project_ref):
+        workspace = current_context().workspace_id
+        return project_ref if workspace == LOCAL_CONTEXT.workspace_id else (workspace, project_ref)
+
     def get_instance(self, project_ref: str) -> Optional[MockServerInstance]:
         with self._lock:
-            inst = self._instances.get(project_ref)
+            inst = self._instances.get(self.scope_key(project_ref))
             if inst and inst.thread and inst.thread.is_alive() and inst.server and not inst.server.should_exit and inst.server.started:
                 return inst
             return None
@@ -280,7 +287,7 @@ class MockServerManager:
         studio=None,
     ) -> MockServerInstance:
         with self._lock:
-            existing = self._instances.get(project_ref)
+            existing = self._instances.get(self.scope_key(project_ref))
 
             # Validate port availability before stopping existing
             if port is not None:
@@ -295,7 +302,7 @@ class MockServerManager:
             # Stop existing instance only after validation succeeds
             if existing:
                 existing.stop()
-                del self._instances[project_ref]
+                del self._instances[self.scope_key(project_ref)]
 
             instance = MockServerInstance(
                 project_ref=project_ref,
@@ -308,21 +315,21 @@ class MockServerManager:
                 overrides=overrides,
             )
             instance.start(studio=studio)
-            self._instances[project_ref] = instance
+            self._instances[self.scope_key(project_ref)] = instance
             return instance
 
     def stop_server(self, project_ref: str) -> bool:
         with self._lock:
-            instance = self._instances.get(project_ref)
+            instance = self._instances.get(self.scope_key(project_ref))
             if instance:
                 instance.stop()
-                del self._instances[project_ref]
+                del self._instances[self.scope_key(project_ref)]
                 return True
             return False
 
     def reset_server(self, project_ref: str) -> bool:
         with self._lock:
-            instance = self._instances.get(project_ref)
+            instance = self._instances.get(self.scope_key(project_ref))
             if instance and instance.status_dict()["status"] == "running":
                 instance.reset_state()
                 return True
@@ -330,7 +337,7 @@ class MockServerManager:
 
     def update_server_config(self, project_ref: str, *, seed=None, scenario=None, default_latency_ms=None, overrides=None) -> Optional[dict]:
         with self._lock:
-            instance = self._instances.get(project_ref)
+            instance = self._instances.get(self.scope_key(project_ref))
             if not instance or instance.status_dict()["status"] != "running":
                 return None
             instance.update_config(seed, scenario, default_latency_ms, overrides)

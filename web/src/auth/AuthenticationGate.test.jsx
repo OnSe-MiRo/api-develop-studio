@@ -1,0 +1,39 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { AuthenticationGate } from './AuthenticationGate.jsx'
+import { configureSession, jobNamespace } from './session.js'
+const session = { mode: 'remote', authenticated: true, loginAvailable: true, userId: 'alice', displayName: 'Alice', workspace: { id: 'a', name: 'A', role: 'owner' }, workspaces: [{ id: 'a', name: 'A', role: 'owner' }, { id: 'b', name: 'B', role: 'viewer' }], csrfToken: 'csrf-value' }
+beforeEach(() => { window.history.replaceState(null, '', '/projects') })
+afterEach(() => { configureSession(null); vi.unstubAllGlobals() })
+it('does not mount private app data until the session is authenticated', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ mode: 'remote', authenticated: false, loginAvailable: true }) }))
+  render(<AuthenticationGate>{() => <div>Private app</div>}</AuthenticationGate>)
+  expect(await screen.findByRole('link', { name: 'SSO 로그인' })).toHaveAttribute('href', '/auth/login')
+  expect(screen.queryByText('Private app')).not.toBeInTheDocument()
+})
+it('switches workspace with CSRF and clears old route context', async () => {
+  const fetch = vi.fn().mockImplementation(async path => ({ ok: true, status: 200, json: async () => path.endsWith('/workspace') ? { ...session, workspace: session.workspaces[1] } : session }))
+  vi.stubGlobal('fetch', fetch)
+  const navigate = vi.fn()
+  render(<AuthenticationGate onNavigate={navigate}>{(info, actions) => <><div>{info.workspace.id}</div><button onClick={() => actions.switchWorkspace('b')}>Switch</button></>}</AuthenticationGate>)
+  fireEvent.click(await screen.findByRole('button', { name: 'Switch' }))
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/projects'))
+  expect(jobNamespace()).toBe('alice:a:')
+  expect(window.location.pathname).toBe('/projects')
+  const request = fetch.mock.calls.find(([path]) => path.endsWith('/workspace'))[1]
+  expect(request.headers.get('X-CSRF-Token')).toBe('csrf-value')
+})
+it('shows a workspace chooser after current membership is revoked', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...session, workspace: null }) }))
+  render(<AuthenticationGate>{() => <div>Private app</div>}</AuthenticationGate>)
+  expect(await screen.findByRole('heading', { name: 'Workspace 선택' })).toBeInTheDocument()
+  expect(screen.queryByText('Private app')).not.toBeInTheDocument()
+})
+it('clears private app state and CSRF after logout', async () => {
+  const fetch = vi.fn().mockImplementation(async path => ({ ok: true, status: 200, json: async () => path.endsWith('/logout') ? { loggedOut: true } : session }))
+  vi.stubGlobal('fetch', fetch)
+  render(<AuthenticationGate>{(_info, actions) => <button onClick={actions.logout}>Logout</button>}</AuthenticationGate>)
+  fireEvent.click(await screen.findByRole('button', { name: 'Logout' }))
+  await screen.findByRole('link', { name: 'SSO 로그인' })
+  expect(jobNamespace()).toBe('')
+})

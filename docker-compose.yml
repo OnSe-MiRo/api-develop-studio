@@ -67,6 +67,8 @@ services:
       - .env
     environment:
       API_TEST_HOST: 0.0.0.0
+      # Remote mode requires a verified CurrentUser adapter (COL-1).
+      STUDIO_AUTH_MODE: remote
       API_TEST_PORT: "8765"
       EXAMPLE_PROJECT: ${EXAMPLE_PROJECT:-true}
       API_TEST_ENCRYPTION_URL: http://encryption:8766
@@ -74,8 +76,6 @@ services:
       STUDIO_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       STUDIO_REDIS_URL: redis://redis:6379/0
       STUDIO_ENV: ${STUDIO_ENV:-local}
-    ports:
-      - "${API_PORT:-8765}:8765"
     volumes:
       - "${CASE_VOLUME_PATH:-./case}:/app/case"
       - ./pipelines:/app/pipelines
@@ -94,7 +94,7 @@ services:
       encryption:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/cases')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health')"]
       interval: 30s
       timeout: 3s
       retries: 10
@@ -111,14 +111,9 @@ services:
         NPM_HTTPS_PROXY: ${HTTPS_PROXY:-}
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
         NPM_STRICT_SSL: ${NPM_STRICT_SSL:-true}
-    environment:
-      VITE_HOST: 0.0.0.0
-      VITE_API_PROXY_TARGET: http://api:8765
+    # Publish only the gateway. Place it behind the configured HTTPS terminator.
     ports:
-      - "${WEB_PORT:-5173}:5173"
-    volumes:
-      - ./web:/app
-      - web_node_modules:/app/node_modules
+      - "${WEB_BIND_HOST:-127.0.0.1}:${WEB_PORT:-5173}:8080"
     networks:
       - app_network
     depends_on:
@@ -127,7 +122,6 @@ services:
 
 volumes:
   postgres_data:
-  web_node_modules:
   encryption_keys:
 
 networks:

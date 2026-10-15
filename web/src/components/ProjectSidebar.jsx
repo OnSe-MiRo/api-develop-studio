@@ -38,6 +38,7 @@ function ProjectSidebar({ active, projects, projectRef, project, onProjectChange
         <button className={active === 'apis' ? 'active' : ''} onClick={() => onNavigate('apis')}>
           API 목록 및 API 작성
         </button>
+        <button className={active === 'portal' ? 'active' : ''} onClick={() => onNavigate('portal')}>개발자 문서</button>
         <button className={active === 'generator' ? 'active' : ''} onClick={() => onNavigate('generator')}>
           SDK 생성
         </button>

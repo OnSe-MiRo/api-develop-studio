@@ -25,6 +25,9 @@ def cpu_seconds(value):
 class RawTail:
     def __init__(self, path: Path, window_seconds=60):
         self.path, self.window_seconds, self.offset = path, window_seconds, 0
+        self.sustained_runs = {}
+        self.sustained_windows = {}
+        self.async_counts = {"accepted": 0, "queued": 0, "running": 0, "passed": 0}
         self.requests = deque()
         self.run_failures = deque()
         self.statuses = {}
@@ -53,6 +56,14 @@ class RawTail:
                             self.statuses[str(status)] = self.statuses.get(str(status), 0) + 1
                             self.capacity429 += int(status == 429 and (data.get("tags") or {}).get("name") == "/api/run")
                             self.requests.append((timestamp, status == 0 or status >= 500))
+                        elif metric == "studio_sustained_runs":
+                            vu = (data.get("tags") or {}).get("vu")
+                            self.sustained_runs[vu] = self.sustained_runs.get(vu, 0) + int(data["value"])
+                            if int(data["value"]) > 0:
+                                window = self.sustained_windows.setdefault(vu, {"firstSucceededAt": timestamp, "lastSucceededAt": timestamp})
+                                window["lastSucceededAt"] = timestamp
+                        elif metric in ("studio_async_accepted", "studio_async_queued", "studio_async_running", "studio_async_passed"):
+                            self.async_counts[metric.removeprefix("studio_async_")] += int(data["value"])
                         elif metric == "studio_run_exit_failures":
                             value = int(data["value"])
                             self.run_exit_failures += value
@@ -68,7 +79,7 @@ class RawTail:
             self.requests.popleft()
         while self.run_failures and self.run_failures[0][0] < cutoff:
             self.run_failures.popleft()
-        return {"windowRequests": len(self.requests), "networkOr5xxRate": sum(value for _, value in self.requests) / len(self.requests) if self.requests else None,
+        return {"sustainedSuccessWindowsByVu": {vu: {**window, "observedSpanSeconds": window["lastSucceededAt"] - window["firstSucceededAt"]} for vu, window in self.sustained_windows.items()}, "sustainedRunsByVu": dict(self.sustained_runs), "asyncJobs": dict(self.async_counts), "windowRequests": len(self.requests), "networkOr5xxRate": sum(value for _, value in self.requests) / len(self.requests) if self.requests else None,
                 "runExitFailures": self.run_exit_failures, "capacity429": self.capacity429, "httpStatuses": dict(self.statuses), "faultObservations": self.fault_observations, "correctnessFailures": self.correctness_failures}
 
 
@@ -96,16 +107,20 @@ class StopPolicy:
 
 
 class ResourceSampler:
-    def __init__(self, pid, root: Path, memory_mb=None):
-        self.pid, self.root, self.memory_mb = pid, root, memory_mb
+    def __init__(self, pid, root: Path, memory_mb=None, *, role="server", include_storage=True):
+        self.pid, self.root, self.memory_mb, self.role, self.include_storage = pid, root, memory_mb, role, include_storage
+        self.last_at = None
+        self.last_cpu = {}
+
+    def reset_cpu(self):
         self.last_at = None
         self.last_cpu = {}
 
     def sample(self):
         now = time.monotonic()
-        result = {"timestamp": datetime.now(timezone.utc).isoformat(), "cpuPercent": None, "memoryMb": None, "memoryPercent": None,
+        result = {"timestamp": datetime.now(timezone.utc).isoformat(), "processPid": self.pid, "treeRole": self.role, "cpuPercent": None, "memoryMb": None, "memoryPercent": None,
                   "threads": None, "handles": None, "childProcesses": None, "dbBytes": None, "walBytes": None,
-                  "diskIops": None, "diskLatencyMs": None, "cpuScope": "sampled live server tree / logical host CPUs", "threadHandleScope": "server process", "warnings": []}
+                  "diskIops": None, "diskLatencyMs": None, "cpuScope": f"sampled live {self.role} tree / logical host CPUs", "threadHandleScope": f"{self.role} process", "warnings": []}
         try:
             rows = subprocess.run(["ps", "-axo", "pid=,ppid=,rss=,time="], capture_output=True, text=True, timeout=2, check=True).stdout.splitlines()
             processes = {}
@@ -142,6 +157,9 @@ class ResourceSampler:
                     result["handles"] = len({line for line in handles if re.match(r"^f\d+", line)}) if handles else None
         except (OSError, ValueError, subprocess.SubprocessError):
             result["warnings"].append("some process resource metrics are unavailable")
+        if not self.include_storage:
+            result["warnings"].append("disk IOPS/latency and children exiting between samples are not measured")
+            return result
         database = self.root / "data/studio.db"
         try:
             result["dbBytes"] = database.stat().st_size

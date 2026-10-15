@@ -8,9 +8,15 @@ from api_test.generated.apis.example_api import router as ExampleApiRouter
 
 from api_test.generated.apis.execution_api import router as ExecutionApiRouter
 
+from api_test.generated.apis.identity_api import router as IdentityApiRouter
+
+from api_test.generated.apis.interoperability_api import router as InteroperabilityApiRouter
+
 from api_test.generated.apis.load_tests_api import router as LoadTestsApiRouter
 
 from api_test.generated.apis.mock_api import router as MockApiRouter
+
+from api_test.generated.apis.oauth_api import router as OauthApiRouter
 
 from api_test.generated.apis.openapi_api import router as OpenapiApiRouter
 
@@ -18,7 +24,13 @@ from api_test.generated.apis.ownership_api import router as OwnershipApiRouter
 
 from api_test.generated.apis.pipelines_api import router as PipelinesApiRouter
 
+from api_test.generated.apis.portal_api import router as PortalApiRouter
+
 from api_test.generated.apis.projects_api import router as ProjectsApiRouter
+
+from api_test.generated.apis.releases_api import router as ReleasesApiRouter
+
+from api_test.generated.apis.sdk_generation_api import router as SdkGenerationApiRouter
 
 from api_test.generated.apis.uploads_api import router as UploadsApiRouter
 
@@ -33,9 +45,15 @@ routers = [
 
     ExecutionApiRouter,
 
+    IdentityApiRouter,
+
+    InteroperabilityApiRouter,
+
     LoadTestsApiRouter,
 
     MockApiRouter,
+
+    OauthApiRouter,
 
     OpenapiApiRouter,
 
@@ -43,7 +61,13 @@ routers = [
 
     PipelinesApiRouter,
 
+    PortalApiRouter,
+
     ProjectsApiRouter,
+
+    ReleasesApiRouter,
+
+    SdkGenerationApiRouter,
 
     UploadsApiRouter,
 

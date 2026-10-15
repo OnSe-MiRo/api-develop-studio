@@ -104,13 +104,12 @@ class CollaborationStore:
 
     def connect(self) -> sqlite3.Connection:
         connection = connect(self.database_path)
-        if postgres_enabled():
-            try:
-                require_membership(connection, self.context)
-                connection.commit()
-            except BaseException:
-                connection.close()
-                raise
+        try:
+            require_membership(connection, self.context)
+            connection.commit()
+        except BaseException:
+            connection.close()
+            raise
         return connection
 
     def initialize(self, import_existing: bool = True) -> None:
@@ -135,8 +134,8 @@ class CollaborationStore:
             return connection.execute("SELECT 1 FROM documents WHERE workspace_id = ? LIMIT 1", (self.context.workspace_id,)).fetchone() is not None
 
     def ensure_actor(self, connection: sqlite3.Connection, actor_id: str) -> str:
-        if postgres_enabled():
-            require_membership(connection, self.context, write=True)
+        require_membership(connection, self.context, write=True)
+        if postgres_enabled() or self.context.workspace_id != LOCAL_CONTEXT.workspace_id or self.context.user_id != LOCAL_CONTEXT.user_id:
             return self.context.user_id
         normalized = actor_id.strip() or DEFAULT_ACTOR_ID
         now = utc_now()
@@ -156,6 +155,8 @@ class CollaborationStore:
             if not root.exists():
                 continue
             for path in sorted(root.rglob("*.json")):
+                if not path.resolve().is_relative_to(root.resolve()) or '_workspaces' in path.resolve().relative_to(root.resolve()).parts:
+                    continue
                 try:
                     document = json.loads(path.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError):
@@ -421,9 +422,14 @@ class CollaborationStore:
         return result
 
     def _projection_path(self, kind: str, reference: str) -> Path:
-        root = self.roots[kind].resolve()
+        if not isinstance(reference, str) or "_workspaces" in reference.replace(chr(92), "/").split("/"):
+            raise CollaborationStoreError("Reserved workspace reference")
+        scoped = self.roots[kind]
+        if self.context.workspace_id != LOCAL_CONTEXT.workspace_id and (scoped.is_symlink() or scoped.parent.is_symlink()):
+            raise CollaborationStoreError("Invalid workspace projection root")
+        root = scoped.resolve()
         candidate = (root / reference).resolve()
-        if root not in candidate.parents or candidate.suffix.lower() != ".json":
+        if root not in candidate.parents or "_workspaces" in candidate.relative_to(root).parts or candidate.suffix.lower() != ".json":
             raise CollaborationStoreError("Invalid JSON file path")
         return candidate
 
