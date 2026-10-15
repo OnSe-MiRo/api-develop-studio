@@ -56,3 +56,10 @@ it('round-trips project list query and cursor without contaminating other routes
   expect(parseLocation()).toMatchObject({ tab: 'project', projectFilters })
   expect(buildUrl({ tab: 'case-list', activeProject: 'a.json', projectFilters })).toBe('/cases?project=a')
 })
+
+it('round-trips case filters and resets them on editor navigation', () => {
+  const caseFilters={q:'한글 +',tag:'auth',sort:'name_desc',page_size:'50',cursor:'cursor/+=x'}
+  window.history.replaceState(null,'',buildUrl({tab:'case-list',activeProject:'demo.json',caseFilters}))
+  expect(parseLocation()).toMatchObject({tab:'case-list',activeProject:'demo.json',caseFilters})
+  expect(buildUrl({tab:'case-settings',activeProject:'demo.json',caseReference:'tag/api/case.json',caseFilters})).not.toContain('cursor=')
+})

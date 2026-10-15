@@ -161,6 +161,16 @@ class BaselineP1Tests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 _job_batch("http://127.0.0.1:12345", 1, sampler, 101)
 
+    def test_pagination_bypasses_legacy_full_list_instrumentation(self):
+        for parameter in ('page_size', 'q', 'tag', 'sort', 'cursor'):
+            with self.subTest(parameter=parameter):
+                request = SimpleNamespace(request=SimpleNamespace(query_params={parameter: ''}))
+                original, service, trace = Mock(return_value='bounded page'), Mock(), Mock()
+                self.assertEqual(timed_case_list(request, service, 'cases', trace, original), 'bounded page')
+                service.collaboration_store.assert_not_called()
+                trace.record.assert_not_called()
+                original.assert_called_once_with(request, service, 'cases')
+
     def test_instrumented_cases_match_original_response_without_leaking_references(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {"STUDIO_DATABASE_URL": "", "STUDIO_DATABASE_URL_FILE": "", "STUDIO_REDIS_URL": ""}):
             root = Path(directory) / "fixture"
@@ -168,7 +178,8 @@ class BaselineP1Tests(unittest.TestCase):
             store = CollaborationStore(root / "data/studio.db", {"projects": root / "projects", "cases": root / "case", "pipelines": root / "pipelines"})
             store.initialize(import_existing=False)
             project = "load-test/project-000.json"
-            request = SimpleNamespace(query_value=lambda name: project if name == "project" else None,
+            request = SimpleNamespace(request=SimpleNamespace(query_params={"project": project}),
+                                      query_value=lambda name: project if name == "project" else None,
                                       json_response=lambda status, payload: Response(json.dumps(payload, ensure_ascii=False).encode(), status_code=status, media_type="application/json", headers={"Cache-Control": "no-store"}))
             service = SimpleNamespace(collaboration_store=lambda: store, CASE_ROOT=root / "case", safe_file=studio.safe_file,
                                       case_summaries=studio.case_summaries, document_root=lambda kind: root / "case")
