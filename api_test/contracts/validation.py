@@ -107,19 +107,61 @@ def schema_errors(document, schema, value, location):
     return errors
 
 
+def _server_prefix(server):
+    """Expand only declared defaults; no URL retrieval or implicit source location."""
+    if not isinstance(server, dict) or not isinstance(server.get('url'), str):
+        raise ContractError('Invalid server definition')
+    variables = server.get('variables', {})
+    def substitute(match):
+        variable = variables.get(match.group(1)) if isinstance(variables, dict) else None
+        if not isinstance(variable, dict) or not isinstance(variable.get('default'), str):
+            raise ContractError('Server variable default is required')
+        default = variable['default']
+        if 'enum' in variable and default not in variable['enum']:
+            raise ContractError('Invalid server variable default')
+        return default
+    expanded = re.sub(r'\{([^{}]+)\}', substitute, server['url'])
+    if '{' in expanded or '}' in expanded or any(ord(char) < 32 for char in expanded):
+        raise ContractError('Invalid server URL')
+    try:
+        parsed = urlsplit(expanded)
+        if parsed.query or parsed.fragment or parsed.username or parsed.password:
+            raise ContractError('Unsupported server URL')
+        if parsed.scheme:
+            if parsed.scheme not in ('http', 'https') or not parsed.hostname:
+                raise ContractError('Unsupported server URL')
+            parsed.port  # Validate malformed ports without exposing the source URL.
+        elif not expanded.startswith('/'):
+            raise ContractError('Server document location is required')
+    except ValueError as error:
+        raise ContractError('Invalid server URL') from error
+    return parsed.path.rstrip('/')
+
+
 def match_operation(document, method, url, base_url=None):
-    path = urlsplit(url).path or '/'
-    candidates = {path}
-    servers = [base_url] if base_url else []
-    servers.extend(server.get('url', '') for server in document.get('servers', []))
-    for server in servers:
-        prefix = urlsplit(server).path.rstrip('/')
-        if prefix and (path == prefix or path.startswith(prefix + '/')):
-            candidates.add(path[len(prefix):] or '/')
+    try:
+        path = urlsplit(url).path or '/'
+    except ValueError as error:
+        raise ContractError('Invalid response URL') from error
     matches = []
-    for template, verb, operation, _ in operations(document):
+    for template, verb, operation, path_item in operations(document):
         if verb != method.lower():
             continue
+        # Presence, including an empty array, overrides the less-specific scope.
+        overridden = 'servers' in operation or 'servers' in path_item
+        servers = operation.get('servers', path_item.get('servers', document.get('servers', [])))
+        if not isinstance(servers, list):
+            raise ContractError('Invalid server collection')
+        prefixes = {_server_prefix(server) for server in servers} if servers else {''}
+        # The project base URL remains an alias only for operations without an override.
+        if base_url and not overridden:
+            prefixes.add(_server_prefix({'url': base_url}))
+        candidates = set()
+        for prefix in prefixes:
+            if not prefix:
+                candidates.add(path)
+            elif path == prefix or path.startswith(prefix + '/'):
+                candidates.add(path[len(prefix):] or '/')
         pattern = '^' + re.sub(r'\\\{[^}]+\\\}', '[^/]+', re.escape(template)) + '$'
         if any(re.fullmatch(pattern, candidate) for candidate in candidates):
             matches.append((template.count('{'), template, operation))
