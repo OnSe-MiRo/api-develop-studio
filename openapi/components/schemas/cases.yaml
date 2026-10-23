@@ -62,6 +62,8 @@ CaseInput:
   properties:
     name:
       type: string
+    contract_validation:
+      $ref: '#/CaseContractValidation'
     project:
       type: string
     base_url_name:
@@ -86,6 +88,8 @@ CaseView:
   properties:
     name:
       type: string
+    contract_validation:
+      $ref: '#/CaseContractValidation'
     project:
       type: string
     base_url_name:
@@ -120,3 +124,18 @@ CaseListResponse:
         additionalProperties: {type: string}
     nextCursor: {type: string, nullable: true}
     previousCursor: {type: string, nullable: true}
+
+CaseContractValidation:
+  type: object
+  additionalProperties: false
+  required: [enabled]
+  properties:
+    enabled: {type: boolean}
+    server_variables:
+      type: object
+      maxProperties: 32
+      additionalProperties: {type: string, maxLength: 512}
+    document_url:
+      type: string
+      minLength: 1
+      maxLength: 2048

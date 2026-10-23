@@ -1,5 +1,6 @@
 import { authenticatedFetch } from '../auth/session.js'
 const emptyCase = {
+  contractEnabled: false, contractVariables: '', contractDocumentUrl: '',
   tag: 'sample', apiName: 'api_name', fileName: 'new_case', timeout: '', baseUrlName: '', method: 'GET', url: '',
   params: [{ key: '', value: '' }], authType: 'No Auth', authValues: {}, headers: '', body: '', bodyMode: 'json', formData: [],
   expectedStatus: '200', maxResponseTimeMs: '', strict: true, expectedBody: '', validateExact: true, validateConditions: false, assertions: [], secretVariables: [],

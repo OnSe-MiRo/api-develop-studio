@@ -63,6 +63,7 @@ class ProjectRequestSettings:
     encrypted_variables: dict[str, str] = field(default_factory=dict)
     auth_profiles: dict[str, Any] = field(default_factory=dict)
     environment_name: str = ""
+    contract_document: dict[str, Any] | None = None
 
 
 @dataclass
@@ -96,6 +97,7 @@ class CaseResult:
     sensitive_values: set[str] = field(default_factory=set)
     response_time_ms: float | None = None
     error_category: str | None = None
+    contract: dict[str, Any] | None = None
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -255,6 +257,14 @@ def project_request_settings(case: dict[str, Any], project_root: Path, environme
     except ProjectVariableError as exc:
         raise CaseConfigurationError(str(exc)) from exc
     no_proxy = not use_proxy
+    contract_document = None
+    config = case.get('contract_validation')
+    if isinstance(config, dict) and config.get('enabled') is True:
+        from .contracts import project_document, ContractError
+        try:
+            contract_document = project_document(source_project)
+        except (ContractError, ValueError, TypeError, AttributeError, RecursionError) as exc:
+            raise CaseConfigurationError('A valid saved project OpenAPI contract is required') from exc
     return ProjectRequestSettings(
         auth_profiles=project.get("auth_profiles", {}),
         base_url=urlunparse(parsed._replace(path=parsed.path.rstrip("/"))),
@@ -265,6 +275,7 @@ def project_request_settings(case: dict[str, Any], project_root: Path, environme
         variables=variables,
         encrypted_variables=encrypted_variables,
         environment_name=selected_environment,
+        contract_document=contract_document,
     )
 
 
@@ -804,6 +815,7 @@ class ApiTestRunner:
         auth_profiles: dict[str, Any] | None = None,
         oauth_project_reference: str | None = None,
         oauth_environment: str = "",
+        contract_document: dict[str, Any] | None = None,
     ) -> CaseResult:
         request_definition = case.get("request")
         expected = case.get("expected")
@@ -856,6 +868,17 @@ class ApiTestRunner:
         except ProjectVariableError as exc:
             raise CaseConfigurationError(str(exc)) from exc
         resolved_request["url"] = resolve_request_url(resolved_request["url"], base_url)
+        prepared_contract = None
+        if 'contract_validation' in case:
+            from .contracts.cases import prepare_case_contract
+            from .contracts import ContractError
+            try:
+                if case['contract_validation'].get('enabled') is True and not case.get('project'):
+                    raise ContractError('Project is required')
+                prepared_contract = prepare_case_contract(case['contract_validation'], contract_document,
+                    str(resolved_request.get('method', 'GET')), resolved_request['url'], base_url)
+            except (ContractError, AttributeError, TypeError, RecursionError) as exc:
+                raise CaseConfigurationError('Invalid case OpenAPI contract settings or operation') from exc
         oauth_token = None
         if oauth_profile is not None:
             if not isinstance(profile_reference, str) or not profile_reference or not oauth_project_reference or not base_url:
@@ -875,7 +898,7 @@ class ApiTestRunner:
         for attempt in range(1, attempts + 1):
             result = self._run_once(
                 case_id, resolved_request, expected, attempt, proxy_url, verify_ssl,
-                file_root, proxy_urls, no_proxy, sensitive_values, timeout_seconds, oauth_token,
+                file_root, proxy_urls, no_proxy, sensitive_values, timeout_seconds, oauth_token, prepared_contract,
             )
             if result.status == "passed":
                 return result
@@ -889,7 +912,7 @@ class ApiTestRunner:
         self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int,
         proxy_url: str | None = None, verify_ssl: bool = True, file_root: Path | None = None,
         proxy_urls: dict[str, str] | None = None, no_proxy: bool = False, sensitive_values: set[str] | None = None,
-        timeout_seconds: float | None = None, oauth_token: str | None = None,
+        timeout_seconds: float | None = None, oauth_token: str | None = None, prepared_contract=None,
     ) -> CaseResult:
         method = str(request_definition.get("method", "GET")).upper()
         headers = {str(key): str(value) for key, value in request_definition.get("headers", {}).items()}
@@ -962,10 +985,20 @@ class ApiTestRunner:
         if validate_conditions:
             assertion_results, assertion_differences = evaluate_assertions(expected.get("assertions"), response)
             differences.extend(assertion_differences)
+        contract = None
+        if prepared_contract is not None:
+            from .contracts import validate_response
+            document, options, document_digest = prepared_contract
+            verdict = validate_response(document, method, authorized.url, status, response_headers, body,
+                                        raw_body=raw_body, **options)
+            contract = {'valid': verdict['valid'], 'issueCount': len(verdict['issues']), 'documentDigest': document_digest}
+            for item in verdict['issues']:
+                differences.append(Difference('$.contract', 'valid', 'invalid', 'OpenAPI contract: ' + item['code']))
         return CaseResult(
             case_id, "passed" if not differences else "failed", attempt, response, differences,
             assertion_results=assertion_results,
             request_definition=request_definition, expected_definition=expected,
             sensitive_values=set(sensitive_values or ()),
             response_time_ms=response_time_ms,
+            contract=contract,
         )

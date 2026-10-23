@@ -1317,6 +1317,15 @@ def normalize_case_document(
 ) -> dict[str, object]:
     """Apply editor-only fields while keeping the persisted/temporary case schema clean."""
     document = dict(payload)
+    if 'contract_validation' in document:
+        from api_test.contracts.cases import case_contract_config
+        from api_test.contracts import ContractError
+        try:
+            document['contract_validation'] = case_contract_config(document['contract_validation'])
+            if document['contract_validation']['enabled'] and not document.get('project'):
+                raise ContractError('Project is required')
+        except ContractError as exc:
+            raise ApiError('OpenAPI 케이스 계약 설정과 프로젝트를 확인하세요.') from exc
     timeout = document.get("timeout")
     if timeout is not None and (
         isinstance(timeout, bool) or not isinstance(timeout, (int, float))

@@ -5,6 +5,7 @@ import { Field } from '../../components/Field.jsx'
 import { authorizationTypes, AuthorizationEditor } from '../../components/AuthorizationEditor.jsx'
 import { OAuthProfileStatus } from '../../components/OAuthProfileStatus.jsx'
 import { JsonArea } from '../../components/JsonArea.jsx'
+import { CaseContractSettings, caseContractPayload } from './CaseContractSettings.jsx'
 import { AssertionEditor } from './AssertionEditor.jsx'
 import { RunResult } from '../../components/RunResult.jsx'
 import { TestSidebar } from '../../components/ProjectSidebar.jsx'
@@ -173,6 +174,9 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
         name, value: '', configured: Boolean(definition?.configured),
       }))
       setForm({
+        contractEnabled: data.contract_validation?.enabled === true,
+        contractVariables: data.contract_validation?.server_variables ? JSON.stringify(data.contract_validation.server_variables, null, 2) : '',
+        contractDocumentUrl: data.contract_validation?.document_url || '',
         tag: asText(tag), apiName: asText(apiName), fileName: caseName(fileName), method: asText(request.method) || 'GET', url: requestUrl.baseUrl,
         specSource: data.spec_source, plainVariables: data.variables?.plain || {}, baseUrlName: asText(data.base_url_name), authProfile: request.auth_profile || '',
         timeout: data.timeout === undefined ? '' : String(data.timeout), params: requestUrl.params.concat({ key: '', value: '' }),
@@ -294,7 +298,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       else if (item.configured) secret[name] = { preserve: true }
       else throw new Error(`케이스 보안 변수 ${name}의 값을 입력하세요.`)
     })
-    return { project: projectRef, ...(form.specSource ? { spec_source: form.specSource } : {}), ...(form.baseUrlName ? { base_url_name: form.baseUrlName } : {}), ...(timeout === undefined ? {} : { timeout }), request, expected, variables: { plain: form.plainVariables || {}, secret } }
+    return { ...caseContractPayload(form), project: projectRef, ...(form.specSource ? { spec_source: form.specSource } : {}), ...(form.baseUrlName ? { base_url_name: form.baseUrlName } : {}), ...(timeout === undefined ? {} : { timeout }), request, expected, variables: { plain: form.plainVariables || {}, secret } }
   }
 
   const casePayload = async () => ({ ...(await document()), _expectedBodyRaw: form.expectedBody })
@@ -343,6 +347,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
           {requestTab === 'Body' && <div><div className="body-mode"><button className={form.bodyMode === 'text' ? 'active' : ''} onClick={() => set('bodyMode', 'text')}>Text</button><button className={form.bodyMode === 'json' ? 'active' : ''} onClick={() => set('bodyMode', 'json')}>raw JSON</button><button className={form.bodyMode === 'form-data' ? 'active' : ''} onClick={() => set('bodyMode', 'form-data')}>form-data</button></div>{form.bodyMode === 'form-data' ? <><div className="form-data-header"><span>Key</span><span>Type</span><span>Value / File</span><span /></div>{form.formData.map((item, index) => <div className="form-data-row" key={index}><input value={item.key} placeholder="file" onChange={event => updateFormData(index, 'key', event.target.value)} /><select value={item.kind} onChange={event => updateFormData(index, 'kind', event.target.value)}><option value="text">Text</option><option value="file">File</option></select>{item.kind === 'file' ? <label className="file-picker"><input type="file" onChange={event => updateFormData(index, 'file', event.target.files?.[0] || null)} /><span>{item.file?.name || item.filename || '파일 선택'}</span></label> : <input value={item.value} placeholder="value" onChange={event => updateFormData(index, 'value', event.target.value)} />}<button className="icon" onClick={() => removeFormData(index)}>×</button></div>)}<button className="text-button" onClick={() => setForm(current => ({ ...current, formData: [...current.formData, emptyFormDataRow()] }))}>＋ form-data 추가</button><p className="hint">선택한 파일은 저장·재실행할 수 있도록 <code>case/{'{tag}'}/{'{api_name}'}/files/</code>에 보관됩니다. multipart Content-Type은 자동으로 설정됩니다.</p></> : <JsonArea value={form.body} onChange={value => set('body', value)} placeholder={'{\n  "name": "Ada"\n}'} />}</div>}
         </div>
       </section>
+      <CaseContractSettings form={form} set={set} />
       <section className="card">
         <div className="section-header"><div><p className="eyebrow">ASSERTION</p><h2>기대 응답</h2></div></div>
         <div className="validation-method-section"><strong>검증 방법</strong><p className="hint">두 방법 중 하나만 선택하거나 둘 다 선택할 수 있습니다. Expected status는 선택과 관계없이 항상 검증합니다.</p><div className="validation-methods"><label className={`validation-method ${form.validateExact ? 'selected' : ''}`}><input type="checkbox" checked={form.validateExact} onChange={event => set('validateExact', event.target.checked)} /><span><strong>기대 응답 일치</strong><small>Expected body와 실제 응답의 값·구조를 비교합니다.</small></span></label><label className={`validation-method ${form.validateConditions ? 'selected' : ''}`}><input type="checkbox" checked={form.validateConditions} onChange={event => set('validateConditions', event.target.checked)} /><span><strong>변수별 조건</strong><small>선택한 변수의 범위·타입·형식·존재·길이를 검사합니다.</small></span></label></div></div>
