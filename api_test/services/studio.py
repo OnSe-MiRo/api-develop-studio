@@ -1361,6 +1361,26 @@ def mask_sensitive_values(text: str, sensitive: set[str]) -> str:
 def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(body.get("url"), str) or not body["url"].strip():
         raise ApiError("URL을 입력하세요.")
+    document_url = None
+    if 'contractDocumentUrl' in body:
+        from api_test.contracts.validation import validate_document_url
+        from api_test.contracts import ContractError
+        if body.get('validateContract') is not True:
+            raise ApiError('문서 기준 URL은 OpenAPI 실제 응답 검증을 켠 경우에만 지정할 수 있습니다.')
+        try:
+            document_url = validate_document_url(body['contractDocumentUrl'])
+        except ContractError as exc:
+            raise ApiError('문서 기준 URL은 사용자정보·query·fragment 없는 2048자 이하 HTTP(S) 절대 URL이어야 합니다.') from exc
+    server_variables = None
+    if 'serverVariables' in body:
+        from api_test.contracts.validation import validate_server_variables
+        from api_test.contracts import ContractError
+        if body.get('validateContract') is not True:
+            raise ApiError('Server 변수는 OpenAPI 실제 응답 검증을 켠 경우에만 지정할 수 있습니다.')
+        try:
+            server_variables = validate_server_variables(body['serverVariables'])
+        except ContractError as exc:
+            raise ApiError('Server 변수는 최대32개의 문자열 값이며 이름1~128자·값512자 이하이어야 합니다.') from exc
     resolved_secrets = set()
     oauth_profile_name = body.get("auth_profile")
     oauth_profile = None
@@ -1394,8 +1414,12 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
             contract_document = project_document(saved_project.document)
             if any(item["severity"] == "error" for item in lint(contract_document)):
                 raise ApiError("명세 lint 오류를 먼저 수정하세요.")
+            if server_variables or document_url is not None:
+                from api_test.contracts.validation import match_operation
+                match_operation(contract_document, str(body.get('method', 'GET')), body['url'],
+                                base_url=settings.base_url, server_variables=server_variables, document_url=document_url)
         except (ContractError, RecursionError) as exc:
-            raise ApiError("검증 가능한 저장된 명세가 필요합니다.") from exc
+            raise ApiError("검증 가능한 저장된 명세와 요청 URL에 일치하는 server 변수 설정이 필요합니다.") from exc
     raw_url = body.get("url")
     if not isinstance(raw_url, str) or not raw_url.strip():
         raise ApiError("URL을 입력하세요.")
@@ -1560,7 +1584,7 @@ def handle_api_request(body: dict[str, Any]) -> dict[str, Any]:
         from api_test.contracts import validate_response
         contract_result = validate_response(
             contract_document, method, url, status, response_headers, parsed_body,
-            raw_body=raw_response_body, base_url=settings.base_url,
+            raw_body=raw_response_body, base_url=settings.base_url, server_variables=server_variables, document_url=document_url,
         )
 
     def mask_payload(value):

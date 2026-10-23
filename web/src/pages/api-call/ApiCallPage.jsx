@@ -17,6 +17,8 @@ function ApiCallPage() {
   const [saveNotice, setSaveNotice] = useState('')
   const [project, setProject] = useState('')
   const [validateContract, setValidateContract] = useState(false)
+  const [serverVariablesText, setServerVariablesText] = useState('')
+  const [contractDocumentUrl, setContractDocumentUrl] = useState('')
   const [projects, setProjects] = useState([])
   useEffect(() => { api('/api/projects').then(data => setProjects(data.items || [])).catch(error => setErrorNotice(error.message)) }, [])
   useEffect(() => {
@@ -65,6 +67,24 @@ function ApiCallPage() {
 
     try {
       const payload = { project, environment, validateContract, body_format: bodyMode, ...makeRequest(), proxy_url: proxyUrl.trim(), no_proxy: noProxy }
+      if (validateContract && serverVariablesText.trim()) {
+        let values
+        try { values = JSON.parse(serverVariablesText) } catch { throw new Error('Server 변수는 JSON 객체로 입력하세요.') }
+        if (!values || Array.isArray(values) || typeof values !== 'object' || Object.keys(values).length > 32 ||
+            Object.entries(values).some(([key, value]) => !key.length || key.length > 128 || typeof value !== 'string' || value.length > 512 || /[\u0000-\u001f]/.test(key + value))) {
+          throw new Error('Server 변수는 최대32개 문자열 값이며 이름1~128자·값512자 이하이어야 합니다.')
+        }
+        payload.serverVariables = values
+      }
+      if (validateContract && contractDocumentUrl.trim()) {
+        const value = contractDocumentUrl.trim()
+        let parsed
+        try { parsed = new URL(value) } catch { throw new Error('OpenAPI 문서 기준 URL을 확인하세요.') }
+        if (!/^https?:\/\//i.test(value) || value.length > 2048 || /[\s\\]/.test(value) || parsed.username || parsed.password || parsed.search || parsed.hash) {
+          throw new Error('문서 기준 URL은 사용자정보·query·fragment 없는 2048자 이하 HTTP(S) 절대 URL이어야 합니다.')
+        }
+        payload.contractDocumentUrl = value
+      }
       controller.current = new AbortController()
       const response = await authenticatedFetch('/api/request', {
         signal: controller.current.signal,
@@ -132,7 +152,7 @@ function ApiCallPage() {
 
   return (
     <main className="project-page api-call-page">
-      <section className="card"><Field label="소유권 확인 프로젝트"><select value={project} onChange={event => { setProject(event.target.value); setValidateContract(false) }}><option value="">프로젝트 선택 (로컬 인증 생략 시 선택사항)</option>{projects.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="실행 환경"><select value={environment} onChange={event => setEnvironment(event.target.value)}><option value="">프로젝트 기본 환경</option>{Object.keys(projectDocument.environments || {}).map(name => <option key={name}>{name}</option>)}</select></Field><Field label="공통 인증 프로필"><select value={authProfile} onChange={event => setAuthProfile(event.target.value)}><option value="">직접 설정</option>{Object.keys(profiles).map(name => <option key={name}>{name}</option>)}</select></Field><OAuthProfileStatus projectRef={project} name={authProfile} environment={environment || projectDocument.default_environment || ""} profile={profiles[authProfile]} refreshKey={result} /><label className="toggle"><input type="checkbox" checked={validateContract} disabled={!project} onChange={event => setValidateContract(event.target.checked)} />OpenAPI 실제 응답 검증</label><p className="hint">프로젝트 설정에서 대상 Base URL을 저장하고 소유권을 확인하세요.</p></section>
+      <section className="card"><Field label="소유권 확인 프로젝트"><select value={project} onChange={event => { setProject(event.target.value); setValidateContract(false); setServerVariablesText(''); setContractDocumentUrl('') }}><option value="">프로젝트 선택 (로컬 인증 생략 시 선택사항)</option>{projects.map(item => <option key={item}>{item}</option>)}</select></Field><Field label="실행 환경"><select value={environment} onChange={event => { setEnvironment(event.target.value); setServerVariablesText(''); setContractDocumentUrl('') }}><option value="">프로젝트 기본 환경</option>{Object.keys(projectDocument.environments || {}).map(name => <option key={name}>{name}</option>)}</select></Field><Field label="공통 인증 프로필"><select value={authProfile} onChange={event => setAuthProfile(event.target.value)}><option value="">직접 설정</option>{Object.keys(profiles).map(name => <option key={name}>{name}</option>)}</select></Field><OAuthProfileStatus projectRef={project} name={authProfile} environment={environment || projectDocument.default_environment || ""} profile={profiles[authProfile]} refreshKey={result} /><label className="toggle"><input type="checkbox" checked={validateContract} disabled={!project} onChange={event => setValidateContract(event.target.checked)} />OpenAPI 실제 응답 검증</label>{validateContract && <><Field label="OpenAPI 문서 기준 URL"><input type="text" value={contractDocumentUrl} onChange={event => setContractDocumentUrl(event.target.value)} maxLength={2048} placeholder="https://example.test/specs/openapi.json" /></Field><p className="hint">상대 server 경로의 기준이 되는 명세 위치입니다. 이 주소에서 명세를 다운로드하거나 요청 URL을 변경하지 않습니다.</p><Field label="OpenAPI server 변수 (JSON)"><textarea aria-label="OpenAPI server 변수 (JSON)" value={serverVariablesText} onChange={event => setServerVariablesText(event.target.value)} maxLength={24000} rows={3} placeholder={'{"version":"v2"}'} /><span className="hint">비우면 명세의 기본값을 사용합니다. 실제 요청 URL은 직접 입력하며 이 값은 응답 계약 매칭에만 적용됩니다.</span></Field></>}<p className="hint">프로젝트 설정에서 대상 Base URL을 저장하고 소유권을 확인하세요.</p></section>
       <section className="card">
         <div className="section-header">
           <div>

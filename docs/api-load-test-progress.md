@@ -1,5 +1,47 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## Server 설정 로컬 develop 병합 완료 (2026-10-24)
+
+- 커밋 `0de1fcabc10a0f46324efd8bd2668313806ce1b0`를 충돌 없이 develop에 병합했다. 이 기록만 병합 커밋에 추가했으며 제품 코드가 기능 커밋과 동일하다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.
+
+## Server 설정 커밋·병합 준비 (2026-10-24)
+
+- serverVariables와 contractDocumentUrl 변경을 사용자 승인으로 커밋·로컬 develop 병합한다. 원격 develop fb75a46 확인, 푸시 없음.
+- 계약/실HTTP 집중40개 재실행 및 diff 검사 통과. frontend 기본 병렬 실행은 기존 CaseList 삭제 후 첫 페이지 테스트1개 실패(134통과)였고 단독5개 및 worker2 전체135개는 통과했다. 단언/대기제한을 바꾸지 않았고 첫 실패 이력을 보존한다. 기존 전체 Python591개·build·생성검사 통과 기록도 확인했다.
+- 다음 단계는 저장 케이스의 opt-in OpenAPI 응답 계약검증이며 공통 runner를 통해 파이프라인에도 적용한다. 새 단계는 미커밋으로 유지한다.
+
+## OAS-2 상대 server 경로 해석 완료 (2026-10-24)
+
+- 빠른 호출의 선택적 contractDocumentUrl UI/API를 추가했다. 변수 치환 뒤 문서 위치 기준 상대/상위 경로를 해석하며 metadata URL 다운로드와 실제 요청 URL 변경은 하지 않는다. 기준이 없으면 기존 상대 경로 거부를 유지한다.
+- 검증: 계약/API 집중40개·실HTTP, 전체 Python591개(skip0,188.541초), frontend135개(31파일), production build·생성 최신성·diff 통과. 기준 입력경계·scope·끝 슬래시·변수 결합·alias 우회 금지·값 비노출·기준 URL 미접속을 포함한다.
+- 실제 브라우저: 기준 없는 상대 server는 실패, 기준+default v1 및 명시값v2 통과. 잘못된 기준/file URL 거부 후에도 대상 카운터3회 그대로이고 문서 경로 조회0건. 프로젝트 변경 초기화·콘솔 오류/경고0 확인. [상세 계약](openapi-contract-validation.md), [화면](openapi-relative-server-browser.jpg).
+- 첫 공식 명세 조회 연결 실패는 재조회로 해결했다. 구현 테스트 실패 없음. 다중 외부 문서별 기준 추적/저장 케이스 자동 계약검증·운영 배포·전체 부하는 별도이며 과거 실패/unknown은 유지한다.
+- 기존 serverVariables 미커밋 작업을 보존하고 feature/openapi-server-variables에서 이어갔다. HEAD/develop d5dd592 유지, 이번 커밋·병합·푸시 없음. 원본 worktree 변경 없음. 브라우저 탭은 종료했고 임시 서버도 정리한다.
+
+## OAS-2 상대 server 경로 해석 시작 (2026-10-24)
+
+- 다음 단계: 빠른 호출의 선택적 contractDocumentUrl로 문서 위치에 상대적인 server URL을 해석한다. 기준 URL은 다운로드하지 않고 실제 호출 URL도 바꾸지 않는다. 원격 참조/명세 가져오기·저장 케이스 자동 검증은 비범위다.
+- 기존 feature/openapi-server-variables의 미커밋 명시값 변경을 보존하고 같은 OAS server 설정 작업으로 이어간다. 커밋·병합·푸시 없음.
+- 기준: OpenAPI Server Object의 문서 위치 기준 상대 URL 규칙(https://spec.openapis.org/oas/v3.1.0.html#server-object). 변수 치환 후 RFC3986 URL 해석, 명시적 기준이 있으면 project base alias로 우회하지 않는다. 기준 URL이 없으면 이전의 상대 경로 거부 정책을 유지한다.
+- 검증 계획: 3.0/3.1·상대/상위/루트/절대 경로·server 우선순위·변수·기준 입력 제한·비노출·실HTTP·UI·전체 회귀/build 및 실제 브라우저.
+
+## OAS-2 server 변수 명시값 완료 (2026-10-24)
+
+- server 매칭 커밋b47709b·로컬 develop 병합d5dd592 완료. 새 feature/openapi-server-variables에서 빠른 호출 serverVariables map 및 JSON 입력 UI를 구현했다. 실제 URL은 변경하지 않고 응답 경로 매칭에만 적용한다.
+- validateContract=true에서만 지정한다. 최대32개 문자열, 이름1~128자·값512자 이하이며 제어문자는 거부한다. 미지정 변수는 default, 빈 map도 기존 동작이다. 사용되지 않는 변수·enum 위반·매칭 실패·형식 오류는 입력값 없는400으로 대상 호출 전에 차단한다. 명시값 사용 시 project base alias로 우회하지 않는다.
+- UI에서 검증 해제 시 전송하지 않고 프로젝트/환경 변경 시 초기화한다. 프로젝트/케이스/이력에 값을 추가 저장하지 않는다. 소유권·인증 정책은 기존대로 적용하며 일반 상대 server 해석과 저장 케이스 자동 계약검증은 후속이다.
+- 검증: 계약/API 집중34개(실제 loopback HTTP 포함), 전체 Python585개(skip0,104.414초), frontend133개(31파일), production build·생성 최신성·diff 검사 통과. 부분 치환·변수 scope·모호함·값 비노출·입력경계·UI 초기화를 포함한다.
+- 실제 브라우저: 격리 로컬 fixture에서 default v1 및 명시값v2의 HTTP200/계약 통과, v3/API400·잘못된JSON/UI 차단을 확인했다. 대상 카운터는 성공2회 이후 증가하지 않았다. 프로젝트 전환 초기화 및 콘솔 오류/경고0 확인. [화면](openapi-server-variables-browser.jpg).
+- 실패/보완: 모호함 fixture가 실제 중복이 아닌 v1 기본값을 사용해1개 실패했고 v2로 바로잡았다. 신규 UI2개 label 조회 실패는 textarea의 명시적 접근성 이름으로 수정했다. npm root 실행은 web/에서 재실행했다. 모두 수정 후 위 검증을 통과했다. 문서 쓰기 자동검토 시간초과는 같은 작업을 재요청했다.
+- 로그: /tmp/server-vars-focused-python.log, /tmp/server-vars-python-all.log, /tmp/server-vars-web-all.log, /tmp/server-vars-build.log, /tmp/server-vars-generated-check.log.
+- 반영: 새 기능은 d5dd592 기준 미커밋/미병합, 원격 푸시 및 원본 worktree 변경 없음. 운영 배포·전체 부하 캠페인·기존 실패/unknown은 변경하지 않는다.
+
+## OAS-2 server 변수 명시값 시작 (2026-10-24)
+
+- server 매칭 커밋b47709b·develop 병합d5dd592 완료. 새 feature/openapi-server-variables에서 명시값 UI/API를 개발하며 새 변경은 미커밋/미푸시로 남긴다.
+- 범위: 빠른 호출 validateContract의 선택적 serverVariables 문자열 map, 실제 URL 자동 변경 없이 effective server 매칭에만 사용. 미지정 변수는 default, enum 위반/사용되지 않는 변수/형식 오류는 값 비노출 오류로 거부한다. 기본값 기존 호출은 호환 유지한다.
+- 검증: 분리된 operation/server의 변수 scope, 입력경계·원문 비노출·실HTTP 및 API 호출 전 차단, UI 전송·프로젝트/환경 변경 초기화, 전체 회귀/build/생성 및 브라우저 검증.
+
 ## OAS-2 server 매칭 로컬 병합 완료 (2026-10-24)
 
 - 커밋 `b47709b420713ab99d60269b7ec767fb92d82f2b`를 충돌 없이 로컬 develop에 병합했다. 완료 문서만 추가했으며 제품 코드는 검증한 기능 커밋과 같다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.

@@ -18,7 +18,7 @@
 - 헤더 이름은 대소문자를 구별하지 않는다. required header 누락 및 scalar schema를 검사한다. header content/array 직렬화는 지원하지 않는다는 실패를 반환한다.
 - HEAD·204·304는 본문이 없어야 한다. JSON media type의 잘못된 JSON은 schema 검증 전에 실패한다.
 - operation은 method·path template으로 연결하고 구체적인 path가 template보다 우선한다. server는 operation → path item → root 순으로 선택하고 각 operation 안에서만 prefix를 제거한다. 빈 override 배열은 상위 설정을 상속하지 않고 루트 경로로 해석한다. 모호하거나 매칭되지 않으면 실패한다.
-- 선언된 server 변수의 문자열 default를 치환한다. enum이 있으면 default가 enum에 속해야 한다. default 이외 값을 선택하는 UI/API는 이번 범위가 아니다. 치환 후 절대 HTTP(S) URL 및 `/`로 시작하는 URL만 지원한다. 문서 위치 정보가 없는 일반 상대 URL(`api/v2`)·query/fragment·미정의 변수는 실패 처리한다.
+- 선언된 server 변수의 문자열 default를 치환한다. enum이 있으면 default가 enum에 속해야 한다. 빠른 호출의 serverVariables 문자열 map으로 명시값을 지정할 수 있다. 아래2026-10-24 계약을 따른다. 명세 위치가 없으면 치환 후 절대 HTTP(S) URL 및 `/`로 시작하는 URL을 지원한다. 선택적 `contractDocumentUrl`이 있으면 일반 상대 server도 이 문서 위치에 대해 해석한다. 문서 위치 정보가 없는 일반 상대 URL(`api/v2`)·query/fragment·미정의 변수는 실패 처리한다.
 - project base URL alias는 operation/path server override가 없을 때만 추가한다. 명시적 server가 있으면 해당 prefix를 생략한 경로로 검사하지 않는다. 이 기능은 응답의 경로 매칭이며 origin/host 접근 허용이나 소유권 검증을 대신하지 않는다. 서버 주소를 가져오는 네트워크 동작은 없다.
 - 우선순위와 기본값 근거: [OpenAPI 3.1 Operation/Server 정의](https://spec.openapis.org/oas/v3.1.0#operation-object).
 - 검사기는 외부 URL/file 참조를 가져오지 않는다. bundle/CLI에서는 root 디렉터리 안의 JSON/YAML 파일을 내부 JSON Pointer로 변환하고 재귀 schema를 유지한다. 파일 200개·원본 총 5 MB·중첩 100단계를 제한한다.
@@ -96,3 +96,40 @@ python -m api_test.contracts current/openapi.yaml --baseline baseline/openapi.ya
 - 실제 브라우저의 격리 로컬모드/임시 DB에서 `/fixture/v2/items`는 계약 통과, `/old/items`는 HTTP200이어도 operation_or_reference_error로 실패했다. [통과 화면](openapi-server-matching-browser.jpg), [실패 화면](openapi-server-mismatch-browser.jpg). 콘솔 오류/경고0개. 운영 issuer나 외부 API를 사용하지 않았다.
 - 임시 fixture 최초 실행의 중괄호 오류와 SPA fallback 라우트 우선순위 오류를 수정했다. 잘못된 HTML 응답은 undocumented_content_type으로 정상 거부됐으며 수정 후 실제 JSON 응답으로 재검증했다. 제품 코드의 실패로 혼동하지 않는다.
 - 로그: `/tmp/oas-server-focused.log`, `/tmp/oas-server-all.log`, `/tmp/oas-server-generated-check.log`. 저장 케이스/파이프라인 자동 계약검증·사용자 지정 server 변수·일반 상대 server 해석은 후속이다.
+
+## OAS-2 server 변수 명시값 완료 (2026-10-24)
+
+- server 매칭 커밋b47709b·로컬 develop 병합d5dd592 완료. 새 feature/openapi-server-variables에서 빠른 호출 serverVariables map 및 JSON 입력 UI를 구현했다. 실제 URL은 변경하지 않고 응답 경로 매칭에만 적용한다.
+- validateContract=true에서만 지정한다. 최대32개 문자열, 이름1~128자·값512자 이하이며 제어문자는 거부한다. 미지정 변수는 default, 빈 map도 기존 동작이다. 사용되지 않는 변수·enum 위반·매칭 실패·형식 오류는 입력값 없는400으로 대상 호출 전에 차단한다. 명시값 사용 시 project base alias로 우회하지 않는다.
+- UI에서 검증 해제 시 전송하지 않고 프로젝트/환경 변경 시 초기화한다. 프로젝트/케이스/이력에 값을 추가 저장하지 않는다. 소유권·인증 정책은 기존대로 적용하며 일반 상대 server 해석과 저장 케이스 자동 계약검증은 후속이다.
+- 검증: 계약/API 집중34개(실제 loopback HTTP 포함), 전체 Python585개(skip0,104.414초), frontend133개(31파일), production build·생성 최신성·diff 검사 통과. 부분 치환·변수 scope·모호함·값 비노출·입력경계·UI 초기화를 포함한다.
+- 실제 브라우저: 격리 로컬 fixture에서 default v1 및 명시값v2의 HTTP200/계약 통과, v3/API400·잘못된JSON/UI 차단을 확인했다. 대상 카운터는 성공2회 이후 증가하지 않았다. 프로젝트 전환 초기화 및 콘솔 오류/경고0 확인. [화면](openapi-server-variables-browser.jpg).
+- 실패/보완: 모호함 fixture가 실제 중복이 아닌 v1 기본값을 사용해1개 실패했고 v2로 바로잡았다. 신규 UI2개 label 조회 실패는 textarea의 명시적 접근성 이름으로 수정했다. npm root 실행은 web/에서 재실행했다. 모두 수정 후 위 검증을 통과했다. 문서 쓰기 자동검토 시간초과는 같은 작업을 재요청했다.
+- 로그: /tmp/server-vars-focused-python.log, /tmp/server-vars-python-all.log, /tmp/server-vars-web-all.log, /tmp/server-vars-build.log, /tmp/server-vars-generated-check.log.
+- 반영: 새 기능은 d5dd592 기준 미커밋/미병합, 원격 푸시 및 원본 worktree 변경 없음. 운영 배포·전체 부하 캠페인·기존 실패/unknown은 변경하지 않는다.
+
+
+요청 예: `{"project":"demo.json","url":"https://api.example.test/v2/items","validateContract":true,"serverVariables":{"version":"v2"}}`. 실제 요청 URL은 직접 입력한다.
+
+## 문서 기준 상대 server 해석 (2026-10-24, 다음 단계)
+
+빠른 호출에서 계약 검증을 켜면 **OpenAPI 문서 기준 URL**을 입력할 수 있다. 이 값은 저장된 명세의 원래 위치를 명시하는 일회성 힌트이며 해당 URL에서 문서를 다운로드하지 않는다. 실제 호출 URL이나 프로젝트 Base URL도 변경하지 않는다. 빈 입력은 이전 동작을 유지한다.
+
+예를 들어 문서 위치가 `https://docs.example/service/spec/openapi.json`이고 operation server가 `../{version}`, version이 v2라면 server 경로는 `/service/v2`가 된다. `v2`는 `/service/spec/v2`, `/v2`는 `/v2`가 된다. 디렉터리 기준 URL의 마지막 `/`는 의미가 있으므로 임의로 덧붙이지 않는다. [OpenAPI Server Object](https://spec.openapis.org/oas/v3.1.0.html#server-object)의 문서 기준 규칙을 적용한다.
+
+API 예:
+
+```json
+{"project":"demo.json","url":"https://api.example/service/v2/items","validateContract":true,"serverVariables":{"version":"v2"},"contractDocumentUrl":"https://docs.example/service/spec/openapi.json"}
+```
+
+- contractDocumentUrl은 검증이 켜졌을 때만 지정한다. 1~2048자의 HTTP(S) 절대 URL이며 사용자정보·query·fragment·공백/제어문자·역슬래시를 허용하지 않는다. 명시적 null/빈값/상대값은400이고 UI의 빈 입력은 필드 자체를 보내지 않는다.
+- server 변수 치환 후 URL reference를 문서 위치에 대해 해석한다. operation→path→root 우선순위와 concrete path 우선/모호함 거부는 유지한다. 명시적 문서 기준 URL이 있으면 project base alias로 잘못된 기준을 우회하지 않는다.
+- 제공된 기준 URL의 형식 또는 매칭이 잘못되면 실제 대상 호출 전에 값 비노출400으로 거부한다. 기준 URL을 생략한 일반 상대 server는 기존처럼 응답 계약 실패다. 검증 해제 시 필드를 보내지 않고 프로젝트/환경 변경 시 지운다. 프로젝트·케이스·이력 저장에 추가하지 않는다.
+- 이 단계는 한 명세의 entry document 위치를 명시하는 범위다. 다중 외부 문서별 위치 추적, 원격 참조/명세 가져오기, host/origin 접근 허용, 저장 케이스/파이프라인 자동 계약 검증은 포함하지 않는다. 기존 소유권/인증 정책은 그대로다.
+
+검증: 계약/API 집중40개(실제 loopback HTTP 포함), 전체 Python591개(skip0,188.541초), frontend135개(31파일), production build·생성 최신성·diff 검사 통과. 3.0/3.1, 상대·상위·루트·절대·scheme-relative URL, 변수 기본값/명시값, trailing slash, server scope, project alias 우회 방지, 부적절한 기준 URL/비노출/요청 전 차단, 문서 힌트 미접속을 포함한다.
+
+실제 브라우저: 격리 로컬 fixture에서 기준 없음은 계약 실패, 올바른 기준과 default v1/명시값 v2는 통과했다. 대상 호출3회 후 잘못된 기준 및 file URL을 입력해도 카운터가 늘지 않았고 `/service/spec/openapi.json` 요청은0건이었다. 프로젝트 전환 초기화·콘솔 오류/경고0 확인. [통과 화면](openapi-relative-server-browser.jpg). 첫 공식 명세 조회 도구의 연결 실패는 재조회로 해소했다.
+
+로그: /tmp/relative-server-focused-python.log, /tmp/relative-server-python-all.log, /tmp/relative-server-web-all.log, /tmp/relative-server-build.log, /tmp/relative-server-generated-check.log. 직전 serverVariables 작업과 같은 feature/openapi-server-variables에서 계속 작업했으며 이번에도 커밋·병합·푸시는 하지 않았다.

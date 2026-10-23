@@ -1,7 +1,7 @@
 """Standard OpenAPI lint and value-free response diagnostics."""
 import re
 import math
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urljoin
 from itertools import islice
 from openapi_spec_validator import OpenAPIV30SpecValidator, OpenAPIV31SpecValidator
 from openapi_schema_validator import OAS30ReadValidator, OAS31Validator
@@ -107,16 +107,45 @@ def schema_errors(document, schema, value, location):
     return errors
 
 
-def _server_prefix(server):
-    """Expand only declared defaults; no URL retrieval or implicit source location."""
+def validate_server_variables(value):
+    """Validate explicit values without echoing names or values in diagnostics."""
+    if not isinstance(value, dict) or len(value) > 32:
+        raise ContractError('Server variables must be a string map with at most 32 entries')
+    if any(not isinstance(key, str) or not 1 <= len(key) <= 128 or
+           not isinstance(item, str) or len(item) > 512 or
+           any(ord(char) < 32 for char in key + item) for key, item in value.items()):
+        raise ContractError('Invalid server variable shape')
+    return value
+
+
+def validate_document_url(value):
+    """A location hint only; never fetch it or include it in diagnostics."""
+    if not isinstance(value, str) or not 1 <= len(value) <= 2048 or any(char.isspace() or ord(char) < 32 for char in value):
+        raise ContractError('Invalid OpenAPI document location')
+    try:
+        parsed = urlsplit(value)
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment or '\\' in value:
+            raise ContractError('Invalid OpenAPI document location')
+        parsed.port
+    except ValueError as error:
+        raise ContractError('Invalid OpenAPI document location') from error
+    return value
+
+
+def _server_prefix(server, server_variables=None, document_url=None):
+    """Expand declared values/defaults; no URL retrieval or implicit source location."""
     if not isinstance(server, dict) or not isinstance(server.get('url'), str):
         raise ContractError('Invalid server definition')
     variables = server.get('variables', {})
+    supplied = server_variables or {}
+    used = set(re.findall(r'\{([^{}]+)\}', server['url']))
+    if any(key not in used for key in supplied):
+        raise ContractError('Server variable is not used by this server')
     def substitute(match):
         variable = variables.get(match.group(1)) if isinstance(variables, dict) else None
         if not isinstance(variable, dict) or not isinstance(variable.get('default'), str):
             raise ContractError('Server variable default is required')
-        default = variable['default']
+        default = supplied.get(match.group(1), variable['default'])
         if 'enum' in variable and default not in variable['enum']:
             raise ContractError('Invalid server variable default')
         return default
@@ -124,6 +153,9 @@ def _server_prefix(server):
     if '{' in expanded or '}' in expanded or any(ord(char) < 32 for char in expanded):
         raise ContractError('Invalid server URL')
     try:
+        # Resolve after variable substitution; the document URL is not the API base URL.
+        if document_url is not None:
+            expanded = urljoin(document_url, expanded)
         parsed = urlsplit(expanded)
         if parsed.query or parsed.fragment or parsed.username or parsed.password:
             raise ContractError('Unsupported server URL')
@@ -138,7 +170,10 @@ def _server_prefix(server):
     return parsed.path.rstrip('/')
 
 
-def match_operation(document, method, url, base_url=None):
+def match_operation(document, method, url, base_url=None, server_variables=None, document_url=None):
+    if document_url is not None:
+        document_url = validate_document_url(document_url)
+    supplied = validate_server_variables(server_variables) if server_variables is not None else {}
     try:
         path = urlsplit(url).path or '/'
     except ValueError as error:
@@ -152,9 +187,19 @@ def match_operation(document, method, url, base_url=None):
         servers = operation.get('servers', path_item.get('servers', document.get('servers', [])))
         if not isinstance(servers, list):
             raise ContractError('Invalid server collection')
-        prefixes = {_server_prefix(server) for server in servers} if servers else {''}
+        prefixes = set()
+        for server in servers:
+            try:
+                prefixes.add(_server_prefix(server, supplied, document_url))
+            except ContractError:
+                if not supplied:
+                    raise
+                # A variable may belong to a different operation/server in this document.
+                continue
+        if not servers and not supplied:
+            prefixes.add('')
         # The project base URL remains an alias only for operations without an override.
-        if base_url and not overridden:
+        if base_url and not overridden and not supplied and document_url is None:
             prefixes.add(_server_prefix({'url': base_url}))
         candidates = set()
         for prefix in prefixes:
@@ -173,12 +218,12 @@ def match_operation(document, method, url, base_url=None):
     return matches[0][1:]
 
 
-def validate_response(document, method, url, status, headers, body, *, raw_body=None, base_url=None):
+def validate_response(document, method, url, status, headers, body, *, raw_body=None, base_url=None, server_variables=None, document_url=None):
     errors = [item for item in lint(document) if item['severity'] == 'error']
     if errors:
         return {'valid': False, 'issues': errors}
     try:
-        path, operation = match_operation(document, method, url, base_url)
+        path, operation = match_operation(document, method, url, base_url, server_variables, document_url)
         responses = operation['responses']
         response = responses.get(str(status), responses.get(str(status)[0] + 'XX', responses.get('default')))
         if response is None:
