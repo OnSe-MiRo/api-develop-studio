@@ -250,6 +250,7 @@ def _run_case_with_project_settings(
         encrypted_project_variables=project_settings.encrypted_variables if project_settings else None,
         oauth_project_reference=case_document.get("project"),
         oauth_environment=project_settings.environment_name if project_settings else "",
+        contract_document=project_settings.contract_document if project_settings else None,
     )
 
 

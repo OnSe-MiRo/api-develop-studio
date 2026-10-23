@@ -1,5 +1,32 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## 저장 케이스 계약검증 로컬 병합 완료 (2026-10-24)
+
+- 커밋 `529e4663f1f333b43a98137b246139c19c4ad81a`를 충돌 없이 로컬 develop에 병합했다. 완료 기록만 추가하며 검증한 제품 코드와 동일하다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.
+
+## 저장 케이스 계약검증 커밋·병합 준비 (2026-10-24)
+
+- 사용자 승인으로 저장 케이스 계약검증을 커밋하고 로컬 develop에 병합한다. 원격 푸시 없음.
+- 현재 diff와 기존 전체 Python597개/build/생성 기록 확인. 집중6개·전체 UI138개(worker2) 재검증 통과. 자동 권한 검토가 처음 시간초과되어 미실행을 확인하고 같은 명령을 한 번 재요청해 성공했다.
+- 다음은 OBS-1/OAS-2 실행 결과·이력의 계약 요약 표시다. 새 브랜치에 미커밋으로 남긴다.
+
+## 저장 케이스 OpenAPI 계약검증 완료 (2026-10-24)
+
+- 구현: contract_validation opt-in 설정·편집 UI·API 저장/복원, Workspace별 프로젝트 명세의 케이스 단위 snapshot, 웹/CLI 공통 runner와 pipeline의 추가 응답 계약 판정을 연결했다. 기존 status/body/assertion/시간 제한은 보존했다.
+- 경계: malformed 설정·명세/operation은 대상 호출 전 configuration_error, 응답 불일치는 contract_failed. JSON/JUnit·이력에는 valid/issueCount/documentDigest만 추가하며 원문·token은 추가 저장하지 않는다. 재시도는 동일 명세snapshot이고 pipeline 전체 원자snapshot은 비범위다.
+- 검증: 최종 전체 Python597개(skip0,194.581초), 집중6개(실HTTP·CLI·pipeline·Workspace/API), frontend138개(worker2), production build·생성 최신성·diff 검사 통과. 이전596개 및597개 실행 기록도 보존하고 마지막 malformed docs_file guard 보완 후 전체597개를 다시 통과했다.
+- 실제 브라우저: opt-out HTTP200은 기존 통과, opt-in 저장/reload 후 같은 body는 schema_type/contract_failed, 저장 케이스를 쓰는 pipeline도 실패. 정상 fixture URL로 저장 후 pipeline 성공. 두 job result의 같은 명세digest·valid false/true·issueCount1/0 및 원문 비노출 확인. 콘솔 오류/경고0.
+- 실패/조치: 최초 테스트 fixture의 중괄호 오류를 검증된 helper 사용으로 해결했다. 저장 완료 안내가 기존 명세 재조회 안내로 바뀌어 browser wait가 실패했으나 reload/실행으로 저장을 확인했다. 커밋 전 기존 CaseList 테스트1개의 기본 병렬 실패는 단독5개/worker2 전체135개 통과로 구분했고 단언은 변경하지 않았다.
+- 자료: [설정/판정/검증](saved-case-contract-validation.md), [실행 화면](saved-case-contract-result.jpg). 로그 /tmp/saved-contract-*.log. 임시 브라우저와 검증 서버 정상 종료.
+- Git: server 변수·상대URL 커밋0de1fca 및 develop 병합a51c176 완료. 새 feature/saved-case-contract-validation은 a51c176 기준 미커밋/미병합이며 원격 푸시·원본 worktree 변경 없음. 배포·운영 공급자·전체 LT 및 기존 부하 실패/unknown은 별도다.
+
+## 저장 케이스 OpenAPI 계약검증 시작 (2026-10-24)
+
+- server 설정 커밋0de1fca·develop 병합a51c176 완료 후 feature/saved-case-contract-validation 생성. 이번 새 변경은 미커밋/미푸시다.
+- 범위: 케이스 contract_validation opt-in 설정과 편집 UI, 저장된 프로젝트 명세의 실행당 snapshot, CLI/웹 공통 runner 응답 계약 판정. 같은 케이스를 실행하는 파이프라인에도 적용한다. 기존 status/body/assertion은 계속 검사한다.
+- 실패 경계: 잘못된 명세/설정/operation은 호출 전에 configuration_error, 실제 응답 계약 불일치는 failed. 보고서는 valid·issueCount·명세digest만 남기며 body·token·변수값을 추가 저장하지 않는다.
+- 검증: 단위/실HTTP·CLI·pipeline·재시도 snapshot·설정API/Workspace 경계·보고서 비노출·UI 저장/복원·전체 회귀/build/생성 및 브라우저.
+
 ## Server 설정 로컬 develop 병합 완료 (2026-10-24)
 
 - 커밋 `0de1fcabc10a0f46324efd8bd2668313806ce1b0`를 충돌 없이 develop에 병합했다. 이 기록만 병합 커밋에 추가했으며 제품 코드가 기능 커밋과 동일하다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.

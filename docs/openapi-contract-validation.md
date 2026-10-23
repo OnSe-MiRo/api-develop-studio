@@ -7,7 +7,7 @@
 3. **비교 기준 revision**을 선택해 현재 저장된 revision과 비교한다. 응답의 `currentRevision`과 `baselineRevision`이 실제 비교한 snapshot이다. 검사는 저장된 명세를 변경하지 않는다.
 4. **API 호출**에서 프로젝트를 선택하고 **OpenAPI 실제 응답 검증**을 켠다. HTTP 호출 직후 status·content type·응답 header·body schema를 검사한다. HTTP 200이어도 계약이 다르면 실패로 표시한다.
 
-실제 응답 검증은 이번 단계에서 빠른 호출에 적용된다. 저장 케이스·파이프라인의 기존 assertion/보고서는 변경하지 않았으며 자동 계약 검증 연동은 후속이다. 검증 결과는 일시적인 호출 응답으로만 반환하며 이력 DB와 Redis에 원문을 추가 저장하지 않는다.
+실제 응답 검증은 빠른 호출과 opt-in 저장 케이스에 적용된다. 저장 케이스는 기존 assertion과 함께 공통 runner에서 검사하며 같은 케이스를 사용하는 파이프라인에도 적용된다. [설정·판정·보고서 계약](saved-case-contract-validation.md)을 참조한다. 검증 결과는 일시적인 호출 응답으로만 반환하며 이력 DB와 Redis에 원문을 추가 저장하지 않는다.
 
 ## 정책
 
