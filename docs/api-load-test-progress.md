@@ -1,5 +1,31 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## 파이프라인 로컬 develop 병합 완료 (2026-10-23)
+
+- 통합 커밋 `9d63751afa29c64da13d6839a31d4218ccedc256`를 충돌 없이 로컬 develop에 병합했다. 이 기록은 병합 커밋에 포함한다. 제품 코드는 검증한 통합 커밋과 동일하다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.
+
+## 파이프라인 복구·커밋 전 재검증 (2026-10-23)
+
+- 이전 /tmp worktree의 연결 파일과 소스가 없어져 Git index의 기준508개 파일을 누락 위치에만 복구하고 지속 경로 `/Users/kwondaehoon/Desktop/Project/api-develop-studio-worktrees/pipeline-list`로 이동했다. 원본 저장소의 미커밋 P1 변경은 건드리지 않았다.
+- 자동 승인 검토가 기록 스크립트 직접 재실행을 거절했다. 별도 scratch에서 이전 편집 결과를 재구성하고 대상 SHA/깨끗한 기준/diff를 확인한17개 파일 patch만 적용했다. 생성 코드는 원본 OpenAPI로 재생성했다. 이전 PNG는 소실되어 새 로컬모드/임시 DB 화면 증거로 교체했다.
+- 새 검증: Python570개(skip0,90.170초), frontend131개·production build 통과. 브라우저에서45개 중 첫20개·다음 페이지·reload 및 검색7개 확인. 과거 OIDC/두 Workspace 검증은10월16일 기록이며 오늘 다시 실행한 것으로 표시하지 않는다.
+- 사용자 승인에 따라 파이프라인을 커밋하고 develop에 병합한다. 원격 푸시 없음. 다음 OAS-2 server 경로 매칭 보완은 새 브랜치에 미커밋으로 남긴다.
+
+## 파이프라인 목록 개발·검증 완료 (2026-10-16)
+
+- 구현: 프로젝트/Workspace 내 bounded keyset 페이지, 이름/파일명 검색, 파일명 양방향·최신 생성순·페이지 크기·URL reload/back 복원. 단계/secret은 목록에 반환하지 않고 기존 편집·실행/전체 케이스 선택을 보존했다.
+- 보완: 프로젝트 로딩 중 빠른 섹션 이동에서 아직 갱신되지 않은 선택 상태를 사용할 수 있어 URL project를 우선하도록 수정하고 App 회귀를 추가했다.
+- 검증: 최종 Python570개(skip0,148.693초, PostgreSQL 포함), frontend131개(31파일), production build, 생성 최신성·diff 검사 통과. 집중 목록12개·화면16개 통과.
+- 실제 브라우저: 팀A45개20→20→5·이전/reload·검색7개·정렬/크기/Enter/back, 기존 편집기 케이스 선택·단계 저장, 다른 프로젝트1개와 삭제 후0개, 팀B3개/검색1개 격리 확인. 초기11개 요청은 모두 bounded 목록이며 콘솔 오류/경고0개. 단계 이름 없는 저장은 정상 거부 후 이름을 입력해 저장했고 삭제 CDP 지연은 재클릭 없이 완료 화면으로 확인했다.
+- 자료: [계약·검증](pipeline-list-pagination.md), [화면](pipeline-list-pagination-browser.jpg). 실제 파이프라인 실행 성공·부하 캠페인·운영 배포를 이번 검증으로 주장하지 않는다. 기존 부하 실패/unknown은 보존한다.
+- 반영: 케이스 커밋49a842f·develop 병합e83778e 완료. 새 feature/pipeline-list-pagination은 e83778e 기준 미커밋이며 커밋/병합·원격 푸시 없음. 원본 worktree 보존. 검증용 인증 로그아웃·탭 종료 후 임시 서버를 정리한다.
+
+## 파이프라인 목록 페이지네이션·검색·정렬 시작 (2026-10-16)
+
+- 케이스 목록 커밋49a842f·로컬 develop 병합e83778e 완료. 새 feature/pipeline-list-pagination은 이 develop 기준이며 새 변경은 미커밋으로 유지한다. 원격 푸시 없음.
+- 범위: 프로젝트 내 파이프라인 DB keyset 페이지, 이름/파일명 검색, 파일명 양방향·최신 생성순, URL 페이지 크기/커서 및 reload/back. 기존 편집·실행·케이스 선택·예제 읽기전용은 유지한다.
+- 계획: 공통 조회에 pipelines scope 추가, 목록 초기 전체 case/pipeline 요청 제거, 선택 화면으로 이동할 때 기존 목록 유지. SQLite/PostgreSQL/API·화면 회귀, 전체 테스트/build/생성, 실제 브라우저 검증을 수행한다.
+
 ## 케이스 목록 로컬 develop 병합 완료 (2026-10-16)
 
 - 케이스 목록 커밋 `49a842faabf160ce1df69b9f19c4b3912ff69299`를 로컬 develop에 충돌 없이 병합했다. 완료 기록은 병합 커밋에 포함한다. 검증 코드와 동일하며 문서만 추가했다.

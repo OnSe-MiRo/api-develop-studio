@@ -63,3 +63,10 @@ it('round-trips case filters and resets them on editor navigation', () => {
   expect(parseLocation()).toMatchObject({tab:'case-list',activeProject:'demo.json',caseFilters})
   expect(buildUrl({tab:'case-settings',activeProject:'demo.json',caseReference:'tag/api/case.json',caseFilters})).not.toContain('cursor=')
 })
+
+it('round-trips pipeline page filters independently of editor routes', () => {
+  const pipelineFilters={q:'한글 +',sort:'created_desc',page_size:'50',cursor:'opaque/+='}
+  window.history.replaceState(null,'',buildUrl({tab:'pipeline-list',activeProject:'demo.json',pipelineFilters}))
+  expect(parseLocation()).toMatchObject({tab:'pipeline-list',activeProject:'demo.json',pipelineFilters})
+  expect(buildUrl({tab:'pipeline-settings',activeProject:'demo.json',pipelineReference:'a.json',pipelineFilters})).not.toContain('cursor=')
+})

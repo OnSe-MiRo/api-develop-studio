@@ -2,13 +2,13 @@
 from fastapi import APIRouter, Depends, Response
 from api_test.dependencies import request_context, public_request_context
 from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests, identity, oauth, sdk_generation, interoperability, releases, portal
-from pydantic import Field, StrictStr
+from pydantic import Field, StrictStr, field_validator
 from typing import Optional
 from typing_extensions import Annotated
 from api_test.generated.models.delete_response import DeleteResponse
 from api_test.generated.models.error_response import ErrorResponse
 from api_test.generated.models.pipeline_document import PipelineDocument
-from api_test.generated.models.reference_list import ReferenceList
+from api_test.generated.models.pipeline_list_response import PipelineListResponse
 from api_test.generated.models.revision_list import RevisionList
 from api_test.generated.models.save_response import SaveResponse
 
@@ -20,7 +20,7 @@ router = APIRouter()
     operation_id="list_pipelines",
     tags=["pipelines",],
     responses={
-        200: {"description": "Success", "model": ReferenceList},400: {"description": "Invalid request", "model": ErrorResponse},403: {"description": "Policy denied", "model": ErrorResponse},409: {"description": "Revision conflict", "model": ErrorResponse},503: {"description": "Storage unavailable", "model": ErrorResponse},
+        200: {"description": "Success", "model": PipelineListResponse},400: {"description": "Invalid request", "model": ErrorResponse},403: {"description": "Policy denied", "model": ErrorResponse},409: {"description": "Revision conflict", "model": ErrorResponse},503: {"description": "Storage unavailable", "model": ErrorResponse},
     },
 )
 async def list_pipelines(context=Depends(request_context)) -> Response:
