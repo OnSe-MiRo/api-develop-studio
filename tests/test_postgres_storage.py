@@ -82,6 +82,10 @@ class PostgresStorageTest(unittest.TestCase):
         store.initialize(False)
         return store
 
+    def test_pipeline_cursor_pages_search_and_conditions(self):
+        from test_pipeline_listing import exercise_pipeline_pages
+        exercise_pipeline_pages(self, self.store())
+
     def test_case_cursor_pages_search_and_conditions(self):
         from test_case_listing import exercise_case_pages
         exercise_case_pages(self, self.store())

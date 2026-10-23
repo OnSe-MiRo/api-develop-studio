@@ -11,19 +11,19 @@ CASE_SORTS = {'name_asc', 'name_desc', 'created_desc'}
 
 
 def list_document_page(store, *, kind, page_size='20', search='', sort='reference_asc', cursor='', include_example=True, project=None, tag=''):
-    if kind not in ('projects', 'cases'):
+    if kind not in ('projects', 'cases', 'pipelines'):
         raise ValueError('지원하지 않는 문서 종류입니다.')
     tag = tag.strip()
-    if kind == 'cases' and (not isinstance(project, str) or not project or len(project) > 1024 or len(tag) > 128 or '/' in tag or '\\' in tag):
+    if kind != 'projects' and (not isinstance(project, str) or not project or len(project) > 1024 or len(tag) > 128 or '/' in tag or '\\' in tag):
         raise ValueError('프로젝트 또는 태그 조건이 올바르지 않습니다.')
     if not isinstance(page_size, str) or not page_size.isascii() or not page_size.isdecimal() or not 1 <= int(page_size) <= 100:
         raise ValueError('페이지 크기는 1~100이어야 합니다.')
     limit = int(page_size)
     search = search.strip()
-    if len(search) > 100 or sort not in (PROJECT_SORTS if kind == 'projects' else CASE_SORTS):
+    if len(search) > 100 or sort not in (CASE_SORTS if kind == 'cases' else PROJECT_SORTS):
         raise ValueError('검색어 또는 정렬 조건이 올바르지 않습니다.')
     scope_values = [store.context.workspace_id, search, sort, limit, include_example]
-    if kind == 'cases':
+    if kind != 'projects':
         scope_values.extend([kind, project, tag])
     scope = hashlib.sha256(json.dumps(scope_values, ensure_ascii=False).encode()).hexdigest()
     anchor = None
@@ -47,10 +47,10 @@ def list_document_page(store, *, kind, page_size='20', search='', sort='referenc
         name = "(r.content::jsonb ->> 'name')" if postgres else "json_extract(r.content, '$.name')"
         where = 'd.workspace_id = ? AND d.kind = ? AND d.deleted_at IS NULL'
         params = [store.context.workspace_id, kind]
-        if kind == 'cases':
+        if kind != 'projects':
             where += ' AND d.project_reference = ?'
             params.append(project)
-            if tag:
+            if kind == 'cases' and tag:
                 tag_key = "split_part(d.reference, '/', 1)" if postgres else "substr(d.reference, 1, instr(d.reference, '/') - 1)"
                 where += f' AND {tag_key} = ?'
                 params.append(tag)
@@ -98,7 +98,7 @@ def list_document_page(store, *, kind, page_size='20', search='', sort='referenc
         document = json.loads(row['content'])
         if kind == 'projects':
             details[row['reference']] = {key: document.get(key, '') if isinstance(document.get(key, ''), str) else '' for key in ('name', 'base_url')}
-        else:
+        elif kind == 'cases':
             request = document.get('request', {})
             url = request.get('url', '') if isinstance(request, dict) else ''
             details[row['reference']] = {'url': url if isinstance(url, str) else ''}

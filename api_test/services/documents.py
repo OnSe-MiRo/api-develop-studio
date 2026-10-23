@@ -29,6 +29,22 @@ def list_documents(request, studio, kind):
         except ValueError as error:
             raise studio.ApiError(str(error)) from error
         return request.json_response(200, result)
+    if kind == 'pipelines' and any(name in request.request.query_params for name in ('page_size', 'q', 'sort', 'cursor')):
+        from api_test.document_listing import list_document_page
+        project = request.query_value('project')
+        if not project:
+            raise studio.ApiError('페이지 조회에는 프로젝트가 필요합니다.')
+        studio.ensure_example_project_enabled(project)
+        if store.get('projects', project) is None:
+            raise studio.DocumentNotFoundError('Project not found')
+        try:
+            result = list_document_page(store, kind='pipelines', project=project,
+                                        page_size=request.query_value('page_size') or '20',
+                                        search=request.query_value('q') or '',
+                                        sort=request.query_value('sort') or 'reference_asc', cursor=request.query_value('cursor') or '')
+        except ValueError as error:
+            raise studio.ApiError(str(error)) from error
+        return request.json_response(200, result)
     references = store.list_references(kind, request.query_value('project') if kind != 'projects' else None)
     if kind == 'projects' and not studio.example_project_enabled():
         references = [item for item in references if item != studio.EXAMPLE_PROJECT_REFERENCE]
