@@ -17,7 +17,10 @@
 - 응답은 정확한 status → `2XX` 등 범위 → `default` 순서로 선택한다. content type은 parameter를 제거하고 정확한 media type → `type/*` → `*/*` 순서로 선택한다.
 - 헤더 이름은 대소문자를 구별하지 않는다. required header 누락 및 scalar schema를 검사한다. header content/array 직렬화는 지원하지 않는다는 실패를 반환한다.
 - HEAD·204·304는 본문이 없어야 한다. JSON media type의 잘못된 JSON은 schema 검증 전에 실패한다.
-- operation은 method·path template으로 연결하고 구체적인 path가 template보다 우선한다. 프로젝트 base URL 또는 root servers의 path prefix를 제거할 수 있다. 모호하거나 매칭되지 않으면 실패한다. operation별 server override·server variable 확장은 후속이다.
+- operation은 method·path template으로 연결하고 구체적인 path가 template보다 우선한다. server는 operation → path item → root 순으로 선택하고 각 operation 안에서만 prefix를 제거한다. 빈 override 배열은 상위 설정을 상속하지 않고 루트 경로로 해석한다. 모호하거나 매칭되지 않으면 실패한다.
+- 선언된 server 변수의 문자열 default를 치환한다. enum이 있으면 default가 enum에 속해야 한다. default 이외 값을 선택하는 UI/API는 이번 범위가 아니다. 치환 후 절대 HTTP(S) URL 및 `/`로 시작하는 URL만 지원한다. 문서 위치 정보가 없는 일반 상대 URL(`api/v2`)·query/fragment·미정의 변수는 실패 처리한다.
+- project base URL alias는 operation/path server override가 없을 때만 추가한다. 명시적 server가 있으면 해당 prefix를 생략한 경로로 검사하지 않는다. 이 기능은 응답의 경로 매칭이며 origin/host 접근 허용이나 소유권 검증을 대신하지 않는다. 서버 주소를 가져오는 네트워크 동작은 없다.
+- 우선순위와 기본값 근거: [OpenAPI 3.1 Operation/Server 정의](https://spec.openapis.org/oas/v3.1.0#operation-object).
 - 검사기는 외부 URL/file 참조를 가져오지 않는다. bundle/CLI에서는 root 디렉터리 안의 JSON/YAML 파일을 내부 JSON Pointer로 변환하고 재귀 schema를 유지한다. 파일 200개·원본 총 5 MB·중첩 100단계를 제한한다.
 - `$id`, anchor/dynamic reference, JSON Pointer 이외 fragment, 사용자 정의 schema dialect 및 `$ref`와 함께 있는 구조 제약 sibling은 지원하지 않으므로 명시적으로 차단한다. `$ref`의 description/summary sibling은 허용한다.
 - 진단에는 규칙 코드와 위치를 남기며 validator가 출력하는 실제 값·enum/example 값·원문 응답 메시지는 포함하지 않는다. 기존 호출 응답은 기존 마스킹 정책을 유지한다.
@@ -84,3 +87,12 @@ python -m api_test.contracts current/openapi.yaml --baseline baseline/openapi.ya
 본문 `{}`는 현재 lint만 수행한다. `baselineRevision`은 양의 정수다. 현재 프로젝트와 과거 revision 조회는 store에 바인딩된 workspace 안에서만 수행한다. 없는 프로젝트/revision은 404, 잘못된 입력은 400이다. body로 workspace·actor를 선택하지 않는다.
 
 `POST /api/request`에 `validateContract: true`와 `project`를 전달하면 응답에 `contract: {valid, operation?, issues}`가 추가된다. 명세 lint 오류는 외부 HTTP 요청 전에 차단한다. 기존 호출 계약은 검증을 켜지 않으면 유지한다.
+
+## Server 경로 매칭 검증 (2026-10-23)
+
+- feature/openapi-server-matching은 파이프라인이 병합된 develop f6b890f에서 분기했다. 새 변경은 미커밋/미푸시다.
+- 3.0/3.1 우선순위, 다중 server, 기본값/enum, prefix 경계, 빈 override, 미정의 변수/일반 상대 URL 거부, concrete 우선·모호함 거부, 값 비노출과 기존 project base alias를 검증했다. 실제 loopback HTTP 빠른 호출 경로에서 올바른 경로와 상위 prefix 경로의 HTTP200 계약 판정을 확인했다.
+- 집중 계약/API 테스트28개, 전체 Python579개(skip0,83.573초), 생성 최신성·diff 검사 통과. 이번 단계는 React 변경이 없으며 앞선 파이프라인 복구에서 frontend131개 및 build 통과를 확인했다.
+- 실제 브라우저의 격리 로컬모드/임시 DB에서 `/fixture/v2/items`는 계약 통과, `/old/items`는 HTTP200이어도 operation_or_reference_error로 실패했다. [통과 화면](openapi-server-matching-browser.jpg), [실패 화면](openapi-server-mismatch-browser.jpg). 콘솔 오류/경고0개. 운영 issuer나 외부 API를 사용하지 않았다.
+- 임시 fixture 최초 실행의 중괄호 오류와 SPA fallback 라우트 우선순위 오류를 수정했다. 잘못된 HTML 응답은 undocumented_content_type으로 정상 거부됐으며 수정 후 실제 JSON 응답으로 재검증했다. 제품 코드의 실패로 혼동하지 않는다.
+- 로그: `/tmp/oas-server-focused.log`, `/tmp/oas-server-all.log`, `/tmp/oas-server-generated-check.log`. 저장 케이스/파이프라인 자동 계약검증·사용자 지정 server 변수·일반 상대 server 해석은 후속이다.

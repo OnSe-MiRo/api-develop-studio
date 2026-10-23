@@ -1,5 +1,25 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## OAS-2 server 매칭 커밋·병합 준비 (2026-10-24)
+
+- 사용자 승인으로 server 매칭 변경을 커밋하고 로컬 develop에 병합한다. 중단된 요청에서 추가 Git 반영은 없었다. 계약/실HTTP 집중28개 재검증·diff 검사 통과, 기존 전체579개 기록 확인. 원격 develop fb75a46 확인, 푸시 없음.
+- 다음은 빠른 호출의 server 변수 명시값 UI/API이며 호출 URL 자동 변경 없이 매칭에 적용한다. 새 단계 변경은 별도 기능 브랜치에 미커밋으로 유지한다.
+
+## OAS-2 server 경로 매칭 보완 완료 (2026-10-23)
+
+- 변경: operation→path→root 서버 우선순위, 변수 default 치환, operation별 prefix·경계 처리, 빈 override·모호함·해석 불가 서버의 명시적 실패를 구현했다. project base alias는 명시적 하위 override가 없을 때만 적용한다.
+- 검증: 집중28개, 실제 loopback HTTP 호출, 전체 Python579개(skip0,83.573초), 생성 최신성·diff 통과. React 변경 없음; 복구 시 frontend131개/build 통과. 실제 브라우저에서 JSON HTTP200의 올바른 경로 통과/상위 경로 실패와 콘솔 오류0을 확인했다.
+- 환경 이력: tmp 원본 소실을 Git 기준 및 기록에서 복구·지속 경로로 이전한 뒤 파이프라인 재검증570개/131개와 브라우저 확인을 완료했다. 기록 스크립트 직접 replay는 자동 검토에 거절돼 scratch 결과와 SHA를 확인한 patch 적용으로 해결했다. 임시 OAS fixture의 구문 및 route 순서는 제품 코드와 별개로 수정하고 재검증했다.
+- 범위: 변수 default 외 사용자 선택, 문서 위치 기반 상대 server, 저장 케이스 자동 계약검증, 전체 부하/배포는 남아 있다. 과거 부하 실패/unknown을 바꾸지 않는다. [상세 계약/검증](openapi-contract-validation.md).
+- Git: 파이프라인 커밋9d63751·develop 병합f6b890f 완료. 현재 feature/openapi-server-matching은 f6b890f 기준 미커밋이다. 원격 푸시·원본 저장소 변경 없음. 작업 경로는 `/Users/kwondaehoon/Desktop/Project/api-develop-studio-worktrees/pipeline-list`이다.
+
+## OAS-2 server 경로 매칭 보완 시작 (2026-10-23)
+
+- 기준: 파이프라인 커밋9d63751·로컬 develop 병합f6b890f에서 feature/openapi-server-matching 생성. 새 변경은 미커밋, 원격 푸시 없음.
+- 범위: 빠른 호출 응답 계약 검사에서 operation→path→root server 우선순위 및 선언된 변수 기본값 치환, prefix 경계·모호함 차단. project base URL alias는 명시적 operation/path override가 없는 경우에만 사용한다.
+- 비범위: 사용자 지정 server 변수 선택 UI/API, 문서 위치 기준 상대 URL 해석, 원격 명세 호출, 저장 케이스/파이프라인 자동 계약검증. 현재 함수에 문서 위치가 없으므로 `/`로 시작하지 않는 상대 server는 안전하게 실패한다. host/origin 검증과 실제 호출 소유권 정책은 별도다.
+- 계획: OpenAPI3.0/3.1·각 override/default/모호함/민감값 비노출 fixture와 실제 HTTP 빠른 호출 계약 검사, 전체 Python 회귀를 수행한다. [명세](https://spec.openapis.org/oas/v3.1.0#operation-object)를 기준으로 한다.
+
 ## 파이프라인 로컬 develop 병합 완료 (2026-10-23)
 
 - 통합 커밋 `9d63751afa29c64da13d6839a31d4218ccedc256`를 충돌 없이 로컬 develop에 병합했다. 이 기록은 병합 커밋에 포함한다. 제품 코드는 검증한 통합 커밋과 동일하다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.
