@@ -1,5 +1,13 @@
 # API 개발 기능 진행 기록
 
+## 미병합 브랜치 감사·통합 검증 완료 (2026-11-04)
+
+- 기능 브랜치6개 및 main의 미병합 이력을 대조했다. 미반영 제품 코드는 없었다. quick/dashboard/P0의 기존 이식과 후속 권한·실행·저장 보완을 유지했다. baseline 추가 기록22줄은 보존, 영문 README 개요는 최신 구성에 맞춰 README.en.md로 반영하고 한국어 README는 유지했다.
+- 검증: 전체 Python669개(skip0,160.951초), frontend167개/37파일, production build, 생성 최신성, Node k6 모델5개 및 diff 통과. 기존500kB 번들 경고는 유지된다. 제품 코드/테스트는 기준 develop95c8518과 byte 동일하며 변경은 README·문서뿐이다. 브라우저를 새로 실행한 것으로 표기하지 않는다.
+- 이력: baseline은 일반 병합, 이미 이식된 quick/dashboard 및 최신 문서로 대체한 README/main 이력은 명시적 ours 병합으로 연결했다. main 포인터는bab7dad 유지한다. [감사 근거](legacy-branch-integration-audit.md).
+- 보존: 원본 worktree HEAD/status/미커밋3파일 SHA 불변을 재확인했다. stash/reset/파일 삭제/브랜치 삭제/원격 푸시 없음. 테스트용 PostgreSQL·Redis는 검증 후 원래 중지 상태로 복원한다. 검증한 통합 브랜치를 로컬 develop으로 병합한다.
+- 로그: /tmp/legacy-integration-{python,web,build,generated,k6}.log.
+
 ## 미병합 브랜치 실제 변경 감사·통합 시작 (2026-11-04)
 
 - 로컬 미병합 기능6개를 commit/range-diff·현재 구현과 비교했다. quick/dashboard/P0는 이미 이식됐고 baseline의 제품 코드는ebf7672와 동일하다. 추가 진행 기록22줄은 일반 병합으로 보존하고 중복 제품 구현은 최신 상태를 유지한 이력 병합으로 연결한다.
