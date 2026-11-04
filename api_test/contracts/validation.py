@@ -515,13 +515,14 @@ def _header_tuple(document, header, schema, raw):
     prefix = [resolve(document, item) for item in schema['prefixItems']]
     tail = resolve(document, schema.get('items', True))
     decoders = prefix + ([tail] if isinstance(tail, dict) else [])
-    if any(not isinstance(item, dict) or _header_primitive_type(document, item) is None for item in decoders):
+    if any(not isinstance(item, bool) and item != {} and
+           (not isinstance(item, dict) or _header_primitive_type(document, item) is None) for item in decoders):
         return None, 'unsupported_header_serialization'
     result = []
     for index, part in enumerate(raw.split(',')):
         value = part.strip(' \t')
         decoder = prefix[index] if index < len(prefix) else tail
-        # Boolean tail schemas are validated afterwards, without inventing a type.
+        # Boolean/unconstrained schemas keep text; the original schema decides validity.
         result.append(_header_scalar(decoder, value, document) if isinstance(decoder, dict) else value)
     return result, None
 
