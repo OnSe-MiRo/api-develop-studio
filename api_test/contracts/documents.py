@@ -1,9 +1,10 @@
 """Local-only contract loading; retain recursive references instead of inlining."""
 from copy import deepcopy
 import json
+import re
 from pathlib import Path, PurePosixPath
 import posixpath
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 import yaml
 
 MAX_BYTES = 5 * 1024 * 1024
@@ -18,14 +19,39 @@ def escape(value):
     return str(value).replace('~', '~0').replace('/', '~1')
 
 
-def pointer(document, reference):
-    if not isinstance(reference, str) or not reference.startswith('#/'):
+def _pointer_fragment(reference):
+    if not isinstance(reference, str) or not reference.startswith('#'):
         raise ContractError('Only local JSON Pointer references are supported')
-    target = document
+    fragment = reference[1:]
+    if re.search(r'%(?![0-9A-Fa-f]{2})', fragment):
+        raise ContractError('Invalid JSON Pointer encoding')
     try:
-        for part in unquote(reference[2:]).split('/'):
+        fragment = unquote(fragment, encoding='utf-8', errors='strict')
+    except UnicodeError:
+        raise ContractError('Invalid JSON Pointer encoding') from None
+    if fragment and not fragment.startswith('/'):
+        raise ContractError('Only JSON Pointer fragments are supported')
+    if re.search(r'~(?:[^01]|$)', fragment):
+        raise ContractError('Invalid JSON Pointer escape')
+    return fragment
+
+
+def pointer(document, reference):
+    fragment = _pointer_fragment(reference)
+    target = document
+    if not fragment:
+        return target
+    try:
+        for part in fragment[1:].split('/'):
             part = part.replace('~1', '/').replace('~0', '~')
-            target = target[int(part)] if isinstance(target, list) else target[part]
+            if isinstance(target, list):
+                if not re.fullmatch(r'0|[1-9][0-9]*', part):
+                    raise ValueError('Invalid array index')
+                target = target[int(part)]
+            elif isinstance(target, dict):
+                target = target[part]
+            else:
+                raise ValueError('Cannot traverse a scalar')
     except (KeyError, IndexError, TypeError, ValueError):
         raise ContractError('Unresolved local reference') from None
     return target
@@ -61,9 +87,8 @@ def local_path(parent, reference):
     path = posixpath.normpath(posixpath.join(posixpath.dirname(parent), unquote(parsed.path))) if parsed.path else parent
     if path.startswith('/') or path == '..' or path.startswith('../') or PurePosixPath(path).suffix.lower() not in {'.json', '.yaml', '.yml'}:
         raise ContractError('Reference must stay inside the document directory')
-    if parsed.fragment and not parsed.fragment.startswith('/'):
-        raise ContractError('Only JSON Pointer fragments are supported')
-    return path, parsed.fragment
+    fragment = _pointer_fragment('#' + parsed.fragment)
+    return path, quote(fragment, safe='/~')
 
 
 def bundle_document(bundle):
@@ -93,7 +118,7 @@ def bundle_document(bundle):
             target, fragment = local_path(filename, result['$ref'])
             if target not in parsed:
                 raise ContractError('Referenced bundle file does not exist')
-            result['$ref'] = '#/x-contract-files/' + escape(target) + fragment
+            result['$ref'] = '#' + quote('/x-contract-files/' + escape(target), safe='/~') + fragment
         return result
     converted = {name: rewrite(value, name) for name, value in parsed.items()}
     if not isinstance(converted[entry], dict):

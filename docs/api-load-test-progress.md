@@ -1,5 +1,25 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## JSON Pointer 수정 로컬 병합 완료 (2026-11-04)
+
+- 사용자 승인으로 기능276bbb0을 로컬 develop에 충돌 없이 병합했다. 커밋 직전 계약109개(15.703초)/diff 통과. 기존 관련186개 및 생성 최신성 검증은 해당 단계 기록대로 유지한다.
+- 검증한 기능 커밋과 제품 코드가 동일하며 이 완료 기록만 추가한다. 이번 전체 Python/프런트엔드/브라우저 재실행 없음. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.
+
+## OAS-2 JSON Pointer 해석 보완 완료 (2026-11-04)
+
+- 배열 -1/01/+1이 마지막 항목을 선택하는 기존 동작을 재현 후 ASCII 표준 인덱스만 허용하도록 수정했다. 로컬 fragment percent/UTF-8·tilde escape 검증과 루트# 지원, dict key 보존, scalar traversal 거부. bundle 파일명/fragment 재인코딩과 편집기 소비 경로도1회 디코딩으로 유지한다.
+- 최종 검증: 계약109개(신규6개 포함,16.543초), release/portal30개(7.632초), OpenAPI편집20개(0.451초), SDK18개(0.513초), 저장 케이스/결과9개(3.922초), 합계186개 통과. 원문 비노출·두 버전 잘못된 참조의 HTTP 전 차단, recursive root/percent 파일·필드명 및 편집기 호환 확인. 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- 최초 회귀 통과 후 공통 local_path의 편집기 소비 코드에서 재디코딩 가능성을 발견해 canonical URI fragment 반환을 유지하도록 보완하고 관련186개를 최종 재실행했다.
+- UI/API/DB 구조 변경 없음. 이번 전체 Python/프런트엔드/브라우저 재실행 없음. 직전 전체669개는 이 수정 전 통합 검증 결과다. 외부 URL/루트탈출/anchor/dynamic reference 허용은 추가하지 않는다.
+- Git: fix/openapi-json-pointer·HEAD939f00f 기준 미커밋. 커밋·병합·푸시·원본 worktree 변경 없음. 로그 /tmp/pointer-{contracts,contracts-final,release-final,openapi-final,sdk-final,saved-final,generated-final}.log.
+
+## OAS-2 JSON Pointer 해석 보완 시작 (2026-11-04)
+
+- develop939f00f에서 fix/openapi-json-pointer 분기. 기존 pointer가 배열 -1/01/+1을 모두 마지막 항목으로 읽는 문제를 재현했다.
+- 로컬 fragment를 UTF-8 percent decode1회 후 JSON Pointer escape/ASCII 배열 인덱스 규칙으로 검사한다. 루트# 지원, 잘못된 percent/tilde/음수/선행0/append 인덱스 거부. dict의 숫자 모양 key는 그대로 유지한다.
+- bundle fragment도 같은 검사기를 사용하고 파일명/fragment를 다시 인코딩해 literal percent를 중복 디코딩하지 않는다. 외부 URL·루트탈출·anchor/dynamic ref 제한은 유지한다.
+- pointer/RFC fixture·bundle/CLI·lint/실행 전 거부 및 기존 계약 회귀/생성 최신성을 검증한다. UI/API/DB 변경 없음. 미커밋·미병합·미푸시.
+
 ## 미병합 브랜치 로컬 develop 통합 완료 (2026-11-04)
 
 - 사용자 요청에 따라 검증한 feature/legacy-branch-integration의ccf22b3를 로컬 develop에 충돌 없이 병합했다. 기능6개와 main의 기존 이력이 모두 develop에 포함된다. main 포인터와 원본 미커밋3파일은 그대로 유지했다.

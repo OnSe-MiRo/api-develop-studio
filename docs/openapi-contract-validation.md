@@ -275,3 +275,14 @@ allOf/내부참조로 분산된 명시적 object 타입과 primitive 필드 제�
 - feature/openapi-union-header-objects, developef30a21 기준 미커밋. 원격 푸시 없음.
 
 검증: 계약103개·저장 케이스/결과9개·runner49개·이력10개 합계171개, 실HTTP 정상/교차분기실패 및 생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
+
+## 로컬 JSON Pointer 해석 (2026-11-04)
+
+[RFC6901](https://www.rfc-editor.org/rfc/rfc6901.html)에 따라 로컬 URI fragment를 한 번 UTF-8 percent decode하고 JSON Pointer 토큰을 해석한다. 루트 `#`, 빈 key `#/`, `~0`(tilde), `~1`(slash), percent-encoded separator/한글 및 literal percent key를 지원한다. `~01`은 `~1`이라는 key이며 slash로 두 번 변환하지 않는다.
+
+- 배열은 `0` 또는 선행0 없는 ASCII 양의 정수만 사용한다. 음수·+부호·선행0·공백·Unicode 숫자·소수·append `-`·범위 밖은 참조 오류다. dict의 `01`/`-1` 같은 key는 배열 규칙을 적용하지 않고 그대로 찾는다.
+- 잘못된 percent/UTF-8/tilde escape, anchor 형식 fragment, 외부 URL 참조는 거부한다. 오류 메시지에 참조 원문을 포함하지 않는다. 원시 계약의 잘못된 참조는 lint에서 차단돼 opt-in runner가 HTTP를 보내기 전에 configuration_error가 된다.
+- bundle/local file loader와 편집기의 local_path 소비 경로는 canonical URI fragment 형태를 유지한다. 번들 파일명과 fragment를 따로 인코딩해 literal percent를 중복 디코딩하지 않는다. 별도 schema 파일의 루트/자기 재귀 참조를 유지한다. 원본 파일은 변경하지 않는다.
+- 외부 URL fetch·루트 탈출·anchor/dynamic reference 지원을 허용한 것은 아니다. fix/openapi-json-pointer, develop939f00f 기준 미커밋, 커밋·병합·푸시 없음.
+
+검증: 계약109개·release/portal30개·편집20개·SDK18개·저장케이스/결과9개 합계186개와 생성 최신성/diff 통과. 최초 회귀 후 편집기의 단일 디코딩 호환성을 보완해 관련186개를 최종 재실행했다. 전체 Python/React/브라우저 재실행 없음.
