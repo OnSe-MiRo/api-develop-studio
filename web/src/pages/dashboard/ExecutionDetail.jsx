@@ -2,16 +2,19 @@ import { ContractSummary, readContractSummary } from '../../components/ContractS
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../utils/studio.js'
 import { useRunJob } from '../../hooks/useRunJob.js'
+import { normalizeOutcomeSearch } from '../../router.js'
 import { RunResult } from '../../components/RunResult.jsx'
 
 const labels = { passed: '성공', failed: '실패', error: '오류', timeout: '시간 초과', cancelled: '취소' }
 
-export function ExecutionDetail({ runId, onClose, outcomeFilter = 'all', onOutcomeFilterChange }) {
+export function ExecutionDetail({ runId, onClose, outcomeFilter = 'all', onOutcomeFilterChange, outcomeSearch = '', onOutcomeSearchChange }) {
   const heading = useRef(null)
   useEffect(() => { heading.current?.focus() }, [runId])
   const [run, setRun] = useState(null)
   const [error, setError] = useState('')
   const [revision, setRevision] = useState(0)
+  const [searchInput, setSearchInput] = useState(outcomeSearch)
+  useEffect(() => { setSearchInput(outcomeSearch) }, [runId, outcomeSearch])
   const job = useRunJob(`history:${runId}`)
   useEffect(() => {
     const controller = new AbortController()
@@ -26,7 +29,9 @@ export function ExecutionDetail({ runId, onClose, outcomeFilter = 'all', onOutco
   const outcomes = run?.detail?.outcomes || []
   const failures = outcomes.filter(item => ['failed', 'error', 'timeout', 'cancelled'].includes(item.status))
   const contractFailures = outcomes.filter(item => readContractSummary(item.contract).state === 'failed')
-  const visibleOutcomes = outcomeFilter === 'failures' ? failures : outcomeFilter === 'contract' ? contractFailures : outcomes
+  const filteredOutcomes = outcomeFilter === 'failures' ? failures : outcomeFilter === 'contract' ? contractFailures : outcomes
+  const query = outcomeSearch.toLowerCase()
+  const visibleOutcomes = filteredOutcomes.filter(item => !query || [item.caseReference, item.caseId].some(value => typeof value === 'string' && value.toLowerCase().includes(query)))
   const rerun = async () => {
     try { await job.start({}, `/api/executions/${encodeURIComponent(runId)}/rerun`) }
     catch { /* useRunJob displays the submission error. */ }
@@ -47,6 +52,11 @@ export function ExecutionDetail({ runId, onClose, outcomeFilter = 'all', onOutco
         <option value="failures">실패·오류·중단 ({failures.length})</option>
         <option value="contract">OpenAPI 계약 실패 ({contractFailures.length})</option>
       </select></label>
+      <form className="dashboard-search" onSubmit={event => { event.preventDefault(); onOutcomeSearchChange(normalizeOutcomeSearch(searchInput)) }}>
+        <label className="field"><span>상세 케이스 이름·경로 검색</span><input aria-label="상세 케이스 이름·경로 검색" maxLength={200} value={searchInput} onChange={event => setSearchInput(event.target.value)} /></label>
+        <button type="submit">상세 검색</button>
+        <button type="button" disabled={!searchInput && !outcomeSearch} onClick={() => { setSearchInput(''); onOutcomeSearchChange('') }}>상세 검색 초기화</button>
+      </form>
       <p className="hint" role="status">수집된 상세 {outcomes.length}개 중 {visibleOutcomes.length}개 표시</p>
       {outcomeFilter === 'contract' && <p className="hint">유효한 계약 실패 요약이 있는 항목만 표시합니다. 요약 없음·확인 불가는 전체에서 확인하세요.</p>}
       {visibleOutcomes.length === 0 && <p>{outcomes.length === 0 ? '수집된 상세 항목이 없습니다.' : '선택한 조건에 맞는 상세 항목이 없습니다.'}</p>}
@@ -58,7 +68,7 @@ export function ExecutionDetail({ runId, onClose, outcomeFilter = 'all', onOutco
         {(item.assertions || []).some(assertion => !assertion.passed) && <p className="dashboard-negative">실패 assertion (0부터 시작): {(item.assertions || []).filter(assertion => !assertion.passed).map(assertion => assertion.index).join(', ')}</p>}
       </li>)}</ul>
       {run.rerunRequest ? <>
-        <p className="hint">상세 항목 필터는 재실행 대상에 영향을 주지 않습니다. 현재 저장된 케이스·파이프라인과 현재 인증 설정으로 다시 실행합니다. 파이프라인은 준비·정리 단계를 포함합니다. 실패를 특정할 상세가 없으면 원래 저장 대상 전체를 재실행합니다.</p>
+        <p className="hint">상세 항목 필터와 검색은 재실행 대상에 영향을 주지 않습니다. 현재 저장된 케이스·파이프라인과 현재 인증 설정으로 다시 실행합니다. 파이프라인은 준비·정리 단계를 포함합니다. 실패를 특정할 상세가 없으면 원래 저장 대상 전체를 재실행합니다.</p>
         <ul>{[...run.rerunRequest.cases, ...run.rerunRequest.pipelines].map(reference => <li key={reference}>{reference}</li>)}</ul>
         <button className="primary" disabled={job.busy} onClick={rerun}>실패 대상 재실행</button>
       </> : <p className="hint">재실행할 저장된 실패 대상이 없습니다. 저장 전 실행과 과거 상세 미수집 이력은 재실행할 수 없습니다.</p>}

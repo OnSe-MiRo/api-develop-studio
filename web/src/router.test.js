@@ -107,3 +107,16 @@ it('round-trips detail filters only for a selected dashboard run', () => {
   expect(buildUrl({ tab: 'dashboard', outcomeFilter: 'contract' })).toBe('/dashboard')
   expect(buildUrl({ tab: 'api-call', outcomeFilter: 'contract', runId: 'run' })).toBe('/api-call')
 })
+
+it('normalizes and encodes case search only within dashboard details', () => {
+  const state = { tab: 'dashboard', runId: 'run', outcomeFilter: 'failures', outcomeSearch: '  한글/API +%?  ' }
+  window.history.replaceState(null, '', buildUrl(state))
+  expect(parseLocation()).toMatchObject({ runId: 'run', outcomeFilter: 'failures', outcomeSearch: '한글/API +%?' })
+  window.history.replaceState(null, '', buildUrl({ ...state, outcomeSearch: 'x'.repeat(250) }))
+  expect(parseLocation().outcomeSearch).toHaveLength(200)
+  for (const outcomeSearch of ['', '  ', null, 12]) expect(buildUrl({ ...state, outcomeSearch })).not.toContain('caseSearch')
+  expect(buildUrl({ ...state, runId: '' })).toBe('/dashboard')
+  window.history.replaceState(null, '', '/dashboard?caseSearch=orphan')
+  expect(parseLocation().outcomeSearch).toBe('')
+  expect(buildUrl({ ...state, tab: 'api-call' })).toBe('/api-call')
+})
