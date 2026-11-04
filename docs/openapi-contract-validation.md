@@ -263,3 +263,15 @@ allOf/내부참조로 분산된 명시적 object 타입과 primitive 필드 제�
 - 객체 container union 및 고급 reference/dialect는 별도 범위다. feature/openapi-union-header-arrays, developebf7672 기준 미커밋이며 원격 푸시 없음.
 
 검증: 계약98개·저장 케이스/결과9개·runner49개·이력10개 합계166개, 실HTTP 정상/교차분기실패 및 생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
+
+## 객체 헤더의 최상위 oneOf/anyOf (2026-11-04)
+
+각 객체 분기의 필드 집합·primitive 타입과 미선언 필드의 디코딩 타입이 같을 때만 공통 simple 객체 디코더를 구성한다. 내부 참조·중첩 union·지원 object allOf 분기와 nullable 타입을 지원한다.
+
+- enum/범위/required/추가속성 금지·허용/개수는 공통 디코더에 합치지 않고 원래 schema로 검증한다. [JSON Schema 조합 규칙](https://json-schema.org/understanding-json-schema/reference/combining)에 따라 객체 전체가 oneOf 정확히 한 분기 또는 anyOf 하나 이상의 분기를 만족해야 한다. 서로 다른 분기의 필드 조건을 조합해 통과시키지 않는다.
+- additionalProperties=true/false의 미선언 값은 디코딩 단계에서 문자열로 유지하며 실제 허용/금지는 원래 분기가 결정한다. 추가속성 schema가 있으면 그 primitive 타입도 모든 분기에서 같아야 한다.
+- 필드 이름 집합/타입이 다르거나 nested field/비객체/모호한 타입·조건부/패턴/unevaluatedProperties·순환/한도 초과이면 union 객체를 추론하지 않는다. union 루트에 properties/allOf를 함께 둔 혼합 구성도 이번 범위 밖이다.
+- union 탐색32단계/128방문 및 각 기존 allOf/type 탐색 한도를 유지한다. 기존 JSON content의 객체 검증은 별개이며 영향을 주지 않는다.
+- feature/openapi-union-header-objects, developef30a21 기준 미커밋. 원격 푸시 없음.
+
+검증: 계약103개·저장 케이스/결과9개·runner49개·이력10개 합계171개, 실HTTP 정상/교차분기실패 및 생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
