@@ -593,3 +593,14 @@
 - [RUN 기존 기록](archive/integration-sources/RUN/api-development-progress.md)
 - [IOP 기존 기록](archive/integration-sources/IOP/api-development-progress.md)
 - [GOV 기존 기록](archive/integration-sources/GOV/api-development-progress.md)
+
+## 2026-11-04 — 로컬 develop 병합 및 기존 작업 보존
+
+- 시작: `feature/load-test-baseline-recovery`의 기존 미커밋 변경 17개 파일을 압축 백업과 stash `82391be`로 보존하고, 로컬 `develop`의 `ebf7672`를 병합한다.
+- 변경: 제품 코드는 자동 병합됐다. 진행 문서와 하네스 문서의 충돌 3개는 develop의 최신 구조를 유지하며 해결했다. P0/P1 과거 이력은 `docs/archive/integration-sources/P1/`에 보존된 내용을 확인했다. 기존 P1 코드·증거 대부분은 develop에 이미 통합되어 있으며 Workspace·pagination 호환 보완을 유지한다.
+- 검증 계획: Python 전체 테스트, 프런트엔드 테스트·빌드, OpenAPI 생성 일치 검사, P1/LT-5 보고서 재현, diff 및 기존 변경 보존 확인.
+- 검증 완료: 전체 Python 659개(125.821초, skip 0), 프런트엔드 37개 파일/167개 테스트, production build, OpenAPI 생성 최신성, Node k6 모델 5개 파일, LT-5 및 P1 보고서 2개 재현 검사, staged/unstaged diff 검사 통과. 빌드의 500 kB 초과 chunk 경고는 남아 있다.
+- 보존 확인: 원본 17개 파일을 대조했다. 11개는 byte 단위로 동일하다. 진단 코드·테스트는 develop의 Workspace·pagination 호환 수정과 함께 보존했고, 문서 안내의 원래 링크도 유지됐다. 기존 진행 기록의 모든 비어 있지 않은 줄은 현재 문서 또는 P1 보관 문서에 남아 있다. 기존 영문 README와 별도 2026-10-13 검증 기록은 미커밋으로 복원했다. README에는 develop의 인증 모드 안내를 추가했다.
+- 환경: sandbox의 Docker 접근 제한은 허용된 권한 확장 실행으로 해소했다. 테스트 전용 PostgreSQL·Redis를 시작해 전체 회귀를 실행한 후 원래 중지 상태로 복원했다. 현재 차단 없음.
+- 완료: 로컬 develop `ebf7672`를 현재 `feature/load-test-baseline-recovery`에 병합한다. 제품 코드는 병합 기준 develop과 동일하다. 기존 변경의 압축 백업과 stash `82391be`를 유지하며, 원격 푸시·운영 배포·새 부하 캠페인은 수행하지 않았다.
+- 검증 로그: `/tmp/api-develop-merge-python.log`, `/tmp/api-develop-merge-web-test.log`, `/tmp/api-develop-merge-web-build.log`, `/tmp/api-develop-merge-generated.log`, `/tmp/api-develop-merge-k6-models.log`.
