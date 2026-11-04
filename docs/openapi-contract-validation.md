@@ -15,7 +15,7 @@
 - 응답 schema: `openapi-schema-validator` 0.6.3, version별 nullable/JSON Schema 처리, format 및 read-context required 검사.
 - 구조 오류, 중복 operationId, 잘못된 참조는 오류로 차단한다. operationId/summary 누락은 조직 lint 경고다.
 - 응답은 정확한 status → `2XX` 등 범위 → `default` 순서로 선택한다. content type은 parameter를 제거하고 정확한 media type → `type/*` → `*/*` 순서로 선택한다.
-- 헤더 이름은 대소문자를 구별하지 않는다. required header 누락, scalar schema 및 simple 형식의 primitive 배열을 검사한다. JSON content 헤더도 지원한다. simple 형식의 평면 객체도 지원한다. 비JSON content와 중첩 직렬화는 미지원으로 실패한다.
+- 헤더 이름은 대소문자를 구별하지 않는다. required header 누락, scalar schema 및 simple 형식의 primitive 배열을 검사한다. JSON content 헤더도 지원한다. simple 형식의 평면 객체도 지원한다. JSON/text/plain 외 content와 중첩 simple 직렬화는 미지원으로 실패한다.
 - HEAD·204·304는 본문이 없어야 한다. JSON media type의 잘못된 JSON은 schema 검증 전에 실패한다.
 - operation은 method·path template으로 연결하고 구체적인 path가 template보다 우선한다. server는 operation → path item → root 순으로 선택하고 각 operation 안에서만 prefix를 제거한다. 빈 override 배열은 상위 설정을 상속하지 않고 루트 경로로 해석한다. 모호하거나 매칭되지 않으면 실패한다.
 - 선언된 server 변수의 문자열 default를 치환한다. enum이 있으면 default가 enum에 속해야 한다. 빠른 호출의 serverVariables 문자열 map으로 명시값을 지정할 수 있다. 아래2026-10-24 계약을 따른다. 명세 위치가 없으면 치환 후 절대 HTTP(S) URL 및 `/`로 시작하는 URL을 지원한다. 선택적 `contractDocumentUrl`이 있으면 일반 상대 server도 이 문서 위치에 대해 해석한다. 문서 위치 정보가 없는 일반 상대 URL(`api/v2`)·query/fragment·미정의 변수는 실패 처리한다.
@@ -169,3 +169,27 @@ OpenAPI3.0/3.1에서 `schema.type: object`와 생략/명시된 simple style을 �
 - 기존 JSON 헤더 변경 위에 같은 feature/openapi-json-response-headers에서 미커밋으로 추가했다. 이번 커밋·병합·원격 푸시 없음.
 
 검증: 계약57개·저장케이스6개·runner49개·이력10개 합계122개 및 생성 최신성/diff 통과. 실제 HTTP runner 정상/실패·보고서 값 비노출 확인. 전체 Python/React/브라우저 재실행 없음.
+
+## text/plain content 응답 헤더 (2026-11-04)
+
+단일 content 미디어 타입 `text/plain`은 HTTP client가 전달한 문자열 그대로 schema 검사한다. OpenAPI3.0/3.1 및 내부 Header/schema 참조를 지원한다. [Header Object의 content 계약](https://spec.openapis.org/oas/v3.1.0.html#header-object)을 사용하며 지원 디코더를 JSON에서 plain text로 확장한 것이다.
+
+- 공백·쉼표·등호·따옴표·percent 표기를 보존한다. JSON처럼 보이는 값도 문자열이다. `123`/`true`를 숫자/boolean으로 변환하지 않는다.
+- minLength/maxLength/pattern/enum/format 등 문자열 제약과 기존 read-context/schema validator를 적용한다. 숫자/object schema를 선언하면 문자열 타입 불일치로 실패한다. schema를 생략하면 문자열을 허용한다.
+- 미디어 타입은 대소문자 무시/parameter 분리. charset parameter로 재디코딩하지 않으며 HTTP client가 제공한 문자열을 기준으로 한다. 전송 단계에서 client가 정규화한 원본 byte/공백 복원은 하지 않는다.
+- 필수 헤더 누락과 존재하지만 빈 문자열인 헤더를 구분한다. schema 위반 진단에는 실제 값·원문을 추가하지 않는다.
+- text/html·XML·application/octet-stream·wildcard는 여전히 unsupported_header_content다. 기존 JSON 및 simple scalar/array/object 경로는 유지한다.
+
+검증: 계약61개·저장 케이스/결과9개·runner49개·이력10개 합계129개 및 생성 최신성/diff 통과. 실제 HTTP runner 정상/계약실패·보고서 비노출 확인. 전체 Python/React/브라우저 재실행 없음. feature/openapi-text-response-headers 미커밋, 원격 푸시 없음.
+
+## OpenAPI3.1 nullable 헤더 타입 (2026-11-04)
+
+`type: [integer, 'null']`처럼 non-null 타입이 하나인 type 배열을 simple 헤더 디코딩에 사용한다. 타입 순서와 무관하며 단일 원소 type 배열도 지원한다. OpenAPI3.1의 type 배열은 [공식 3.0→3.1 전환 안내](https://learn.openapis.org/upgrading/v3.0-to-v3.1.html)에 근거한다. 기존3.0 `nullable: true` 동작은 유지하고,3.0 문서의 type 배열은 기존 lint에서 거부한다.
+
+- scalar, array container/items, object container/properties/additionalProperties 및 내부 참조에 적용한다. 변환 후 원래 schema로 enum/범위/required 등을 검사한다. 앞선 union 미지원 제한에서 이 단일 non-null 경우만 확장한다.
+- simple 헤더의 빈 문자열이나 문자 `null`을 None으로 추정하지 않는다. nullable integer의 `null`은 타입 실패이고 nullable string의 `null`은 문자열이다. required 헤더 누락도 그대로 오류다.
+- JSON content의 JSON null은 기존대로 지원하며 text/plain은 문자열을 유지한다.
+- non-null 후보가 여러 개인 scalar는 자동 변환하지 않고 원래 문자열을 schema 검사한다. 배열 items/객체 필드의 모호한 다중 타입은 unsupported_header_serialization을 유지한다. 중첩 simple 직렬화·고급 참조 지원은 별도다.
+- 기존 text/plain 미커밋 변경 위에서 같은 feature/openapi-text-response-headers에 추가했다. 커밋·병합·푸시 없음.
+
+검증: 계약66개·저장 케이스/결과9개·runner49개·이력10개 합계134개, 실제 HTTP nullable 배열 정상/실패, 생성 최신성/diff 통과. 최초 fixture schema 이름 충돌 수정 후 관련 전체 재검증했다. 이번 전체 Python/React/브라우저 재실행 없음.
