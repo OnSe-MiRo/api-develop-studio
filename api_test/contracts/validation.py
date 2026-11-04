@@ -536,8 +536,8 @@ def _header_object(document, header, schema, raw):
     if isinstance(additional, dict):
         additional = resolve(document, additional)
     decoders = list(properties.values()) + ([additional] if isinstance(additional, dict) else [])
-    if any(not isinstance(value, dict) or _header_primitive_type(document, value) not in
-           ('string', 'integer', 'number', 'boolean') for value in decoders):
+    if any(not isinstance(value, bool) and value != {} and
+           (not isinstance(value, dict) or _header_primitive_type(document, value) is None) for value in decoders):
         return None, 'unsupported_header_serialization'
     parts = raw.split(',') if raw else []
     if header.get('explode', False):

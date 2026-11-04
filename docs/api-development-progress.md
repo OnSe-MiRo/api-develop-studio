@@ -1,5 +1,22 @@
 # API 개발 기능 진행 기록
 
+## boolean 객체 필드 커밋·푸시·병합 (2026-11-04)
+
+- 프로젝트 한정 사용자 승인으로 기능aaf642c를 커밋하고 origin/feature/openapi-boolean-object-fields에 일반 푸시했다. 로컬 develop에 충돌 없이 병합하며 검증한 제품 코드와 동일하다.
+- 병합 커밋을 origin/develop에 일반 푸시하고 원격 SHA를 최종 확인한다. 관련200개·생성 최신성/diff 통과. 원본 worktree·운영 배포·브랜치 삭제·강제 푸시 없음.
+
+## OAS-2 boolean 객체 필드 검증 완료 (2026-11-04)
+
+- properties의 true/false/빈 schema 및 참조를 지원했다. 자유 필드는 문자열 유지, 금지 필드의 실제 존재와 required/추가속성 금지는 원래 schema로 검사한다. typed 필드와 두 explode 표현 유지.
+- 검증: 계약132개(신규4개 포함,18.851초), 저장 케이스/결과9개(3.544초), runner49개(0.087초), 이력10개(0.226초), 합계200개 통과. 실HTTP 자유/금지필드 정상/실패 및 원문 비노출, 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- 이번 전체 Python/프런트엔드/브라우저 재실행 없음. UI/API/DB 변경 없음. fetch 후 원격/로컬 developcb5fd0f 일치, 프로젝트 승인대로 커밋/기능push/develop병합/push한다. 로그 /tmp/bool-field-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 boolean 객체 필드 시작 (2026-11-04)
+
+- developcb5fd0f에서 feature/openapi-boolean-object-fields 분기. 직접 simple 객체의 properties true/false/빈 schema{} 및 빈 additionalProperties schema를 지원한다. 참조된 boolean 필드도 포함한다.
+- 자유 필드는 문자열을 유지하고 false 필드는 실제 존재 시 원래 schema로 거부한다. required/추가속성 금지·typed 필드 제약 유지. 조합 container의 boolean 필드 추론 확장은 비범위다.
+- 관련 회귀/실HTTP·생성 검증 후 프로젝트 승인대로 커밋/푸시/develop병합한다. UI/API/DB 변경 없음.
+
 ## boolean prefixItems 커밋·푸시·병합 (2026-11-04)
 
 - 프로젝트 한정 사용자 승인으로 기능5f59f65를 커밋하고 origin/feature/openapi-boolean-prefix-headers에 일반 푸시했다. 로컬 develop에 충돌 없이 병합하며 검증한 제품 코드와 동일하다.

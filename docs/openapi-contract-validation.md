@@ -331,3 +331,13 @@ OpenAPI3.1 prefixItems에서 true/false/빈 schema{}와 그 내부참조를 지�
 - 3.0 prefixItems/boolean schema는 기존 lint에서 거부한다. 중첩/모호한 타입 및 composition 간 tuple 합성 제한은 유지한다.
 
 검증: 최종 계약128개·저장케이스/결과9개·runner49개·이력10개 합계196개 및 실HTTP·생성 최신성/diff 통과. 최초 fixture 중복 수집5개 제거 후 계약 재검증. 전체 Python/React/브라우저 재실행 없음.
+
+## boolean/빈 객체 필드 schema (2026-11-04)
+
+직접 simple 객체의 properties에 true/false/빈 schema{} 또는 내부 참조를 사용할 수 있다. [JSON Schema boolean 규칙](https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.2)을 원래 schema 검증에 적용한다.
+
+- true/{} 필드와 빈 additionalProperties schema의 값은 문자열을 유지한다. 명시적 typed 필드는 기존 변환을 사용한다.
+- false 필드는 존재할 때 거부하며, 생략은 required에 따라 판정한다. false 필드를 required로 지정하면 값이 있든 없든 통과할 수 없다. 추가속성 금지·enum 등 기존 제약도 유지한다.
+- boolean schema는3.1에서 지원하며3.0은 lint에서 거부한다. 빈 schema{}는3.0에서도 지원한다. container composition의 boolean 필드 추론 및 중첩 직렬화는 별도다.
+
+검증: 계약132개·저장케이스/결과9개·runner49개·이력10개 합계200개 및 실HTTP·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
