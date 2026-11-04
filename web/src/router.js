@@ -9,6 +9,10 @@ export function restoreJson(value) {
   return value.toLowerCase().endsWith('.json') ? value : `${value}.json`
 }
 
+export function normalizeOutcomeFilter(value) {
+  return ['failures', 'contract'].includes(value) ? value : 'all'
+}
+
 export function normalizeDashboardFilters(filters = {}) {
   const days = Number(filters.days)
   const page = String(filters.page ?? '1')
@@ -46,7 +50,7 @@ export function parseLocation() {
     return { tab: 'api-call', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/dashboard') {
-    return { tab: 'dashboard', dashboardFilters: normalizeDashboardFilters(Object.fromEntries(['days', 'status', 'page', 'search'].map(name => [name, query.get(name)]))), runId: query.get('run') || '', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
+    return { tab: 'dashboard', outcomeFilter: query.get('run') ? normalizeOutcomeFilter(query.get('outcomes')) : 'all', dashboardFilters: normalizeDashboardFilters(Object.fromEntries(['days', 'status', 'page', 'search'].map(name => [name, query.get(name)]))), runId: query.get('run') || '', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/projects/new') {
     return { tab: 'project-settings', projectSettingsReference: '', activeProject: '', caseReference: '', pipelineReference: '' }
@@ -93,7 +97,7 @@ export function parseLocation() {
   return { tab: 'api-call', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
 }
 
-export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, projectFilters = {}, caseFilters = {}, pipelineFilters = {}, dashboardFilters = {}, runId, baselineId, candidateId, releaseId }) {
+export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, projectFilters = {}, caseFilters = {}, pipelineFilters = {}, dashboardFilters = {}, outcomeFilter = 'all', runId, baselineId, candidateId, releaseId }) {
   const query = new URLSearchParams()
   const projectSlug = stripJson(activeProject)
   let pathname = '/api-call'
@@ -110,7 +114,11 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
       if (filters.status) query.set('status', filters.status)
       if (filters.page !== 1) query.set('page', String(filters.page))
       if (filters.search) query.set('search', filters.search)
-      if (runId) query.set('run', runId)
+      if (runId) {
+        query.set('run', runId)
+        const outcome = normalizeOutcomeFilter(outcomeFilter)
+        if (outcome !== 'all') query.set('outcomes', outcome)
+      }
       break
     }
     case 'load-tests':

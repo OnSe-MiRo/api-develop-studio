@@ -1,5 +1,23 @@
 # API 개발 기능 진행 기록
 
+## 상세 필터 URL 복원 커밋 준비 (2026-11-04)
+
+- 사용자 승인으로 상세 필터 URL 복원 변경을 커밋·로컬 develop 병합한다. 관련25개/3파일 및 build 재검증, diff 검사 통과. 직전 전체155개와 실제 브라우저 검증은 이전 완료 기록을 유지한다. 원격 푸시 없음.
+- 다음 단계는 실행 상세 케이스 이름·경로 검색과 URL 복원이며 새 브랜치에 미커밋으로 남긴다.
+
+## 실행 상세 필터 URL 복원 완료 (2026-11-04)
+
+- outcomes=failures|contract를 선택 Run URL에 연결했다. 기본/잘못된 값과 Run 없는 값은 전체로 처리한다. 상세 필터 변경은 목록 조건과 Run 유지, 다른 Run 열기/닫기/목록 조건 변경은 초기화한다.
+- 검증: frontend155개(34파일,worker2), production build, diff 검사 통과. 신규 라우터1개·통합화면1개가 직접진입/재마운트/popstate·잘못된 값·필터 변경 시 API 추가 호출 없음·POST0회·닫기/Run 전환 초기화를 확인했다. 백엔드 변경 및 전체 Python 재실행 없음.
+- 실제 브라우저: 격리 임시 DB의 합성 이력2개로 계약실패 직접 URL→reload 유지, 실패5개로 전환→back 계약1개→forward 실패5개, 다른 Run 전체 초기화, 상세 닫기 시 outcomes/run 제거와 days30 보존을 확인했다. 콘솔 오류/경고0. 사용자 데이터·운영 인증·실제 대상 호출은 사용하지 않았다. [화면](execution-detail-filter-url.png).
+- 기존 변경 addb634 및 로컬 develop 병합 d43fc42 완료 후 새 feature/execution-detail-filter-url에 이 단계만 미커밋으로 남긴다. 원격 푸시 없음.
+
+## 실행 상세 필터 URL 복원 시작 (2026-11-04)
+
+- develop 병합 d43fc42에서 feature/execution-detail-filter-url 분기. outcomes=failures|contract를 선택 run에 연결한다. 기본 all/잘못된 값은 전체, run이 없으면 필터를 무시한다.
+- 상세 필터 변경은 목록 조건과 Run ID 유지, 다른 Run 열기·상세 닫기·목록 조건/페이지 변경은 초기화한다. reload/back/forward에서 복원하고 GET/POST 추가 실행을 유발하지 않는다.
+- 관련 라우터/통합 화면 회귀·전체 frontend/build 및 격리 DB 실제 브라우저 검증을 진행한다. 새 변경은 미커밋, 원격 푸시 없음.
+
 ## 실행 상세 필터 로컬 develop 병합 완료 (2026-11-04)
 
 - 기능 커밋 addb634(계약 요약·대시보드 URL 복원·실행 상세 필터)을 로컬 develop에 충돌 없이 병합했다. 검증한 제품 코드와 동일하며 이 완료 기록만 추가한다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.

@@ -6,14 +6,12 @@ import { RunResult } from '../../components/RunResult.jsx'
 
 const labels = { passed: '성공', failed: '실패', error: '오류', timeout: '시간 초과', cancelled: '취소' }
 
-export function ExecutionDetail({ runId, onClose }) {
+export function ExecutionDetail({ runId, onClose, outcomeFilter = 'all', onOutcomeFilterChange }) {
   const heading = useRef(null)
   useEffect(() => { heading.current?.focus() }, [runId])
   const [run, setRun] = useState(null)
   const [error, setError] = useState('')
   const [revision, setRevision] = useState(0)
-  const [outcomeFilter, setOutcomeFilter] = useState('all')
-  useEffect(() => { setOutcomeFilter('all') }, [runId])
   const job = useRunJob(`history:${runId}`)
   useEffect(() => {
     const controller = new AbortController()
@@ -44,7 +42,7 @@ export function ExecutionDetail({ runId, onClose }) {
       </dl>
       {Object.keys(run.detail?.projectEnvironments || {}).length > 0 && <div><h3>실행 시 프로젝트 환경</h3><ul>{Object.entries(run.detail.projectEnvironments).map(([project, environment]) => <li key={project}>{project} · {environment === '' ? '기본 URL' : environment ?? '미수집'}</li>)}</ul></div>}
       {!run.detail?.reportAvailable && <p className="hint">상세 보고서가 수집되지 않은 실행입니다. 기존 이력 또는 중단된 실행은 assertion 결과가 없을 수 있습니다.</p>}
-      <label>상세 항목 필터<select value={outcomeFilter} onChange={event => setOutcomeFilter(event.target.value)}>
+      <label>상세 항목 필터<select value={outcomeFilter} onChange={event => onOutcomeFilterChange(event.target.value)}>
         <option value="all">전체 ({outcomes.length})</option>
         <option value="failures">실패·오류·중단 ({failures.length})</option>
         <option value="contract">OpenAPI 계약 실패 ({contractFailures.length})</option>

@@ -141,3 +141,49 @@ it('keeps list filters when a missing detail is closed', async () => {
   expect(query().get('page')).toBe('2')
   expect(query().get('search')).toBe('foo')
 })
+
+it('restores detail filters without fetching or submitting again on filter changes', async () => {
+  api.mockImplementation(async path => path.startsWith('/api/dashboard?') ? listing(2) : {
+    ...detail('old'), detail: { reportAvailable: true, outcomes: [
+      { caseId: 'passed-item', status: 'passed' },
+      { caseId: 'assertion-item', status: 'failed' },
+      { caseId: 'contract-item', status: 'failed', contract: { valid: false, issueCount: 1, documentDigest: 'a'.repeat(64) } },
+    ] },
+  })
+  const direct = '/dashboard?project=demo&days=30&page=2&search=foo&run=old&outcomes=contract'
+  window.history.replaceState(null, '', direct)
+  const view = render(<RoutedDashboard />)
+  expect(await screen.findByLabelText('상세 항목 필터')).toHaveValue('contract')
+  expect(screen.getByText('contract-item')).toBeInTheDocument()
+  expect(screen.queryByText('assertion-item')).not.toBeInTheDocument()
+  view.unmount()
+  render(<RoutedDashboard />)
+  expect(await screen.findByLabelText('상세 항목 필터')).toHaveValue('contract')
+  const callsBefore = api.mock.calls.length
+  fireEvent.change(screen.getByLabelText('상세 항목 필터'), { target: { value: 'failures' } })
+  expect(Object.fromEntries(query())).toMatchObject({ project: 'demo', days: '30', page: '2', search: 'foo', run: 'old', outcomes: 'failures' })
+  expect(screen.getByText('assertion-item')).toBeInTheDocument()
+  expect(api.mock.calls).toHaveLength(callsBefore)
+  visit(direct)
+  expect(screen.getByLabelText('상세 항목 필터')).toHaveValue('contract')
+  expect(screen.queryByText('assertion-item')).not.toBeInTheDocument()
+  visit(direct.replace('outcomes=contract', 'outcomes=failures'))
+  expect(screen.getByLabelText('상세 항목 필터')).toHaveValue('failures')
+  fireEvent.change(screen.getByLabelText('상세 항목 필터'), { target: { value: 'all' } })
+  expect(query().has('outcomes')).toBe(false)
+  fireEvent.change(screen.getByLabelText('상세 항목 필터'), { target: { value: 'contract' } })
+  fireEvent.click(screen.getByRole('button', { name: '실행 상세 run-2' }))
+  expect(await screen.findByLabelText('상세 항목 필터')).toHaveValue('all')
+  expect(query().has('outcomes')).toBe(false)
+  fireEvent.change(screen.getByLabelText('상세 항목 필터'), { target: { value: 'failures' } })
+  fireEvent.click(screen.getByRole('button', { name: '상세 닫기' }))
+  expect(query().has('run')).toBe(false)
+  expect(query().has('outcomes')).toBe(false)
+  expect(query().get('page')).toBe('2')
+  visit(direct)
+  await screen.findByLabelText('상세 항목 필터')
+  fireEvent.change(screen.getByLabelText('조회 기간'), { target: { value: '90' } })
+  expect(query().has('run')).toBe(false)
+  expect(query().has('outcomes')).toBe(false)
+  expect(api.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(false)
+})
