@@ -1,5 +1,18 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## OAS-2 객체 container oneOf/anyOf 완료 (2026-11-04)
+
+- 모든 분기의 필드 집합/primitive 타입과 추가속성 디코딩 타입이 같은 경우 공통 객체 디코더를 구성했다. 원래 schema로 enum/required/추가속성 금지 및 전체 분기 일치를 검사한다. 내부참조·중첩 union·지원 allOf·nullable·두 explode 경로 유지.
+- 검증: 계약103개(신규5개 포함,17.717초), 저장 케이스/결과9개(3.632초), runner49개(0.070초), 이력10개(0.169초), 합계171개 통과. 두 버전·교차분기 거부·oneOf 중복일치/anyOf 허용·폐쇄 schema·타입/구조 차이·순환/한도·실HTTP 정상/실패 확인. 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- 이번 전체 Python/프런트엔드/브라우저 재실행 없음. API/UI/DB 구조 변경 없음. 과거 전체659개 및 이관 기대값 보완 결과는 당시 범위대로 유지한다.
+- Git: 배열 union 기능df64b38·로컬 develop병합ef30a21 완료. 새 feature/openapi-union-header-objects는ef30a21 기준 미커밋. 원격 푸시·원본 worktree 변경 없음. 로그 /tmp/union-object-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 객체 container oneOf/anyOf 시작 (2026-11-04)
+
+- developef30a21에서 feature/openapi-union-header-objects 분기. 모든 객체 분기의 필드 집합/primitive 타입 및 미선언 필드의 디코딩 타입이 같을 때만 공통 디코더를 만든다. 참조/중첩 union/지원 object allOf 분기 포함.
+- enum/required/추가속성 허용·금지/개수 및 정확한 분기 일치는 원래 schema로 검증한다. 다른 필드구조/혼합타입/조건부/패턴/순환·32단계128방문 초과는 추론하지 않는다.
+- 두 버전·분기 의미·폐쇄 schema·실HTTP와 공통 회귀/생성 최신성 검증. UI/API/DB 변경 없음. 새 변경 미커밋, 원격 푸시 없음.
+
 ## 배열 oneOf·anyOf 헤더 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로df64b38을 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약98개(15.900초)/diff 통과. 직전 관련166개·실HTTP·생성 최신성 근거 유지. 제품 코드는 기능 커밋과 동일하고 완료 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은 동일 필드 타입 객체 container oneOf/anyOf다.

@@ -424,6 +424,56 @@ def _header_allof_object_schema(document, schema):
             'additionalProperties': {'allOf': additional} if additional else True}
 
 
+def _header_union_object_schema(document, schema):
+    if not isinstance(schema, dict) or not any(key in schema for key in ('oneOf', 'anyOf')):
+        return None
+    active = set()
+    remaining = 128
+
+    def shape(value, depth=0):
+        nonlocal remaining
+        remaining -= 1
+        if remaining < 0 or depth > 32 or id(value) in active or not isinstance(value, dict):
+            raise ValueError('Header object union traversal limit')
+        if any(key in value for key in ('not', 'if', 'patternProperties', 'dependentSchemas', 'unevaluatedProperties')):
+            raise ValueError('Unsupported object union')
+        active.add(id(value))
+        try:
+            if '$ref' in value:
+                return shape(pointer(document, value['$ref']), depth + 1)
+            keywords = [key for key in ('oneOf', 'anyOf') if key in value]
+            if keywords:
+                if 'allOf' in value or 'properties' in value or ('type' in value and _header_type(value) != 'object'):
+                    raise ValueError('Ambiguous object union')
+                branches = [shape(child, depth + 1) for key in keywords for child in value[key]]
+                if not branches or any(branch != branches[0] for branch in branches):
+                    raise ValueError('Different object decoding shapes')
+                return branches[0]
+            decoder = _header_allof_object_schema(document, value)
+            if decoder is None:
+                if _header_type(value) != 'object' or 'allOf' in value:
+                    raise ValueError('Non-object union branch')
+                decoder = value
+            properties = {}
+            for name, prop in decoder.get('properties', {}).items():
+                kind = _header_primitive_type(document, prop)
+                if kind is None:
+                    raise ValueError('Unknown property type')
+                properties[name] = {'type': kind}
+            additional = decoder.get('additionalProperties', True)
+            kind = _header_primitive_type(document, additional) if isinstance(additional, dict) else 'string'
+            if kind is None:
+                raise ValueError('Unknown additional property type')
+            return {'type': 'object', 'properties': properties, 'additionalProperties': {'type': kind}}
+        finally:
+            active.remove(id(value))
+
+    try:
+        return shape(schema)
+    except (ValueError, ContractError):
+        return None
+
+
 def _header_scalar(schema, value, document):
     schema_type = _header_primitive_type(document, schema)
     try:
@@ -518,6 +568,8 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
             if composed_items is None:
                 composed_items = _header_union_array_items(document, schema)
             composed_object = _header_allof_object_schema(document, schema)
+            if composed_object is None:
+                composed_object = _header_union_object_schema(document, schema)
             if isinstance(schema, dict) and (_header_type(schema) == 'array' or composed_items is not None):
                 items = composed_items if composed_items is not None else resolve(document, schema.get('items', {}))
                 # Only homogeneous primitive arrays have an unambiguous decoder here.
