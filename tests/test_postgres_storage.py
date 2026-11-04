@@ -183,7 +183,8 @@ class PostgresStorageTest(unittest.TestCase):
             for table in ('oauth_tokens','oauth_pending','login_sessions','oidc_login_states'):
                 self.assertEqual(db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0],0,table)
             self.assertEqual(db.execute("SELECT version FROM memberships WHERE workspace_id='team' AND user_id='alice'").fetchone()[0],1)
-            self.assertEqual(db.execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0],6)
+            self.assertEqual(db.execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0],7)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM saved_run_results').fetchone()[0],0)
             self.assertEqual(db.execute('SELECT MAX(version) FROM identity_schema_migrations').fetchone()[0],2)
             self.assertEqual(db.execute('SELECT MAX(version) FROM release_schema_migrations').fetchone()[0],2)
 

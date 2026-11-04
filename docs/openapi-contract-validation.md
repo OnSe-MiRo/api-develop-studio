@@ -240,3 +240,15 @@ OpenAPI3.0/3.1에서 `schema.type: object`와 생략/명시된 simple style을 �
 - feature/openapi-allof-header-arrays, developc1d0610 기준 미커밋. 원격 푸시 없음.
 
 검증: 계약87개·저장 케이스/결과9개·runner49개·이력10개 합계155개, 실HTTP 정상/중복실패 및 생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
+
+## 객체 헤더의 최상위 allOf (2026-11-04)
+
+allOf/내부참조로 분산된 명시적 object 타입과 primitive 필드 제약을 수집해 simple 객체 헤더를 디코딩한다. 디코딩용 필드 정보만 구성하고 최종 검증은 원래 schema로 수행한다.
+
+- OpenAPI3.0/3.1·중첩 allOf/참조·nullable object/property 및 두 explode 표현을 지원한다. 같은 필드의 primitive 제약은 교집합으로 타입을 결정한다.
+- 각 분기의 properties에 없는 필드에는 그 분기의 additionalProperties schema가 적용되므로 디코딩에도 이를 반영한다. required·min/maxProperties·분기별 additionalProperties=false는 원래 schema로 검사한다.
+- [폐쇄 schema와 allOf의 관계](https://json-schema.org/understanding-json-schema/reference/object#extending-closed-schemas)대로, 다른 분기에서 필드를 추가해도 폐쇄된 분기의 추가속성 금지를 우회하지 않는다. false 제약은 디코딩용 schema에서 제외하더라도 최종 검증에서 반드시 적용한다.
+- container union/조건부/patternProperties/dependentSchemas/unevaluatedProperties·혼합 타입·순환·32단계/128방문 초과는 조합 추론하지 않는다. 모호한/중첩 필드도 기존 미지원 정책을 유지한다. 기존 JSON content 경로는 별개다.
+- feature/openapi-allof-header-objects, develop7dbaf91 기준 미커밋. 원격 푸시 없음.
+
+검증: 집중161개·실HTTP·생성 최신성/diff 통과. 전체 Python659개 실행에서658통과·기존 DB version 기대값1실패를 확인하고 기대값7 및 saved_run_results 테이블 확인으로 보완, 실제 PostgreSQL 결합 이관1개 재검증 통과. 이 테스트 수정 후 전체659개를 재실행한 것은 아니다. 프런트엔드/브라우저 재실행 없음.

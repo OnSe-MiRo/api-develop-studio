@@ -337,6 +337,52 @@ def _header_allof_array_items(document, schema):
     return {'allOf': items}
 
 
+def _header_allof_object_schema(document, schema):
+    if not isinstance(schema, dict) or 'allOf' not in schema:
+        return None
+    active, types, nodes = set(), set(), []
+    remaining = 128
+
+    def collect(value, depth=0):
+        nonlocal remaining
+        remaining -= 1
+        if remaining < 0 or depth > 32 or id(value) in active:
+            raise ValueError('Header object traversal limit')
+        if value is True:
+            return
+        if not isinstance(value, dict) or any(key in value for key in (
+                'anyOf', 'oneOf', 'not', 'if', 'patternProperties', 'dependentSchemas', 'unevaluatedProperties')):
+            raise ValueError('Unsupported object composition')
+        active.add(id(value))
+        try:
+            if '$ref' in value:
+                collect(pointer(document, value['$ref']), depth + 1)
+            if 'type' in value:
+                types.add(_header_type(value))
+            nodes.append(value)
+            for child in value.get('allOf', []):
+                collect(child, depth + 1)
+        finally:
+            active.remove(id(value))
+
+    try:
+        collect(schema)
+    except (ValueError, ContractError):
+        return None
+    if types != {'object'}:
+        return None
+    properties = {}
+    names = {name for node in nodes for name in node.get('properties', {})}
+    for name in names:
+        # additionalProperties applies within each subschema, not globally.
+        constraints = [node.get('properties', {}).get(name, node.get('additionalProperties', True)) for node in nodes]
+        properties[name] = {'allOf': [value for value in constraints if isinstance(value, dict)]}
+    additional = [node['additionalProperties'] for node in nodes if isinstance(node.get('additionalProperties'), dict)]
+    # false/required/size constraints stay in the original validation schema.
+    return {'type': 'object', 'properties': properties,
+            'additionalProperties': {'allOf': additional} if additional else True}
+
+
 def _header_scalar(schema, value, document):
     schema_type = _header_primitive_type(document, schema)
     try:
@@ -428,6 +474,7 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
             schema = resolve(document, header['schema'])
             value = normalized[name.lower()]
             composed_items = _header_allof_array_items(document, schema)
+            composed_object = _header_allof_object_schema(document, schema)
             if isinstance(schema, dict) and (_header_type(schema) == 'array' or composed_items is not None):
                 items = composed_items if composed_items is not None else resolve(document, schema.get('items', {}))
                 # Only homogeneous primitive arrays have an unambiguous decoder here.
@@ -437,8 +484,8 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                     errors.append(issue('unsupported_header_serialization', location))
                     continue
                 value = [_header_scalar(items, part.strip(' \t'), document) for part in value.split(',')]
-            elif isinstance(schema, dict) and _header_type(schema) == 'object':
-                value, code = _header_object(document, header, schema, value)
+            elif isinstance(schema, dict) and (_header_type(schema) == 'object' or composed_object is not None):
+                value, code = _header_object(document, header, composed_object if composed_object is not None else schema, value)
                 if code:
                     errors.append(issue(code, location))
                     continue

@@ -72,7 +72,7 @@ class HeaderObjectTests(unittest.TestCase):
             result = self.check(self.spec(schema=schema), 'id,PRIVATE')
             self.assertEqual([i['code'] for i in result['issues']], ['unsupported_header_serialization'])
             self.assertNotIn('PRIVATE', json.dumps(result))
-        schema = {'type': 'object', 'allOf': [{'properties': {'id': {'type': 'integer'}}}]}
+        schema = {'type': 'object', 'allOf': [{'oneOf': [{'properties': {'id': {'type': 'integer'}}}, {'properties': {'id': {'type': 'string'}}}]}]}
         self.assertIn('unsupported_header_serialization', [i['code'] for i in self.check(self.spec(schema=schema), 'id,1')['issues']])
 
     def test_real_http_runner_and_reports(self):
