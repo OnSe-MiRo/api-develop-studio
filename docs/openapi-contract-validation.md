@@ -205,3 +205,14 @@ OpenAPI3.0/3.1에서 `schema.type: object`와 생략/명시된 simple style을 �
 - fix/openapi-json-response-validation에서 미커밋으로 개발했으며 원격 푸시는 하지 않았다.
 
 검증: 계약72개·저장 케이스/결과9개·runner49개·이력10개 합계140개, 실제 HTTP opt-in/opt-out·빠른 호출 연결·보고서 비노출 및 생성 최신성/diff 통과. 최초 깊이 오류 fixture 가정을 바로잡고 재검증했다. 전체 Python/React/브라우저 재실행 없음.
+
+## allOf primitive 헤더 타입 (2026-11-04)
+
+직접 type이 없는 scalar 헤더/배열 items/객체 properties·additionalProperties에서 allOf의 primitive 타입을 해석한다. [OpenAPI allOf](https://spec.openapis.org/oas/v3.0.0#schema-object)는 각 하위 schema를 모두 만족해야 하므로 변환 타입만 찾고 원래 schema로 최종 검증한다. schema를 flatten하거나 enum/범위/required 등을 제거하지 않는다.
+
+- 내부 참조·중첩 allOf·타입 없는 제약 분기를 순회한다. 단일 string/integer/number/boolean이면 변환한다. integer와 number만 겹치면 integer로 해석한다. 기존3.1 단일 non-null 타입 처리도 유지한다.
+- 충돌 타입·분기(anyOf/oneOf/not/if)·순환 참조 또는32단계/128방문 초과는 타입을 추정하지 않는다. 배열 items/객체 필드는 unsupported_header_serialization이며 scalar는 기존 문자열로 원래 schema를 검사한다. 직접 type이 있는 기존 경로는 유지한다.
+- 이번 지원은 primitive 해석이며 객체 properties 전체 또는 배열 items를 container-level allOf 사이에서 합치는 기능은 아니다. JSON/text/plain content 경로와 고급 참조/dialect 정책도 유지한다.
+- feature/openapi-allof-header-types, developef8fcd4 기준 미커밋. 원격 푸시 없음.
+
+검증: 계약77개·저장 케이스/결과9개·runner49개·이력10개 합계145개 및 생성 최신성/diff 통과. 실제 HTTP runner 정상/범위실패 확인. 전체 Python/React/브라우저 재실행 없음.

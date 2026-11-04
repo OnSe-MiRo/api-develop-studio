@@ -1,5 +1,23 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## allOf 헤더 타입 로컬 병합 완료 (2026-11-04)
+
+- 사용자 승인으로 기능 커밋fd84c4a를 로컬 develop에 충돌 없이 병합했다. 커밋 직전 계약77개(9.946초) 및 diff 검사 통과. 기존 관련145개·실HTTP·생성 최신성 증거는 해당 단계 기록대로 유지한다.
+- 검증한 기능 커밋과 제품 코드가 동일하며 이 완료 기록만 추가한다. 이번 전체 Python/프런트엔드/브라우저 재실행 없음. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.
+
+## OAS-2 allOf primitive 헤더 타입 완료 (2026-11-04)
+
+- 직접 type 없는 allOf의 단일 primitive/정수·숫자 교집합을 해석하고 scalar/배열항목/객체필드·추가속성에 적용했다. 내부 참조/중첩/nullable 지원 및 원래 schema 제약 보존, 모호함/순환/탐색 한도 처리. container 구조 병합은 제외한다.
+- 검증: 계약77개(신규5개 포함,11.302초), 저장 케이스/결과9개(3.858초), runner49개(0.105초), 이력10개(0.276초), 합계145개 통과. 실제 HTTP runner 정상/범위실패, 두 버전·참조·제약·타입 교집합·순환/방문한도 및 기존 JSON/simple/nullable 회귀 확인. 생성 최신성·diff 통과. 구현 테스트 실패 없음.
+- 이번 전체 Python/프런트엔드/브라우저 재실행 없음. API/UI/DB 구조 변경 없음. 과거 전체603개와 구분한다.
+- Git: JSON 본문 수정0310871·로컬 develop병합ef8fcd4 완료. 새 feature/openapi-allof-header-types는ef8fcd4 기준 미커밋. 원격 푸시·원본 worktree 변경 없음. 로그 /tmp/allof-header-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 allOf primitive 헤더 타입 시작 (2026-11-04)
+
+- developef8fcd4에서 feature/openapi-allof-header-types 분기. 직접 type이 없는 allOf에서 단일 primitive 타입을 추론해 scalar/배열 items/객체 properties 및 additionalProperties를 변환한다. 내부 참조와 중첩 allOf 포함, integer∩number는 integer다.
+- 원래 schema로 최종 검증하므로 enum/범위 등 제약을 병합·삭제하지 않는다. 충돌/분기/순환·32단계 또는128방문 초과는 추론하지 않는다. 직접 type의 기존 동작 유지, 객체/배열 container allOf 병합은 비범위다.
+- 두 버전·참조·제약·경계·실HTTP 및 공통 회귀/생성 최신성 검증. API/UI/DB 변경 없음. 새 변경은 미커밋, 원격 푸시 없음.
+
 ## JSON 응답 본문 수정 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로0310871을 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약72개(8.681초)/diff 통과. 직전 관련140개 결과 유지. 제품 코드는 기능 커밋과 동일하고 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은 allOf primitive 헤더 타입 해석이다.
