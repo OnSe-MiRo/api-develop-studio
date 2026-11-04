@@ -351,3 +351,14 @@ OpenAPI3.1 직접 simple 객체의 patternProperties를 지원한다. [JSON Sche
 - 정규식은 현재 schema validator와 같은 Python re 의미를 사용한다. 유효하지 않은 정규식은 실패 처리한다. container composition 간 patternProperties 합성과3.0 지원은 추가하지 않았다. UI/API/DB 변경 없음.
 
 검증: 계약137개·저장케이스/결과9개·runner49개·이력10개 합계205개 및 실HTTP·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
+
+## 일반 배열의 boolean/빈 items (2026-11-04)
+
+직접 array schema에서 items=true/false/빈 schema{} 및3.1의 items 생략을 지원한다. [JSON Schema boolean schema](https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.2)의 의미를 원래 schema 검증에 적용한다.
+
+- unconstrained 항목은 문자열을 유지한다. 숫자/boolean/null로 임의 변환하지 않으며, minItems/maxItems/uniqueItems/enum은 원래 schema로 검사한다.
+- items=false는 존재하는 모든 항목을 거부한다. 기존 simple 규칙대로 빈 헤더 문자열도 빈 문자열 항목1개다. 선택 헤더 자체가 없는 경우와 구분한다.
+- 내부참조 및 두 explode 표현을 지원한다. boolean schema는3.1, 빈 schema{}는3.0에서도 지원한다.3.0 items 생략/boolean은 기존 lint 정책을 유지한다.
+- 모호한/중첩 항목 타입과 container 조합의 무제약 타입 추론은 추가하지 않는다. 직접 array 타입을 명시한 경우에는 무제약 항목의 문자열 디코딩을 사용한다.
+
+검증: 계약141개·저장케이스/결과9개·runner49개·이력10개 합계209개 및 실HTTP·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.

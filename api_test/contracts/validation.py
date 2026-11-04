@@ -628,10 +628,10 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                     continue
             elif isinstance(schema, dict) and (_header_type(schema) == 'array' or composed_items is not None):
                 items = composed_items if composed_items is not None else resolve(document, schema.get('items', {}))
-                # Only homogeneous primitive arrays have an unambiguous decoder here.
+                # Unconstrained items stay strings; typed items use a primitive decoder.
                 if (header.get('style', 'simple') != 'simple' or 'prefixItems' in schema or
-                        not isinstance(items, dict) or
-                        _header_primitive_type(document, items) not in ('string', 'integer', 'number', 'boolean')):
+                        (not isinstance(items, bool) and items != {} and
+                         (not isinstance(items, dict) or _header_primitive_type(document, items) is None))):
                     errors.append(issue('unsupported_header_serialization', location))
                     continue
                 value = [_header_scalar(items, part.strip(' \t'), document) for part in value.split(',')]

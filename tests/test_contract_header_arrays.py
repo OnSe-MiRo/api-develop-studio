@@ -68,7 +68,7 @@ class HeaderArrayTests(unittest.TestCase):
         self.assertIn('missing_header', [item['code'] for item in missing['issues']])
 
     def test_unsupported_array_shapes_stay_explicit(self):
-        for items in [{'type': 'array', 'items': {'type': 'string'}}, {'type': 'object'}, {}]:
+        for items in [{'type': 'array', 'items': {'type': 'string'}}, {'type': 'object'}]:
             result = self.check(self.spec(items), 'PRIVATE')
             self.assertIn('unsupported_header_serialization', [item['code'] for item in result['issues']])
             self.assertNotIn('PRIVATE', json.dumps(result))

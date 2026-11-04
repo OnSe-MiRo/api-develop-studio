@@ -1,5 +1,16 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## OAS-2 boolean 일반 배열 items 검증 완료 (2026-11-04)
+
+- 직접 배열의 items true/false/빈 schema 및3.1 생략을 지원했다. 항목 문자열 유지, 원래 schema로 금지/개수/중복/enum 판정. 선택 헤더 부재와 빈 항목을 구분하고 기존 typed 배열 경로 유지.
+- 검증: 계약141개(신규4개 포함,19.036초), 저장 케이스/결과9개(4.484초), runner49개(0.081초), 이력10개(0.306초), 합계209개 통과. 실HTTP 정상/중복실패·원문 비노출·참조/버전·명시적 array union의 문자열 보존 확인. 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- 전체 Python/프런트엔드/브라우저 재실행 없음. UI/API/DB 변경 없음. fetch 후 원격/로컬 develop21794a0 일치, 프로젝트 승인대로 커밋/기능push/develop병합/push한다. 로그 /tmp/bool-items-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 boolean 일반 배열 items 시작 (2026-11-04)
+
+- develop21794a0에서 feature/openapi-boolean-array-items 분기. 직접 array의 items true/false/빈 schema와3.1 items 생략을 지원한다. 항목은 문자열 유지, 원래 schema로 개수/중복/금지 판정.
+- 참조된 boolean/빈 schema 포함. 혼합/중첩 타입의 임의 변환은 추가하지 않는다. 관련회귀/실HTTP·생성 검증 후 프로젝트 승인대로 커밋·푸시·병합한다.
+
 ## patternProperties 헤더 커밋·푸시·병합 (2026-11-04)
 
 - 프로젝트 한정 사용자 승인으로 기능7365b96을 커밋하고 origin/feature/openapi-pattern-header-fields에 일반 푸시했다. 로컬 develop에 충돌 없이 병합하며 검증한 제품 코드와 동일하다.
