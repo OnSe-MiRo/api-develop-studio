@@ -70,7 +70,7 @@ class JsonHeaderTests(unittest.TestCase):
             self.assertTrue(validate_response(doc, 'GET', '/items/1', 200, {'Content-Type': 'application/json'}, {'id': 1})['valid'])
 
     def test_unsupported_media_and_schema_free_json(self):
-        for media in ['text/plain', 'application/xml', 'application/*+json', '*/*', 'text/custom+json']:
+        for media in ['text/html', 'application/xml', 'application/*+json', '*/*', 'text/custom+json']:
             result = self.check(self.spec({}, media=media), 'PRIVATE')
             self.assertIn('unsupported_header_content', [i['code'] for i in result['issues']])
             self.assertNotIn('PRIVATE', json.dumps(result))

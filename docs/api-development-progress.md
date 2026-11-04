@@ -1,5 +1,36 @@
 # API 개발 기능 진행 기록
 
+## text/plain·nullable 헤더 로컬 병합 완료 (2026-11-04)
+
+- 사용자 승인으로 기능50dd28a를 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약66개(8.290초)/diff 통과, 직전 관련134개 증거 유지. 제품 코드는 기능 커밋과 동일하며 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은 JSON 응답 본문 파싱 계약 보완이다.
+
+## OAS-2 nullable 헤더 타입 완료 (2026-11-04)
+
+- OpenAPI3.1 type 배열에서 non-null 타입이 하나인 scalar/container/items/property/additionalProperties를 해석한다. 내부 참조·원래 schema 제약 유지,3.0 nullable 호환, required 누락 및 빈값/문자 null과 JSON null을 구분한다. 모호한 다중 타입 변환은 추가하지 않았다.
+- 검증: 계약66개(신규5개 포함,8.327초), 저장 케이스/결과9개(4.374초), runner49개(0.129초), 이력10개(0.300초), 합계134개 통과. 실제 HTTP nullable 배열 정상/실패 및 생성 최신성·diff 통과. 첫 계약66개 중1실패는 신규 fixture가 본문의 Item schema를 덮어쓴 문제였고 HeaderItem으로 분리한 후 관련 전체 재실행 통과.
+- UI/API/DB 구조 변경 없음. 이번 전체 Python·프런트엔드·브라우저는 재실행하지 않았다. 과거 전체603개는 이번 변경 전 결과다.
+- Git: 기존 text/plain 변경과 함께 feature/openapi-text-response-headers·HEAD99bbdf9 기준 미커밋 유지. 커밋·병합·푸시·원본 worktree 변경 없음. 로그 /tmp/nullable-header-{contracts,contracts-final,saved,runner,history,generated}.log.
+
+## OAS-2 nullable 헤더 타입 시작 (2026-11-04)
+
+- 기존 text/plain 미커밋 변경을 보존하고 같은 feature/openapi-text-response-headers에서 OpenAPI3.1 type 배열의 단일 non-null 타입을 해석한다. scalar·배열/container/items·객체/container/properties/additionalProperties에 공통 적용한다.
+- 빈 문자열·문자열 null을 None으로 추정하지 않는다. 원래 schema로 최종 판정하며 required 누락은 nullable과 독립이다. 복수 non-null 타입은 scalar에서 자동 변환하지 않고, 배열 항목/객체 필드는 기존 미지원 판정을 유지한다.
+- 두 버전 호환·참조·nullable/누락/빈값·JSON null과 구분·실HTTP 및 관련 회귀를 검증한다. UI/API/DB 변경 없음, 커밋·병합·푸시 없음.
+
+## OAS-2 text/plain 응답 헤더 완료 (2026-11-04)
+
+- text/plain content 헤더를 HTTP client 문자열 그대로 검사한다. 공백/쉼표/JSON 모양 보존, 숫자 자동변환 없음. 두 OpenAPI 버전·Header/schema 참조·문자열 제약·필수 누락/빈 값·원문 비노출을 검증했다. JSON/simple 헤더 경로 유지.
+- 검증: 계약61개(신규4개 포함,6.904초), 저장 케이스/결과9개(3.177초), runner49개(0.069초), 이력10개(0.168초), 합계129개 통과. 실제 HTTP runner 정상/enum 실패·contract_failed·보고서 값 비노출 확인. 생성 최신성·diff 통과. 구현 테스트 실패 없음.
+- 최신 develop의 호출 전용/저장 결과 기능과 결합 후 앞선 JSON·객체 계약57개와 호출5개도 통과했다. API/UI/DB 구조 변경 없음. 이번 전체 Python/프런트엔드/브라우저 재실행 없음. 과거 전체603개와 구분한다.
+- Git: JSON·객체 기능dcd272b, develop 동기화1b83065, 로컬 병합99bbdf9 완료. 새 feature/openapi-text-response-headers는99bbdf9 기준 미커밋. 다른 worktree의 기존 스테이징 변경을 보존했고 정리 완료를 확인한 후 병합했다. 원격 푸시 없음.
+- 잔여: XML/HTML/binary content, 모호한/중첩 simple 직렬화, 고급 참조/dialect. 로그 /tmp/text-header-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 text/plain 응답 헤더 시작 (2026-11-04)
+
+- develop99bbdf9에서 feature/openapi-text-response-headers 분기. 단일 content의 text/plain을 HTTP client가 전달한 문자열 그대로 schema 검증한다. 공백/쉼표/등호/JSON 모양을 보존하고 숫자/불리언 coercion 및 JSON parsing은 하지 않는다.
+- 미디어 타입 대소문자/parameter 처리는 기존 JSON 경로와 동일하다. charset 재디코딩을 하지 않는다. XML/HTML/binary/wildcard는 미지원. 기존 JSON/simple 및 저장/호출 판정 유지.
+- 두 버전/참조/문자열 제약/누락·빈값·비노출·실HTTP와 공통 경로 회귀/생성 최신성 검증. 새 변경은 미커밋, 원격 푸시 없음.
+
 ## JSON·simple 객체 헤더 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로 기능dcd272b 및 최신 develop 동기화1b83065를 로컬 develop에 병합했다. 최초 develop checkout은 다른 worktree 사용으로 거부됐으나 해당 작업 완료/깨끗한 상태 확인 후 그 worktree에서 병합했다. 기존 변경을 stash/삭제하지 않았다. 문서 충돌은 양쪽 기록을 보존했다.

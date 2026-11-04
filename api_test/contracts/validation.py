@@ -241,8 +241,16 @@ def _header_json(value):
                       object_pairs_hook=unique_object)
 
 
+def _header_type(schema):
+    value = schema.get('type') if isinstance(schema, dict) else None
+    if isinstance(value, list):
+        non_null = [item for item in value if item != 'null']
+        return non_null[0] if len(non_null) == 1 else None
+    return value
+
+
 def _header_scalar(schema, value):
-    schema_type = schema.get('type') if isinstance(schema, dict) else None
+    schema_type = _header_type(schema)
     try:
         if schema_type == 'integer':
             return int(value)
@@ -265,7 +273,7 @@ def _header_object(document, header, schema, raw):
     if isinstance(additional, dict):
         additional = resolve(document, additional)
     decoders = list(properties.values()) + ([additional] if isinstance(additional, dict) else [])
-    if any(not isinstance(value, dict) or value.get('type') not in
+    if any(not isinstance(value, dict) or _header_type(value) not in
            ('string', 'integer', 'number', 'boolean') for value in decoders):
         return None, 'unsupported_header_serialization'
     parts = raw.split(',') if raw else []
@@ -315,29 +323,32 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                     continue
                 media, definition = next(iter(content.items()))
                 media = media.split(';', 1)[0].strip().lower()
-                if not re.fullmatch(r'application/(?:json|[^\s/*;]+\+json)', media):
+                if media == 'text/plain':
+                    value = normalized[name.lower()]
+                elif re.fullmatch(r'application/(?:json|[^\s/*;]+\+json)', media):
+                    try:
+                        value = _header_json(normalized[name.lower()])
+                    except (ValueError, TypeError, RecursionError):
+                        errors.append(issue('invalid_header_json', location))
+                        continue
+                else:
                     errors.append(issue('unsupported_header_content', location))
-                    continue
-                try:
-                    value = _header_json(normalized[name.lower()])
-                except (ValueError, TypeError, RecursionError):
-                    errors.append(issue('invalid_header_json', location))
                     continue
                 if 'schema' in definition:
                     errors.extend(schema_errors(document, definition['schema'], value, location))
                 continue
             schema = resolve(document, header['schema'])
             value = normalized[name.lower()]
-            if isinstance(schema, dict) and schema.get('type') == 'array':
+            if isinstance(schema, dict) and _header_type(schema) == 'array':
                 items = resolve(document, schema.get('items', {}))
                 # Only homogeneous primitive arrays have an unambiguous decoder here.
                 if (header.get('style', 'simple') != 'simple' or 'prefixItems' in schema or
                         not isinstance(items, dict) or
-                        items.get('type') not in ('string', 'integer', 'number', 'boolean')):
+                        _header_type(items) not in ('string', 'integer', 'number', 'boolean')):
                     errors.append(issue('unsupported_header_serialization', location))
                     continue
                 value = [_header_scalar(items, part.strip(' \t')) for part in value.split(',')]
-            elif isinstance(schema, dict) and schema.get('type') == 'object':
+            elif isinstance(schema, dict) and _header_type(schema) == 'object':
                 value, code = _header_object(document, header, schema, value)
                 if code:
                     errors.append(issue(code, location))
