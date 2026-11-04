@@ -1,5 +1,6 @@
 """Standard OpenAPI lint and value-free response diagnostics."""
 import re
+import json
 import math
 from urllib.parse import urlsplit, urljoin
 from itertools import islice
@@ -218,6 +219,28 @@ def match_operation(document, method, url, base_url=None, server_variables=None,
     return matches[0][1:]
 
 
+def _header_json(value):
+    def reject_constant(_):
+        raise ValueError('Non-JSON number')
+
+    def finite_float(text):
+        number = float(text)
+        if not math.isfinite(number):
+            raise ValueError('Non-finite number')
+        return number
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate JSON member')
+            result[key] = value
+        return result
+
+    return json.loads(value, parse_constant=reject_constant, parse_float=finite_float,
+                      object_pairs_hook=unique_object)
+
+
 def _header_scalar(schema, value):
     schema_type = schema.get('type') if isinstance(schema, dict) else None
     try:
@@ -231,6 +254,37 @@ def _header_scalar(schema, value):
     except ValueError:
         pass
     return value
+
+
+def _header_object(document, header, schema, raw):
+    if header.get('style', 'simple') != 'simple' or any(
+            key in schema for key in ('allOf', 'anyOf', 'oneOf', 'patternProperties', 'dependentSchemas')):
+        return None, 'unsupported_header_serialization'
+    properties = {key: resolve(document, value) for key, value in schema.get('properties', {}).items()}
+    additional = schema.get('additionalProperties', True)
+    if isinstance(additional, dict):
+        additional = resolve(document, additional)
+    decoders = list(properties.values()) + ([additional] if isinstance(additional, dict) else [])
+    if any(not isinstance(value, dict) or value.get('type') not in
+           ('string', 'integer', 'number', 'boolean') for value in decoders):
+        return None, 'unsupported_header_serialization'
+    parts = raw.split(',') if raw else []
+    if header.get('explode', False):
+        if any('=' not in part for part in parts):
+            return None, 'invalid_header_serialization'
+        pairs = [part.split('=', 1) for part in parts]
+    else:
+        if len(parts) % 2:
+            return None, 'invalid_header_serialization'
+        pairs = zip(parts[::2], parts[1::2])
+    result = {}
+    for key, value in pairs:
+        key, value = key.strip(' \t'), value.strip(' \t')
+        if not key or key in result:
+            return None, 'invalid_header_serialization'
+        decoder = properties.get(key, additional)
+        result[key] = _header_scalar(decoder, value)
+    return result, None
 
 
 def validate_response(document, method, url, status, headers, body, *, raw_body=None, base_url=None, server_variables=None, document_url=None):
@@ -255,7 +309,22 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                     errors.append(issue('missing_header', location))
                 continue
             if 'schema' not in header:
-                errors.append(issue('unsupported_header_content', location))
+                content = header.get('content', {})
+                if len(content) != 1:
+                    errors.append(issue('unsupported_header_content', location))
+                    continue
+                media, definition = next(iter(content.items()))
+                media = media.split(';', 1)[0].strip().lower()
+                if not re.fullmatch(r'application/(?:json|[^\s/*;]+\+json)', media):
+                    errors.append(issue('unsupported_header_content', location))
+                    continue
+                try:
+                    value = _header_json(normalized[name.lower()])
+                except (ValueError, TypeError, RecursionError):
+                    errors.append(issue('invalid_header_json', location))
+                    continue
+                if 'schema' in definition:
+                    errors.extend(schema_errors(document, definition['schema'], value, location))
                 continue
             schema = resolve(document, header['schema'])
             value = normalized[name.lower()]
@@ -268,6 +337,11 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                     errors.append(issue('unsupported_header_serialization', location))
                     continue
                 value = [_header_scalar(items, part.strip(' \t')) for part in value.split(',')]
+            elif isinstance(schema, dict) and schema.get('type') == 'object':
+                value, code = _header_object(document, header, schema, value)
+                if code:
+                    errors.append(issue(code, location))
+                    continue
             else:
                 value = _header_scalar(schema, value)
             errors.extend(schema_errors(document, header['schema'], value, location))
