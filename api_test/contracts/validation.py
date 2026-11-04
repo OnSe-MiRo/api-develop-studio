@@ -254,8 +254,13 @@ def _header_primitive_type(document, schema):
     direct = _header_type(schema)
     if direct in primitives:
         return direct
-    types, active = set(), set()
+    active = set()
     remaining = 128
+
+    def single_type(types):
+        if types == {'integer', 'number'}:
+            return 'integer'
+        return next(iter(types)) if len(types) == 1 else None
 
     def collect(value, depth=0):
         nonlocal remaining
@@ -263,30 +268,35 @@ def _header_primitive_type(document, schema):
         if remaining < 0 or depth > 32 or id(value) in active:
             raise ValueError('Header type traversal limit')
         if value is True:
-            return
-        if not isinstance(value, dict) or any(key in value for key in ('anyOf', 'oneOf', 'not', 'if')):
+            return set()
+        if not isinstance(value, dict) or any(key in value for key in ('not', 'if')):
             raise ValueError('Ambiguous header type')
         active.add(id(value))
+        types = set()
         try:
             if '$ref' in value:
-                collect(pointer(document, value['$ref']), depth + 1)
+                types.update(collect(pointer(document, value['$ref']), depth + 1))
             if 'type' in value:
                 kind = _header_type(value)
                 if kind not in primitives:
                     raise ValueError('Non-primitive header type')
                 types.add(kind)
             for child in value.get('allOf', []):
-                collect(child, depth + 1)
+                types.update(collect(child, depth + 1))
+            for keyword in ('anyOf', 'oneOf'):
+                if keyword in value:
+                    branches = {single_type(collect(child, depth + 1)) for child in value[keyword]}
+                    if len(branches) != 1 or None in branches:
+                        raise ValueError('Ambiguous union header type')
+                    types.update(branches)
+            return types
         finally:
             active.remove(id(value))
 
     try:
-        collect(schema)
+        return single_type(collect(schema))
     except (ValueError, ContractError):
         return None
-    if types == {'integer', 'number'}:
-        return 'integer'
-    return next(iter(types)) if len(types) == 1 else None
 
 
 def _header_scalar(schema, value, document):
