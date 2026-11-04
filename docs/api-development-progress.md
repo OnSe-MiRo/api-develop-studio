@@ -1,5 +1,24 @@
 # API 개발 기능 진행 기록
 
+## 미병합 브랜치 로컬 develop 통합 완료 (2026-11-04)
+
+- 사용자 요청에 따라 검증한 feature/legacy-branch-integration의ccf22b3를 로컬 develop에 충돌 없이 병합했다. 기능6개와 main의 기존 이력이 모두 develop에 포함된다. main 포인터와 원본 미커밋3파일은 그대로 유지했다.
+- 검증한 통합 코드/테스트와 동일하고 이 완료 기록만 추가한다. 제품 코드 신규 반영은 없으며 추가분은 영문 개요/작업 기록/감사 문서다. 전체 Python669·frontend167·build·생성·k6모델5 통과 근거는 직전 기록 참조. 원격 푸시·브랜치 삭제 없음.
+
+## 미병합 브랜치 감사·통합 검증 완료 (2026-11-04)
+
+- 기능 브랜치6개 및 main의 미병합 이력을 대조했다. 미반영 제품 코드는 없었다. quick/dashboard/P0의 기존 이식과 후속 권한·실행·저장 보완을 유지했다. baseline 추가 기록22줄은 보존, 영문 README 개요는 최신 구성에 맞춰 README.en.md로 반영하고 한국어 README는 유지했다.
+- 검증: 전체 Python669개(skip0,160.951초), frontend167개/37파일, production build, 생성 최신성, Node k6 모델5개 및 diff 통과. 기존500kB 번들 경고는 유지된다. 제품 코드/테스트는 기준 develop95c8518과 byte 동일하며 변경은 README·문서뿐이다. 브라우저를 새로 실행한 것으로 표기하지 않는다.
+- 이력: baseline은 일반 병합, 이미 이식된 quick/dashboard 및 최신 문서로 대체한 README/main 이력은 명시적 ours 병합으로 연결했다. main 포인터는bab7dad 유지한다. [감사 근거](legacy-branch-integration-audit.md).
+- 보존: 원본 worktree HEAD/status/미커밋3파일 SHA 불변을 재확인했다. stash/reset/파일 삭제/브랜치 삭제/원격 푸시 없음. 테스트용 PostgreSQL·Redis는 검증 후 원래 중지 상태로 복원한다. 검증한 통합 브랜치를 로컬 develop으로 병합한다.
+- 로그: /tmp/legacy-integration-{python,web,build,generated,k6}.log.
+
+## 미병합 브랜치 실제 변경 감사·통합 시작 (2026-11-04)
+
+- 로컬 미병합 기능6개를 commit/range-diff·현재 구현과 비교했다. quick/dashboard/P0는 이미 이식됐고 baseline의 제품 코드는ebf7672와 동일하다. 추가 진행 기록22줄은 일반 병합으로 보존하고 중복 제품 구현은 최신 상태를 유지한 이력 병합으로 연결한다.
+- 실제 미반영 영문 README 개요는 main 전용 설명을 최신 FastAPI/저장소/인증 구성에 맞춰 README.en.md로 반영하고 기존 한국어 README는 링크만 추가한다. 원본 worktree의 미커밋3파일은 별도 SHA 기록 후 보존한다.
+- [브랜치별 근거](legacy-branch-integration-audit.md). main/원격 브랜치는 변경하지 않고 별도 feature/legacy-branch-integration에서 검증 후 develop에 병합한다. 전체 Python/프런트엔드·build·생성/k6모델 및 제품 tree 동일성을 확인한다.
+
 ## 객체 oneOf·anyOf 헤더 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로 기능8e0a277을 로컬 develop에 충돌 없이 병합했다. 커밋 직전 계약103개(15.399초)/diff 검사 통과. 기존 관련171개·실HTTP·생성 최신성 증거는 해당 단계 기록대로 유지한다.
@@ -593,3 +612,14 @@
 - [RUN 기존 기록](archive/integration-sources/RUN/api-development-progress.md)
 - [IOP 기존 기록](archive/integration-sources/IOP/api-development-progress.md)
 - [GOV 기존 기록](archive/integration-sources/GOV/api-development-progress.md)
+
+## 2026-11-04 — 로컬 develop 병합 및 기존 작업 보존
+
+- 시작: `feature/load-test-baseline-recovery`의 기존 미커밋 변경 17개 파일을 압축 백업과 stash `82391be`로 보존하고, 로컬 `develop`의 `ebf7672`를 병합한다.
+- 변경: 제품 코드는 자동 병합됐다. 진행 문서와 하네스 문서의 충돌 3개는 develop의 최신 구조를 유지하며 해결했다. P0/P1 과거 이력은 `docs/archive/integration-sources/P1/`에 보존된 내용을 확인했다. 기존 P1 코드·증거 대부분은 develop에 이미 통합되어 있으며 Workspace·pagination 호환 보완을 유지한다.
+- 검증 계획: Python 전체 테스트, 프런트엔드 테스트·빌드, OpenAPI 생성 일치 검사, P1/LT-5 보고서 재현, diff 및 기존 변경 보존 확인.
+- 검증 완료: 전체 Python 659개(125.821초, skip 0), 프런트엔드 37개 파일/167개 테스트, production build, OpenAPI 생성 최신성, Node k6 모델 5개 파일, LT-5 및 P1 보고서 2개 재현 검사, staged/unstaged diff 검사 통과. 빌드의 500 kB 초과 chunk 경고는 남아 있다.
+- 보존 확인: 원본 17개 파일을 대조했다. 11개는 byte 단위로 동일하다. 진단 코드·테스트는 develop의 Workspace·pagination 호환 수정과 함께 보존했고, 문서 안내의 원래 링크도 유지됐다. 기존 진행 기록의 모든 비어 있지 않은 줄은 현재 문서 또는 P1 보관 문서에 남아 있다. 기존 영문 README와 별도 2026-10-13 검증 기록은 미커밋으로 복원했다. README에는 develop의 인증 모드 안내를 추가했다.
+- 환경: sandbox의 Docker 접근 제한은 허용된 권한 확장 실행으로 해소했다. 테스트 전용 PostgreSQL·Redis를 시작해 전체 회귀를 실행한 후 원래 중지 상태로 복원했다. 현재 차단 없음.
+- 완료: 로컬 develop `ebf7672`를 현재 `feature/load-test-baseline-recovery`에 병합한다. 제품 코드는 병합 기준 develop과 동일하다. 기존 변경의 압축 백업과 stash `82391be`를 유지하며, 원격 푸시·운영 배포·새 부하 캠페인은 수행하지 않았다.
+- 검증 로그: `/tmp/api-develop-merge-python.log`, `/tmp/api-develop-merge-web-test.log`, `/tmp/api-develop-merge-web-build.log`, `/tmp/api-develop-merge-generated.log`, `/tmp/api-develop-merge-k6-models.log`.
