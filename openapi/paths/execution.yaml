@@ -208,3 +208,94 @@
       required: true
       schema:
         type: string
+
+/api/runs/{runId}/save:
+  post:
+    operationId: save_run_result
+    tags: [execution]
+    summary: save run result
+    x-studio-handler: execution.save_run_result
+    x-studio-parts: '[context.request.path_params["runId"]]'
+    x-studio-route: /api/runs/{runId}/save
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Saved case execution result
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunJob
+      '400': *id001
+      '403': *id001
+      '404': *id001
+      '409': *id001
+      '413': *id001
+      '503': *id001
+    parameters:
+    - name: runId
+      in: path
+      required: true
+      schema: {type: string}
+
+/api/saved-results:
+  get:
+    operationId: list_saved_results
+    tags: [execution]
+    summary: list saved results
+    x-studio-handler: execution.list_saved_results
+    x-studio-parts: '[]'
+    x-studio-route: /api/saved-results
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Saved case execution result
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/SavedRunList
+      '400': *id001
+      '403': *id001
+      '404': *id001
+      '409': *id001
+      '413': *id001
+      '503': *id001
+    parameters:
+    - name: project
+      in: query
+      required: true
+      schema: {type: string}
+    - name: caseReference
+      in: query
+      required: true
+      schema: {type: string}
+
+/api/saved-results/{runId}:
+  get:
+    operationId: get_saved_result
+    tags: [execution]
+    summary: get saved result
+    x-studio-handler: execution.get_saved_result
+    x-studio-parts: '[context.request.path_params["runId"]]'
+    x-studio-route: /api/saved-results/{runId}
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Saved case execution result
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunJob
+      '400': *id001
+      '403': *id001
+      '404': *id001
+      '409': *id001
+      '413': *id001
+      '503': *id001
+    parameters:
+    - name: runId
+      in: path
+      required: true
+      schema: {type: string}

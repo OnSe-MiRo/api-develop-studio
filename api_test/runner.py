@@ -18,7 +18,7 @@ from datetime import date, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import parse_qsl, urlparse, urlunparse
 
 from .request_profiles import select_environment, resolve_auth_profile
 from .authorization import AuthorizationError, apply_authorization, authorization_sensitive_values, sensitive_value_variants
@@ -98,6 +98,7 @@ class CaseResult:
     response_time_ms: float | None = None
     error_category: str | None = None
     contract: dict[str, Any] | None = None
+    request_snapshot: dict[str, Any] | None = None
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -823,6 +824,14 @@ class ApiTestRunner:
             raise CaseConfigurationError("A case needs object-valued request and expected fields")
         if not isinstance(request_definition.get("url"), str):
             raise CaseConfigurationError("request.url is required")
+        modes = expected.get("validation_modes")
+        if modes is not None and not isinstance(modes, dict):
+            raise CaseConfigurationError("expected.validation_modes must be an object")
+        call_only = (modes or {}).get("call_only", False)
+        if not isinstance(call_only, bool):
+            raise CaseConfigurationError("expected.validation_modes.call_only must be true or false")
+        if call_only:
+            expected = {"validation_modes": {"call_only": True, "exact_body": False, "conditions": False}}
         _, validate_conditions = response_validation_modes(expected)
         validate_response_time_limit(expected)
         if validate_conditions:
@@ -869,7 +878,7 @@ class ApiTestRunner:
             raise CaseConfigurationError(str(exc)) from exc
         resolved_request["url"] = resolve_request_url(resolved_request["url"], base_url)
         prepared_contract = None
-        if 'contract_validation' in case:
+        if not call_only and 'contract_validation' in case:
             from .contracts.cases import prepare_case_contract
             from .contracts import ContractError
             try:
@@ -939,6 +948,22 @@ class ApiTestRunner:
                 expected_definition=expected, sensitive_values=set(sensitive_values or ()) | authorization_sensitive_values(auth),
             )
         sensitive_values = sensitive_value_variants(set(sensitive_values or ())) | authorization_sensitive_values(auth)
+        # Direct credential headers/query parameters can also be echoed by a target.
+        credential_values = set()
+        parsed_url = urlparse(authorized.url)
+        for key, value in [*authorized.headers.items(), *parse_qsl(parsed_url.query)]:
+            normalized = re.sub(r"[^a-z0-9]", "", key.lower())
+            if any(part in normalized for part in ("authorization", "token", "secret", "password", "apikey", "cookie")) and value:
+                credential_values.add(value)
+                if normalized.endswith("authorization") and " " in value:
+                    credential_values.add(value.split(" ", 1)[1])
+        if parsed_url.password:
+            credential_values.add(parsed_url.password)
+        sensitive_values.update(sensitive_value_variants(credential_values))
+        request_snapshot = {"method": method, "url": authorized.url, "headers": dict(authorized.headers)}
+        for key in ("body", "text", "form_data"):
+            if key in request_definition:
+                request_snapshot[key] = copy.deepcopy(request_definition[key])
         request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
         started_at = time.perf_counter()
         transport_options = {}
@@ -963,6 +988,7 @@ class ApiTestRunner:
                 case_id, "error", attempt, error=str(exc),
                 error_category="request_timeout" if isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError) else "request_error",
                 request_definition=request_definition, expected_definition=expected,
+                request_snapshot=request_snapshot,
                 sensitive_values=set(sensitive_values or ()),
                 response_time_ms=(time.perf_counter() - started_at) * 1000,
             )
@@ -1000,5 +1026,6 @@ class ApiTestRunner:
             request_definition=request_definition, expected_definition=expected,
             sensitive_values=set(sensitive_values or ()),
             response_time_ms=response_time_ms,
+            request_snapshot=request_snapshot,
             contract=contract,
         )
