@@ -1,7 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { ExecutionDetail } from './ExecutionDetail.jsx'
+import { useEffect, useState } from 'react'
+import { ExecutionDetail as Detail } from './ExecutionDetail.jsx'
 import { api } from '../../utils/studio.js'
+
+function ExecutionDetail(props) {
+  const [filter, setFilter] = useState('all')
+  useEffect(() => { setFilter('all') }, [props.runId])
+  return <Detail {...props} outcomeFilter={filter} onOutcomeFilterChange={setFilter} />
+}
 
 vi.mock('../../utils/studio.js', () => ({ api: vi.fn(), asText: value => value == null ? '' : String(value) }))
 afterEach(() => { vi.clearAllMocks(); sessionStorage.clear() })

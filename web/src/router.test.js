@@ -90,3 +90,20 @@ it('normalizes invalid dashboard URL filters and retains API boundary values', (
   }
   expect(buildUrl({tab:'dashboard',dashboardFilters:{days:7,page:1,search:' '}})).toBe('/dashboard')
 })
+
+it('round-trips detail filters only for a selected dashboard run', () => {
+  for (const outcomeFilter of ['failures', 'contract']) {
+    const url = buildUrl({ tab: 'dashboard', runId: 'run +1', outcomeFilter, dashboardFilters: { page: 2, search: 'case' } })
+    window.history.replaceState(null, '', url)
+    expect(parseLocation()).toMatchObject({ runId: 'run +1', outcomeFilter, dashboardFilters: { page: 2, search: 'case' } })
+  }
+  for (const value of ['all', 'unexpected', '']) {
+    expect(buildUrl({ tab: 'dashboard', runId: 'run', outcomeFilter: value })).toBe('/dashboard?run=run')
+    window.history.replaceState(null, '', `/dashboard?run=run&outcomes=${value}`)
+    expect(parseLocation().outcomeFilter).toBe('all')
+  }
+  window.history.replaceState(null, '', '/dashboard?outcomes=contract')
+  expect(parseLocation().outcomeFilter).toBe('all')
+  expect(buildUrl({ tab: 'dashboard', outcomeFilter: 'contract' })).toBe('/dashboard')
+  expect(buildUrl({ tab: 'api-call', outcomeFilter: 'contract', runId: 'run' })).toBe('/api-call')
+})

@@ -1,4 +1,4 @@
-import { normalizeDashboardFilters } from '../../router.js'
+import { normalizeDashboardFilters, normalizeOutcomeFilter } from '../../router.js'
 import { useEffect, useState } from 'react'
 import { api } from '../../utils/studio.js'
 import './dashboard.css'
@@ -14,8 +14,8 @@ function ExecutionDashboard({ projects, projectDetails, projectRef, onOpenCases,
   const selectedRun = route.runId || ''
   const [searchInput, setSearchInput] = useState(search)
   useEffect(() => { setSearchInput(search) }, [search])
-  const navigate = (nextFilters, runId = '', project = projectRef) => onNavigate({
-    tab: 'dashboard', activeProject: project, dashboardFilters: nextFilters, runId,
+  const navigate = (nextFilters, runId = '', project = projectRef, outcomeFilter = 'all') => onNavigate({
+    tab: 'dashboard', activeProject: project, dashboardFilters: nextFilters, runId, outcomeFilter,
   })
   const changeFilters = patch => navigate({ ...filters, page: 1, ...patch })
   const [revision, setRevision] = useState(0)
@@ -59,7 +59,7 @@ function ExecutionDashboard({ projects, projectDetails, projectRef, onOpenCases,
       <p className="hint">{updatedAt ? `${updatedAt.toLocaleTimeString('ko-KR')} 갱신` : '실행 이력 조회 중'}<br />기간과 일별 집계는 UTC 기준입니다.</p>
     </div>
     <form className="dashboard-search" onSubmit={event => { event.preventDefault(); changeFilters({ search: searchInput.trim() }) }}><label className="field"><span>Run ID·실행 대상 검색</span><input aria-label="Run ID·실행 대상 검색" maxLength={200} value={searchInput} onChange={event => setSearchInput(event.target.value)} /></label><button type="submit">검색</button></form>
-    {selectedRun && <ExecutionDetail key={selectedRun} runId={selectedRun} onClose={() => navigate(filters)} />}
+    {selectedRun && <ExecutionDetail key={selectedRun} runId={selectedRun} outcomeFilter={normalizeOutcomeFilter(route.outcomeFilter)} onOutcomeFilterChange={value => navigate(filters, selectedRun, projectRef, value)} onClose={() => navigate(filters)} />}
     {error && <div className="dashboard-error" role="alert">{error}<button onClick={() => setRevision(value => value + 1)}>다시 시도</button></div>}
     {!data && !error && <div className="empty" role="status">실행 이력을 불러오는 중입니다…</div>}
     {data && <>
