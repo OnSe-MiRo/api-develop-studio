@@ -29,6 +29,41 @@
 - JSON 객체/배열/스칼라·내부 참조·필수 헤더 및 schema 제약을 검사한다. 잘못된 JSON, 중복 객체 key, NaN/Infinity·부동소수점 overflow는 값 비노출 invalid_header_json으로 거부한다. 기존 simple 배열과 본문 검증은 유지한다.
 - 검증 계획: 두 버전·미디어 타입·참조·잘못된 JSON·누락·값 비노출, 실제 HTTP runner, 관련 계약/runner/이력 회귀 및 생성 최신성. API schema/UI/저장 변경은 없다. 원격 푸시 없음, 새 단계는 미커밋.
 
+## 실행 결과 기본 접기 로컬 develop 병합 완료 (2026-11-04)
+
+- 사용자 요청으로 `fix/result-disclosure`의 `4d47df5`를 로컬 develop에 충돌 없이 병합했다. API 호출 응답은 계속 표시하고 실행 상세와 저장 결과 목록만 기본 접기로 제공한다.
+- 직전 frontend 167개 및 production build 통과 이후 제품 코드 변경이 없음을 확인했고, 병합 결과가 검증한 수정 브랜치와 동일함을 비교했다. status·diff 검사 통과. 원본 및 다른 worktree 미커밋 변경 보존, 원격 푸시·브랜치 삭제 없음.
+
+## 실행 결과 기본 접기 완료 (2026-11-04)
+
+- 사용자 요청에 따라 develop `643ba54`에서 `fix/result-disclosure` 분기. 실행 상세(단계별 결과·로그)와 저장 결과 목록은 기본 접기, 클릭하면 표시한다. 현재 API 호출 응답과 실행 상태·오류·저장/다운로드 버튼은 계속 보이게 유지한다.
+- 변경: 실행 상세 결과와 저장 결과 목록을 기본 닫힌 details로 감싸고 클릭으로 열도록 했다. 새 Run ID 및 다른 케이스에서 접기 상태를 초기화하고 같은 실행의 상태 조회 중에는 사용자가 펼친 상태를 유지한다.
+- 검증: frontend 167개(37파일) 및 production build, diff 검사 통과. 기존 화면 테스트에서 API 응답 본문 상시 표시, 로그/계약 요약/저장 목록 기본 숨김과 클릭 후 표시를 확인했다. backend 변경과 실제 브라우저 재검증은 없다. 기존 Vite 500 kB 번들 경고는 유지된다.
+- Git: fix/result-disclosure 미커밋. 이번 UI 수정의 develop 병합·원격 푸시는 하지 않았고 기존 작업은 보존했다.
+
+## 케이스 호출 모드·결과 보관 로컬 develop 병합 완료 (2026-11-04)
+
+- 사용자 요청으로 기능 커밋 `fa74efc`와 최신 develop 통합 `98fe7c1`을 로컬 develop에 병합했다. 진행 문서 충돌은 양쪽 기록을 모두 보존해 해결했으며 제품 코드 충돌은 없었다.
+- 커밋 전 frontend 167개·관련 Python 77개·production build·생성 최신성 검사 통과. develop 통합 후 호출/저장/계약 회귀 19개와 diff 검사 통과. 병합 결과 제품 코드는 검증한 feature 브랜치와 동일하다.
+- PostgreSQL 55개 미검증과 Vite 번들 크기 경고는 기존 완료 기록을 유지한다. 원본 부하테스트 및 다른 기능 worktree의 미커밋 변경을 보존했다. 원격 푸시·브랜치 삭제 없음.
+
+## 케이스 호출 모드·결과 보관 커밋 및 병합 준비 (2026-11-04)
+
+- 사용자 요청으로 기능 변경을 커밋하고 최신 로컬 develop에 병합한다. 원격 푸시는 수행하지 않는다.
+- 커밋 전 frontend 167개, 관련 Python 77개, production build, 생성 코드 최신성 및 diff 검사 통과. worktree 쓰기 제한으로 실패한 이력 테스트와 build는 권한을 확보한 재실행에서 통과했다. PostgreSQL 55개 미검증 범위와 이전 실제 브라우저 검증은 아래 기록을 유지한다.
+- develop의 OpenAPI 응답 헤더 배열 개선 `06215a9`를 먼저 반영하고 통합 검증한다. 원본 worktree와 다른 기능 작업의 미커밋 변경은 보존한다.
+
+## 케이스 호출 모드·결과 보관 완료 (2026-11-04)
+
+- develop `1603e68`에서 `feature/case-call-results`를 별도 worktree로 생성해 원본 부하테스트 미커밋 작업을 보존한다.
+- 새 케이스는 API 호출만 기본 선택. 기존 케이스 검증 동작은 유지하고 실제 호출 정보와 응답을 표시한다. 사용자 선택에 따라 결과 JSON 다운로드와 앱 내 명시 저장·재조회를 모두 구현한다.
+- 의미 있는 변경: `validation_modes.call_only`에 따른 전체 응답 검증 opt-out, 전송 직전 요청·응답 상세, JSON 다운로드, 서버 소유 Run snapshot의 개인별 저장·재조회 API와 migration 7. 기존 케이스 검증과 메타데이터 이력 보존. [사용 안내](case-call-results.md).
+- 검증: frontend 167개/build, runner 49개·호출 결과 5개·저장 API/격리 3개·migration 4개·기존 계약 6개·이력 10개·생성 라우트 6개 및 생성 최신성 검사 통과. HTTP 회귀의 sandbox bind 제한은 권한 확장 재실행으로 해소했다.
+- 브라우저: [화면 증빙](case-call-results.jpg). 격리 임시 DB/실제 loopback 대상에서 HTTP 503 호출 완료, 요청·응답 헤더/본문·시간 확인, 쿠키 마스킹, 앱 저장→reload→저장 snapshot 조회, JSON 실제 다운로드 파일 내용을 확인했다. 브라우저 콘솔 오류·경고 0. 임시 서버와 검증 탭을 종료했다. 운영 API/사용자 DB/공개 배포 검증은 아니다. 전체 Python 회귀는 일반 기능 551개 통과. 나머지 PostgreSQL 관련 55개는 시스템 Python의 psycopg 누락으로 실패했고, 의존성이 있는 프로젝트 venv에서 전용 로컬 테스트 DB가 미기동임을 확인했다. 프로젝트 venv에서 PostgreSQL/Redis 전용 URL을 비워 관련 suite를 확인했으며 외부 DB 검증은 제외한다.
+
+- 최종 보완: 숨겨진 잘못된 기대 응답을 호출 전용 payload에서 제외하는 회귀, 직접 credential echo 마스킹, HTTP 상태/시간 표시 간격 확인. 관련 frontend 7개 및 호출 결과 5개 통과. production build·생성 최신성·diff 검사 통과. Vite의 단일 번들 500 kB 경고는 남아 있다.
+- Git: `feature/case-call-results`의 별도 worktree에 미커밋으로 보관한다. 원본 `feature/load-test-baseline-recovery` 변경은 보존했으며 커밋·병합·푸시 없음.
+
 ## 응답 헤더 배열 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로 f763896을 로컬 develop에 충돌 없이 병합했다. 관련 계약45개(4.570초)·diff 재검증 통과. 직전 전체603개 결과는 해당 단계 기록대로 유지한다. 제품 코드는 기능 커밋과 동일하고 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음.

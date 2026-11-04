@@ -60,6 +60,8 @@ def permission_for(request):
     if request.method == 'POST':
         if path in ('/api/docs', '/api/interoperability/preview', '/api/interoperability/curl') or path.endswith('/openapi/contract'):
             return 'read'
+        if path.startswith('/api/runs/') and path.endswith('/save'):
+            return 'run'
         if path.startswith('/api/ownership/') or path.startswith('/api/workspace/'):
             return 'admin'
         if path.rstrip('/') in ('/api/request', '/api/run', '/api/runs', '/api/generate', '/api/generations') or path.endswith('/sdk') or path.endswith(('/cancel', '/rerun', '/mock/start', '/mock/stop', '/mock/reset')):

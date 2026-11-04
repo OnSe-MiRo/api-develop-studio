@@ -140,7 +140,9 @@ class ApiRunnerTest(unittest.TestCase):
         case = {"request": {"url": "https://example.test/health"}, "expected": {"status": 200}}
         with patch("api_test.runner.urllib.request.urlopen", return_value=FakeResponse(200, {"ok": True})):
             result = ApiTestRunner().run_case("health", case)
-        self.assertIn('  actual_response={"status": 200, "body": {"ok": true}}', cli._result_lines(result))
+        details = json.loads(next(line.split("=", 1)[1] for line in cli._result_lines(result) if line.startswith("  call_details=")))
+        self.assertEqual(details["response"], {"status": 200, "headers": {"Content-Type": "application/json"}, "body": {"ok": True}})
+        self.assertEqual(details["request"]["url"], "https://example.test/health")
 
     def test_case_timeout_overrides_runner_default(self) -> None:
         case = {"timeout": 2.5, "request": {"url": "https://example.test/health"}, "expected": {"status": 200}}
@@ -798,7 +800,7 @@ class ApiRunnerTest(unittest.TestCase):
             self.assertIn("beta: TOTAL 1 | PASS 0 | FAIL 0 | ERROR 0 | SKIPPED 1", log_content)
             self.assertIn('request_value={"url": "https://example.test/fail"}', log_content)
             self.assertIn('expected_response={"status": 200}', log_content)
-            self.assertIn('actual_response={"status": 500, "body": {"error": "failure"}}', log_content)
+            self.assertIn('"response": {"status": 500, "headers": {"Content-Type": "application/json"}, "body": {"error": "failure"}}', log_content)
             self.assertIn('comparison_options={"strict": true}', log_content)
 
     def test_runs_a_single_case_file(self) -> None:

@@ -27,7 +27,7 @@ class ExpectedResponse(BaseModel):
     strict: Optional[StrictBool] = None
     max_response_time_ms: Optional[Union[StrictFloat, StrictInt]] = None
     assertions: Optional[List[Dict[str, Any]]] = None
-    validation_modes: Optional[Dict[str, StrictBool]] = None
+    validation_modes: Optional[Dict[str, StrictBool]] = Field(default=None, description="call_only=true skips status, body, condition, time and contract checks. Missing call_only preserves legacy validation.")
 
 
     def to_dict(self):
