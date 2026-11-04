@@ -310,3 +310,14 @@ allOf/내부참조로 분산된 명시적 object 타입과 primitive 필드 제�
 - feature/openapi-prefix-header-arrays, develop0a7b36c 기준 미커밋. 원격 푸시 없음.
 
 검증: 계약119개·저장 케이스/결과9개·runner49개·이력10개 합계187개, 최종 집중5개 및 실HTTP 정상/실패·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
+
+## type 없는 enum/const 헤더 (2026-11-04)
+
+명시적 type이 없는 enum/const의 non-null primitive 값으로 단일 디코딩 타입을 결정한다. [JSON Schema enum](https://json-schema.org/understanding-json-schema/reference/enum)은 type 없이도 사용할 수 있으므로 최종 허용 여부는 원래 schema로 검사한다.
+
+- 동일한 문자열/불리언/숫자 값군을 지원한다. JSON 숫자 literal은 number로 해석하고 bool은 숫자와 구분한다. 정수 형태 헤더는 int로 읽어 큰 정수 정밀도를 보존하며 소수/지수는 기존 유한 float 처리다.
+- scalar·배열 items·객체 필드·prefixItems·내부참조·지원 조합에서 공통 사용한다. enum은3.0/3.1, const는3.1만 지원하며3.0 const는 lint에서 거부한다.
+- 문자열/숫자 등 혼합 primitive, 객체/배열 또는 null-only literal은 추론하지 않는다. null을 임의 변환하지 않으며 명시 type이 있으면 기존 타입 규칙을 우선한다. 각 enum/const 값과 범위 제약은 원래 schema가 검사한다.
+- feature/openapi-literal-header-types에서 구현하고, 프로젝트의 완료 후 커밋/기능push/develop병합/push 승인에 따라 게시한다.
+
+검증: 계약124개·저장케이스/결과9개·runner49개·이력10개 합계192개 및 실HTTP·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
