@@ -1,5 +1,59 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## 실행 상세 필터 로컬 develop 병합 완료 (2026-11-04)
+
+- 기능 커밋 addb634(계약 요약·대시보드 URL 복원·실행 상세 필터)을 로컬 develop에 충돌 없이 병합했다. 검증한 제품 코드와 동일하며 이 완료 기록만 추가한다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.
+- 커밋 전 frontend153개, 관련 Python 이력10개, production build 및 diff 검사 통과. 전체 Python 재실행은 아니며 실제 브라우저 근거는 기존 단계별 기록을 유지한다.
+
+## 실행 상세 필터·계약 요약·URL 복원 커밋 준비 (2026-11-04)
+
+- 사용자 승인으로 feature/contract-result-summary의 연결된 미커밋 변경을 커밋하고 로컬 develop에 병합한다. 계약 요약과 대시보드 URL 복원은 상세 필터의 기존 기반으로 함께 반영한다. 원격 푸시·원본 worktree 변경 없음.
+- 관련 Python 이력10개 재검증 통과. frontend 전체/build와 diff를 확인한 후 커밋한다. 기존 실제 브라우저 검증 기록은 각 단계의 실행 날짜와 범위를 유지한다.
+- 다음 단계는 상세 항목 필터의 URL 복원이며 새 feature 브랜치에서 미커밋으로 진행한다.
+
+## 실행 상세 실패 항목 필터 완료 (2026-11-04)
+
+- 전체/실패·오류·중단(failed,error,timeout,cancelled)/유효한 계약 실패 필터와 수집·표시 건수를 추가했다. 계약 요약 없음/확인 불가는 전체에서 확인하며 실패로 추정하지 않는다. Run 전환은 전체로 초기화, 필터는 URL에 저장하지 않는 화면 내 임시 상태다. 재실행 대상은 기존 서버 판정을 유지한다.
+- 검증: frontend 전체153개(34파일,worker2), production build, git diff --check 통과. 신규2개 회귀가 혼합 상태·잘못된 요약·빈 결과·Run 전환·필터 변경 시 POST 없음·명시 재실행 body 불변을 확인한다. backend 변경 및 전체 Python 재실행은 없다.
+- 실제 브라우저: 임시 DB의 합성 이력으로 전체6→실패/오류/중단5→계약실패1, 빈 상세0, Run 전환 전체 초기화를 확인했다. 콘솔 오류/경고0. 실HTTP 실행·운영 OIDC·부하 측정 증거가 아니다. [화면](execution-detail-filter-browser.png).
+- 작업 중 최초 테스트 추가 명령은 web/ 기준 경로를 중복해 파일을 찾지 못했다. 경로를 바로잡아 추가했고 최종153개가 통과했다.
+- 기존 계약 요약/URL 복원 미커밋 변경과 원본 worktree를 보존했다. feature/contract-result-summary 유지, 커밋·병합·푸시 없음.
+
+## 실행 상세 실패 항목 필터 시작 (2026-11-04)
+
+- OBS-1 후속: 수집된 상세에서 전체/실패·오류·중단/유효한 OpenAPI 계약 실패를 선택하고 건수를 표시한다. 요약 없음·확인 불가는 계약 실패로 추정하지 않는다.
+- Run 전환은 전체로 초기화하고 필터는 화면 내 임시 상태로 둔다. 서버 재실행 대상·API·저장 계약은 유지한다. 기존 미커밋 계약 요약/URL 복원과 원본 worktree를 보존하며 커밋·병합·푸시는 하지 않는다.
+- 검증 계획: 상태 혼합·빈 결과·과거 이력·Run 전환·재실행 불변 회귀, frontend 전체와 production build.
+
+## 실행 대시보드 URL 상태 복원 완료 (2026-10-28)
+
+- 프로젝트·기간·결과·검색·페이지·선택 Run ID를 URL에 보존한다. 상세 열기/닫기는 목록 조건 유지, 조건 변경은 첫 페이지/상세 닫힘, back/forward/reload는 URL 상태로 조회한다. 직접 복원에서 POST/자동 재실행은 없다.
+- 검증: frontend151개(34파일,worker2)·build·diff 통과, 관련 Python 이력10개 통과. 독립 작성5개 및 read-only diff 점검으로 direct URL·상세·필터·페이지·지연 응답·404복귀/POST0회와 API 입력한도를 확인했다. 별도 Workspace 전환 회귀도 포함한다.
+- 실제 브라우저: 합성 이력28개+실제 child runner1개로 URL직접진입·page2 목록7개·상세/reload·닫기/back/forward·기간/검색·없는 run404 후 필터보존을 확인했다. 총 이력29개 유지, 콘솔 오류/경고0. 합성 이력을 실제 부하/성공률 측정으로 해석하지 않는다.
+- 범위: KPI/추이 집계·서버 권한·계약 판정·실패 재실행 정책 변경 없음. 이번 backend runtime 변경 및 전체 Python 재실행 없음. Workspace 전환은 UI/서버 테스트로 확인했으며 운영 OIDC 브라우저 검증은 별도다.
+- 자료: [계약/검증](dashboard-url-state.md), [화면](dashboard-url-restoration.jpg). 기존 계약 요약 미커밋 변경을 보존했고 feature/contract-result-summary·HEAD/develop8debdee 유지. 커밋·병합·푸시 없음. 브라우저 탭 및 임시 서버 정상 종료(exit0) 완료.
+
+## 실행 대시보드 URL 상태 복원 시작 (2026-10-28)
+
+- 다음 범위: 기능 실행 대시보드의 프로젝트·기간·결과·검색·페이지 및 선택한 Run ID를 URL에 저장하고 reload/back/forward로 복원한다. 기존 계약 요약 미커밋 변경을 보존하며 동일 feature/contract-result-summary에서 이어간다. 커밋·병합·푸시 없음.
+- 조건 변경은 페이지1·상세 닫힘, 상세 열기/닫기는 기존 조건 유지. API의 days7/30/90·status열거·page1~1000000·search200자 제한에 맞춘다. 다른 화면 URL에 이 조건을 섞지 않는다.
+- 기존 KPI/추이 집계 범위와 서버의 Workspace 권한·실패 재실행 경로는 유지한다. URL은 접근 권한이 아니며 없는/타 Workspace Run ID는 기존 상세 오류로 처리한다.
+- 검증: 독립 read-only 점검과 라우터/화면 회귀, 입력경계·직접 URL·지연 응답·상세 복원·Workspace 전환, build 및 실제 브라우저를 확인한다.
+
+## 계약 결과·이력 요약 표시 완료 (2026-10-24)
+
+- RunResult와 ExecutionDetail에 공통 계약 통과/실패·문제 개수·명세 SHA-256 표시를 추가했다. 과거/비활성/미수집은 요약 없음, 잘못되거나 모순된 metadata는 확인 불가로 구분하며 raw 값은 렌더링하지 않는다. 전체 실행/assertion 판정과 계약 판정은 별개로 유지한다.
+- 검증: 전체 Python598개(skip0,110.074초), 이력 집중10개, 전체 frontend143개(33파일,worker2), production build 통과. 최종 focus 간격 보완 후 관련8개·build 통과. DB 재오픈/API 요약 보존·원문 배제·기존 재실행·지연 응답·legacy/malformed 표시를 확인했다.
+- 브라우저: 실제 저장 pipeline3개의 실패1개/통과0개/요약 없음, digest 펼침·새로고침 재조회, 기존 실패 대상 재실행과 동일한 실시간 요약 확인. 최종 Enter 펼침·콘솔 오류/경고0 확인. [계약/검증](contract-result-summary.md), [화면](contract-result-summary-browser.jpg).
+- 처음 커밋 전 자동권한 검토3건 시간초과는 미실행 확인 후 같은 명령을 한 번 재요청해 통과했다. 제품 테스트 실패 없음. 기존 부하 실패/unknown·운영 배포·전체캠페인은 변경하지 않는다.
+- Git: 저장 케이스 계약검증 커밋529e466·develop 병합8debdee 완료. 새 feature/contract-result-summary는8debdee 기준 미커밋/미병합이며 원격 푸시·원본 worktree 변경 없음. 브라우저 탭 및 임시 서버 정상 종료(exit0) 완료.
+
+## 계약 결과·이력 요약 표시 시작 (2026-10-24)
+
+- 저장 케이스 계약검증 커밋529e466·로컬 develop 병합8debdee 후 feature/contract-result-summary 생성. 새 변경은 미커밋/미푸시다.
+- 범위: RunResult와 실행 이력 상세의 계약 통과/실패·문제 개수·검사 명세 SHA-256 공통 표시. 결과 없는 과거/비활성/중단 실행은 요약 없음, 잘못된 metadata는 확인 불가로 구분한다. 기존 실행 전체 판정·assertion·실패 대상 재실행은 유지한다.
+- 데이터 경계: 이미 저장된 valid/issueCount/documentDigest만 사용한다. 실제/기대 응답·secret·원문 진단 및 현재 명세를 새로 읽지 않는다. 검증 계획은 UI 상태 조합/레거시/불완전 metadata/갱신·재실행, 이력 API·DB 보존·격리, 전체 frontend/build 및 실제 브라우저다.
+
 ## 저장 케이스 계약검증 로컬 병합 완료 (2026-10-24)
 
 - 커밋 `529e4663f1f333b43a98137b246139c19c4ad81a`를 충돌 없이 로컬 develop에 병합했다. 완료 기록만 추가하며 검증한 제품 코드와 동일하다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.

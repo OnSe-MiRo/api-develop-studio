@@ -49,6 +49,23 @@ class FunctionalHistoryTest(unittest.TestCase):
         self.assertNotIn('spoofed', json.dumps(run))
         self.assertNotIn('detail', self.history.dashboard()['items'][0])
 
+    def test_contract_summary_survives_storage_api_and_preserves_rerun_boundary(self):
+        summary = {'valid': False, 'issueCount': 2, 'documentDigest': 'a' * 64}
+        self.report['targets'][1]['errorCategory'] = 'contract_failed'
+        self.report['targets'][1]['contract'] = {**summary, 'body': 'secret-marker', 'token': 'secret-marker'}
+        self.record('contract-summary')
+        reopened = ExecutionHistory(self.history.path).detail('contract-summary')
+        self.assertEqual(reopened['detail']['outcomes'][1]['contract'], summary)
+        self.assertNotIn('contract', reopened['detail']['outcomes'][0])
+        self.assertEqual(failed_run_request(reopened)['pipelines'], ['flows/fail.json'])
+        self.assertNotIn('secret-marker', json.dumps(reopened))
+        self.assertNotIn(b'secret-marker', self.history.path.read_bytes())
+        with patch('react_server.execution_history', return_value=self.history), TestClient(app, base_url="http://127.0.0.1:8765") as client:
+            response = client.get('/api/executions/contract-summary')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()['detail']['outcomes'][1]['contract'], summary)
+            self.assertNotIn('secret-marker', response.text)
+
     def test_default_environment_is_resolved_from_project_without_secret_values(self):
         from api_test.services.studio import execution_environments
         project = {'default_environment': 'staging', 'variables': {'secret': {'TOKEN': 'secret-marker'}}}

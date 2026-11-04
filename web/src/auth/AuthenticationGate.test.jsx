@@ -37,3 +37,14 @@ it('clears private app state and CSRF after logout', async () => {
   await screen.findByRole('link', { name: 'SSO 로그인' })
   expect(jobNamespace()).toBe('')
 })
+
+it('unmounts a selected dashboard detail before navigating away on workspace switch', async () => {
+  window.history.replaceState(null,'','/dashboard?project=demo&days=30&page=2&run=old-run')
+  vi.stubGlobal('fetch',vi.fn().mockImplementation(async path=>({ok:true,status:200,json:async()=>path.endsWith('/workspace')?{...session,workspace:session.workspaces[1]}:session})))
+  const navigate=vi.fn()
+  render(<AuthenticationGate onNavigate={navigate}>{(_info,actions)=><div><p>Private old-run detail</p><button onClick={()=>actions.switchWorkspace('b')}>Switch workspace</button></div>}</AuthenticationGate>)
+  fireEvent.click(await screen.findByRole('button',{name:'Switch workspace'}))
+  await waitFor(()=>expect(navigate).toHaveBeenCalledWith('/projects'))
+  expect(screen.queryByText('Private old-run detail')).not.toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('인증 상태를 변경하고 있습니다')
+})
