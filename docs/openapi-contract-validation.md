@@ -1,5 +1,7 @@
 # OAS-2 OpenAPI 계약 검증
 
+현재 지원 범위와 최신 전체 검증은 [지원 현황](openapi-support-status.md)을 참고한다.
+
 ## 화면에서 사용
 
 1. 프로젝트에 OpenAPI JSON 또는 bundle을 저장한다. URL만 저장된 문서는 revision별 원문이 고정되지 않으므로 계약 검사에서 제외한다.

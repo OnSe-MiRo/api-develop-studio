@@ -1,5 +1,20 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## 전체 검증 기록 커밋·푸시·병합 (2026-11-04)
+
+- 프로젝트 승인으로1ee70a2를 커밋·기능 브랜치 푸시하고 develop에 충돌 없이 병합했다. 제품 코드 변경 없음. 전체 Python707·frontend167·build·생성·k6모델5 통과 기록을 보존한다. 병합 커밋을 origin/develop에 일반 푸시하고 원격 SHA를 확인한다. 원본 worktree·운영 배포·브랜치 삭제·강제 푸시 없음.
+
+## OpenAPI 누적 통합 검증 완료 (2026-11-04)
+
+- developb5c6e9d의 누적 계약 변경을 현재 상태로 검증했다. 전체 Python707개(skip0,167.496초), frontend167개/37파일, production build, 생성 최신성, k6모델5개 및 diff 통과. 회귀 결함 및 제품 코드 수정 없음.
+- [지원 현황](openapi-support-status.md)에 구현 범위/제한/잔여 후보를 정리했다. 이번 검증은 실제 PostgreSQL/Redis를 포함하며 사용자 DB는 사용하지 않았다. 테스트 서비스를 기존 중지 상태로 복원한다.
+- 실제 브라우저/운영 공급자/배포/전체 부하 캠페인/Windows 실행은 이번에 수행하지 않았다. 기존500kB 번들 경고는 유지한다.
+- 프로젝트 승인대로 검증 기록을 커밋·기능push·develop병합/push한다. 로그 /tmp/oas-final-{python,web,build,generated,k6}.log.
+
+## OpenAPI 누적 통합 검증 시작 (2026-11-04)
+
+- developb5c6e9d 기준 전체 Python/프런트엔드/build·생성/k6 모델을 재검증한다. 제품 코드 변경 없이 지원 범위와 잔여 항목을 정리하며, 회귀 발견 시 수정한다. 사용자 데이터와 분리된 tmpfs 테스트 DB만 사용한다.
+
 ## boolean 배열 items 커밋·푸시·병합 (2026-11-04)
 
 - 프로젝트 한정 사용자 승인으로 기능989dab4를 커밋하고 origin/feature/openapi-boolean-array-items에 일반 푸시했다. 로컬 develop에 충돌 없이 병합하며 검증한 제품 코드와 동일하다.
