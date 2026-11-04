@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { ContractSummary, readContractSummary } from './ContractSummary.jsx'
 import { RunResult } from './RunResult.jsx'
@@ -28,7 +28,10 @@ it('distinguishes absent summaries from invalid or contradictory metadata',()=>{
 })
 it('keeps overall assertion failure separate from a passed contract and handles legacy targets',()=>{
   const view=render(<RunResult result={{status:'failed',exitCode:1,result:{targets:[{caseId:'case',status:'failed',errorCategory:'assertion_failed',contract:{valid:true,issueCount:0,documentDigest:digest}},{caseId:'legacy',status:'passed'}]}}} />)
-  expect(screen.getByText('실행 실패',{exact:true})).toBeInTheDocument()
+  expect(screen.getByText('실행 실패',{exact:true})).toBeVisible()
+  expect(screen.getByText('OpenAPI 계약 통과')).not.toBeVisible()
+  fireEvent.click(screen.getByText('실행 상세 결과 보기'))
+  expect(screen.getByText('OpenAPI 계약 통과')).toBeVisible()
   expect(screen.getByText('OpenAPI 계약 통과')).toBeInTheDocument()
   expect(screen.getByText('OpenAPI 계약 요약 없음')).toBeInTheDocument()
   expect(screen.getByText(/assertion_failed/)).toBeInTheDocument()

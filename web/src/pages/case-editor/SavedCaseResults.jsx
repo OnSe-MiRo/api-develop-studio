@@ -48,14 +48,17 @@ export function SavedCaseResults({ projectRef, caseReference, result }) {
     <div className="section-header"><h2>저장한 실행 결과</h2>
       {result?.runId && terminal.has(result.status) && <button onClick={save} disabled={saving}>{saving ? '저장 중…' : '실행 결과 앱에 저장'}</button>}
     </div>
-    <p className="hint">현재 계정으로 저장한 이 케이스의 최근 100개 결과입니다. 요청·응답과 실행 로그를 보관하며, 새로고침 후에도 다시 열 수 있습니다. 인증값과 보안 변수는 마스킹됩니다.</p>
     {notice && <p role="status">{notice}</p>}
     {error && <p role="alert">{error}</p>}
-    {loading ? <p>저장 결과 불러오는 중…</p> : !items.length && !error ? <p>저장한 실행 결과가 없습니다.</p> : null}
-    {items.length > 0 && <label className="field"><span>저장 결과 선택</span><select value={selectedRun} onChange={event => { setError(''); setSelectedRun(event.target.value) }}>
-      <option value="">결과를 선택하세요.</option>
-      {items.map(item => <option value={item.runId} key={item.runId}>{new Date(item.savedAt).toLocaleString()} · {item.status} · {item.runId}</option>)}
-    </select></label>}
-    {savedResult && <RunResult result={savedResult} />}
+    <details key={`${projectRef}:${caseReference}`}>
+      <summary style={{ cursor: 'pointer' }}>저장 결과 보기 ({items.length})</summary>
+      <p className="hint">현재 계정으로 저장한 이 케이스의 최근 100개 결과입니다. 요청·응답과 실행 로그를 보관하며, 새로고침 후에도 다시 열 수 있습니다. 인증값과 보안 변수는 마스킹됩니다.</p>
+      {loading ? <p>저장 결과 불러오는 중…</p> : !items.length && !error ? <p>저장한 실행 결과가 없습니다.</p> : null}
+      {items.length > 0 && <label className="field"><span>저장 결과 선택</span><select value={selectedRun} onChange={event => { setError(''); setSelectedRun(event.target.value) }}>
+        <option value="">결과를 선택하세요.</option>
+        {items.map(item => <option value={item.runId} key={item.runId}>{new Date(item.savedAt).toLocaleString()} · {item.status} · {item.runId}</option>)}
+      </select></label>}
+      {savedResult && <RunResult result={savedResult} />}
+    </details>
   </section>
 }
