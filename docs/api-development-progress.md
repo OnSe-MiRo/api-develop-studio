@@ -1,5 +1,31 @@
 # API 개발 기능 진행 기록
 
+## prefixItems 로컬 병합·원격 반영 (2026-11-04)
+
+- 사용자 승인으로 기능b62f12a를 커밋하고 origin/feature/openapi-prefix-header-arrays에 일반 푸시했다. 로컬 develop 병합은 충돌 없으며 검증한 제품 코드와 동일하다. 커밋 전 계약119개(16.256초)/diff 통과, 이전 관련187개/집중5개 증거 유지. 전체 Python/브라우저 재실행은 아니다.
+- 사용자가 완료 후 커밋→푸시→develop 병합/푸시 절차를 명시 승인했으며 적용 범위를 API Develop Studio 프로젝트로 한정했다. 다른 프로젝트에는 적용하지 않는다. 기존 원격 푸시 보류 지시를 이 프로젝트에 한해 변경한다.
+- 최초 원격 push 자동 검토는 목적지 소유권/승인 구체성 미확인으로 거절했다. 미실행을 확인한 뒤 origin=OnSe-MiRo/api-develop-studio 및 연결 GitHub 계정OnSe-MiRo의 소유권 일치를 검증했다. 같은 목적지로 근거를 보완한 재검토 후 기능 push 성공. 우회·강제 푸시 없음.
+- 이 병합 커밋을 origin/develop에 일반 푸시하고 원격 SHA를 최종 확인한다. 앞서 로컬에 보관했던35개 이력도 포함된다. 원본 worktree/운영 배포/브랜치 삭제는 변경하지 않는다.
+
+## 완료 작업 원격 반영 절차 적용 (2026-11-04)
+
+- 사용자 지시: 앞으로 작업 검증 완료 후 커밋→기능 브랜치 푸시→develop 병합→develop 푸시까지 수행한다. 기존 원격 푸시 보류 지시를 이번 명시적 지시로 변경한다. 강제 푸시/브랜치 삭제/운영 배포는 포함하지 않는다.
+- 현재 완료된 prefixItems 변경부터 적용한다. fetch 후 origin/develop99bbdf9는 로컬 develop0a7b36c의 조상이며 로컬이35커밋 앞선 상태다. 새 기능과 앞서 로컬에 보관한 통합 이력도 일반 fast-forward 푸시로 게시한다.
+- 직전 관련187개와 집중5개·실HTTP·생성 최신성 검증 기록을 유지하고 커밋 전 계약 전체를 재검증한다. 제품 코드 추가 수정 없음.
+
+## OAS-2 prefixItems 헤더 배열 완료 (2026-11-04)
+
+- 직접 array schema의 prefixItems 위치별 primitive 타입을 해석한다. 참조/nullable/지원 조합 포함, minItems·items=false/typed/true 정책과 원래 schema 제약을 보존한다. 빈 문자열 항목·기존 simple 분리 규칙 유지.
+- 검증: 계약119개(신규5개 포함,16.270초), 저장 케이스/결과9개(3.241초), runner49개(0.100초), 이력10개(0.225초), 합계187개 통과. 최종 fixture에서 nullable array 및3.0의 prefixItems 자체 거부를 분리해 집중5개(0.851초) 재통과. 실HTTP 위치타입 정상/실패 및 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- 이번 전체 Python/프런트엔드/브라우저 재실행 없음. UI/API/DB 구조 변경 없음. container composition 간 tuple 합성·중첩 simple 직렬화·고급 참조 등은 별도다.
+- Git: 로컬 경로 수정afbe9d8·develop병합0a7b36c 완료. 새 feature/openapi-prefix-header-arrays는0a7b36c 기준 미커밋. 원격 푸시·원본 worktree 변경 없음. 로그 /tmp/prefix-header-{contracts,saved,runner,history,generated,final-focus}.log.
+
+## OAS-2 prefixItems 헤더 배열 시작 (2026-11-04)
+
+- develop0a7b36c에서 feature/openapi-prefix-header-arrays 분기. 직접 array schema의 prefixItems 위치별 primitive 타입을 디코딩하고 원래 schema로 최종 검증한다. 내부참조·기존 primitive 조합/nullable 타입 지원.
+- items=false는 추가항목 거부, items schema는 tail 항목 변환/검증, items 생략/true는 tail 문자열 보존. prefixItems 길이만으로 필수를 추정하지 않고 minItems에 따른다. 중첩/모호한 위치 타입 및 container composition 간 tuple 병합은 비범위다.
+- OpenAPI3.1 위치/길이/추가항목·참조·실HTTP 및 기존 회귀/생성 최신성 검증. UI/API/DB 변경 없음. 새 변경 미커밋, 원격 푸시 없음.
+
 ## 로컬 참조 파일 경로 수정 병합 완료 (2026-11-04)
 
 - 사용자 승인으로afbe9d8을 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약114개(17.199초)/diff 통과. 직전 관련191개·생성 최신성 근거 유지. 제품 코드는 기능 커밋과 동일하며 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은3.1 prefixItems 헤더 배열 지원이다.

@@ -298,3 +298,15 @@ allOf/내부참조로 분산된 명시적 object 타입과 primitive 필드 제�
 - fix/openapi-local-reference-paths, developb02e6d8 기준 미커밋. 커밋·병합·푸시 없음.
 
 검증: 계약114개·release/portal30개·편집20개·SDK18개·저장케이스/결과9개 합계191개 및 생성 최신성/diff 통과. 두 버전의 정상 로더 경로와 잘못된 참조의 파일 읽기 전 차단 확인. 전체 Python/React/브라우저/Windows native 재실행 없음.
+
+## OpenAPI3.1 prefixItems 배열 헤더 (2026-11-04)
+
+직접 array schema의 prefixItems 위치별 primitive 타입으로 simple 헤더를 디코딩한다. 예를 들어 string/integer/boolean 순서이면 `ready,2,true`를 각각의 타입으로 읽는다. [JSON Schema tuple 규칙](https://json-schema.org/understanding-json-schema/reference/array#tuple-validation)을 따르며 최종 검증은 원래 schema로 수행한다.
+
+- 위치 schema는 명시적 primitive·내부참조·지원 allOf/동종 union·nullable 타입을 지원한다. 중첩 객체/배열·모호한 위치 타입은 미지원이다.
+- prefixItems 자체는 모든 위치를 필수로 만들지 않는다. 최소 길이는 minItems, 추가 항목 허용은 items로 판정한다. items=false의 초과항목은 원래 schema에서 실패한다. items schema는 tail 변환·검증에 사용한다. items 생략/true의 tail은 문자열로 유지한다.
+- 기존 simple 배열과 같이 쉼표 구분, 항목 양끝 space/tab 제거, explode true/false 동일 표현이다. 빈 헤더는 빈 문자열 항목1개로 읽으며 임의로 빈 배열/null을 만들지 않는다.
+- OpenAPI3.0 prefixItems는 기존 lint에서 거부한다. container allOf/union 사이의 tuple schema 합성 및 중첩 simple 직렬화는 별도 범위다. JSON content 배열 경로는 유지한다.
+- feature/openapi-prefix-header-arrays, develop0a7b36c 기준 미커밋. 원격 푸시 없음.
+
+검증: 계약119개·저장 케이스/결과9개·runner49개·이력10개 합계187개, 최종 집중5개 및 실HTTP 정상/실패·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.

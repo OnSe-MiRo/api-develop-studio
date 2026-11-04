@@ -489,6 +489,23 @@ def _header_scalar(schema, value, document):
     return value
 
 
+def _header_tuple(document, header, schema, raw):
+    if header.get('style', 'simple') != 'simple':
+        return None, 'unsupported_header_serialization'
+    prefix = [resolve(document, item) for item in schema['prefixItems']]
+    tail = resolve(document, schema.get('items', True))
+    decoders = prefix + ([tail] if isinstance(tail, dict) else [])
+    if any(not isinstance(item, dict) or _header_primitive_type(document, item) is None for item in decoders):
+        return None, 'unsupported_header_serialization'
+    result = []
+    for index, part in enumerate(raw.split(',')):
+        value = part.strip(' \t')
+        decoder = prefix[index] if index < len(prefix) else tail
+        # Boolean tail schemas are validated afterwards, without inventing a type.
+        result.append(_header_scalar(decoder, value, document) if isinstance(decoder, dict) else value)
+    return result, None
+
+
 def _header_object(document, header, schema, raw):
     if header.get('style', 'simple') != 'simple' or any(
             key in schema for key in ('allOf', 'anyOf', 'oneOf', 'patternProperties', 'dependentSchemas')):
@@ -570,7 +587,12 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
             composed_object = _header_allof_object_schema(document, schema)
             if composed_object is None:
                 composed_object = _header_union_object_schema(document, schema)
-            if isinstance(schema, dict) and (_header_type(schema) == 'array' or composed_items is not None):
+            if isinstance(schema, dict) and _header_type(schema) == 'array' and 'prefixItems' in schema:
+                value, code = _header_tuple(document, header, schema, value)
+                if code:
+                    errors.append(issue(code, location))
+                    continue
+            elif isinstance(schema, dict) and (_header_type(schema) == 'array' or composed_items is not None):
                 items = composed_items if composed_items is not None else resolve(document, schema.get('items', {}))
                 # Only homogeneous primitive arrays have an unambiguous decoder here.
                 if (header.get('style', 'simple') != 'simple' or 'prefixItems' in schema or

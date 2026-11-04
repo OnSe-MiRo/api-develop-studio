@@ -72,7 +72,7 @@ class HeaderArrayTests(unittest.TestCase):
             result = self.check(self.spec(items), 'PRIVATE')
             self.assertIn('unsupported_header_serialization', [item['code'] for item in result['issues']])
             self.assertNotIn('PRIVATE', json.dumps(result))
-        doc = self.spec({'type': 'string'}, '3.1.0', prefixItems=[{'type': 'integer'}])
+        doc = self.spec({'type': 'string'}, '3.1.0', prefixItems=[{'type': 'array', 'items': {'type': 'integer'}}])
         self.assertIn('unsupported_header_serialization', [item['code'] for item in self.check(doc, '1')['issues']])
 
     def test_real_http_runner_and_report(self):
