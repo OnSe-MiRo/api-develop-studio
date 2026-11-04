@@ -281,6 +281,24 @@ def _header_primitive_type(document, schema):
                 if kind not in primitives:
                     raise ValueError('Non-primitive header type')
                 types.add(kind)
+            if 'type' not in value:
+                for keyword in ('enum', 'const'):
+                    if keyword not in value:
+                        continue
+                    literals = value[keyword] if keyword == 'enum' else [value[keyword]]
+                    kinds = set()
+                    for literal in literals:
+                        if literal is None:
+                            continue
+                        kind = {str: 'string', bool: 'boolean', int: 'number', float: 'number'}.get(type(literal))
+                        if kind is None or (kind == 'number' and not math.isfinite(literal)):
+                            raise ValueError('Non-primitive header literal')
+                        kinds.add(kind)
+                    if kinds and kinds <= {'integer', 'number'}:
+                        kinds = {'number'} if 'number' in kinds else {'integer'}
+                    if len(kinds) != 1:
+                        raise ValueError('Ambiguous header literal type')
+                    types.update(kinds)
             for child in value.get('allOf', []):
                 types.update(collect(child, depth + 1))
             for keyword in ('anyOf', 'oneOf'):
@@ -480,6 +498,8 @@ def _header_scalar(schema, value, document):
         if schema_type == 'integer':
             return int(value)
         if schema_type == 'number':
+            if isinstance(value, str) and re.fullmatch(r'[+-]?[0-9]+', value.strip()):
+                return int(value)
             number = float(value)
             return number if math.isfinite(number) else value
         if schema_type == 'boolean' and value in ('true', 'false'):

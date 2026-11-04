@@ -1,5 +1,23 @@
 # API 개발 기능 진행 기록
 
+## enum/const 헤더 커밋·푸시·병합 (2026-11-04)
+
+- 프로젝트 한정 사용자 승인으로 기능fa1c6bd를 커밋하고 origin/feature/openapi-literal-header-types에 일반 푸시했다. 로컬 develop에 충돌 없이 병합하며 제품 코드는 검증한 기능 커밋과 동일하다.
+- 이 병합 커밋을 origin/develop에 일반 푸시하고 원격 SHA를 최종 확인한다. 계약/공통 회귀192개 및 생성 최신성/diff 통과. 원본 worktree·운영 배포·브랜치 삭제·강제 푸시 없음.
+
+## OAS-2 enum/const 헤더 타입 검증 완료 (2026-11-04)
+
+- type 없는 동종 enum/const primitive 값에서 디코딩 타입을 결정한다. 원래 enum/const·조합 제약은 보존하며 bool/number 구분과 정수 형태 헤더의 큰 정수 정밀도를 유지한다. 혼합/구조화/null-only literal은 자동 추론하지 않는다.
+- 검증: 계약124개(신규5개 포함,22.709초), 저장 케이스/결과9개(4.292초), runner49개(0.108초), 이력10개(0.300초), 합계192개 통과. 실제 HTTP enum-only 정상/실패, 배열/객체/prefixItems/참조·조합·숫자정밀도·값 비노출 확인. 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- UI/API/DB 변경 없음. 이번 전체 Python/프런트엔드/브라우저 재실행 없음. 기존 전체669개 결과와 구분한다.
+- Git: feature/openapi-literal-header-types는developc1a00a7 기준. 사용자 지정 프로젝트 한정 절차에 따라 커밋·기능push·develop병합/push 진행. fetch 후 원격/로컬 develop 일치 확인, 강제 푸시 없음. 로그 /tmp/literal-header-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 enum/const 헤더 타입 시작 (2026-11-04)
+
+- developc1a00a7에서 feature/openapi-literal-header-types 분기. 명시적 type이 없을 때 enum/const의 non-null primitive 값들이 같은 타입이면 헤더 디코딩 타입을 결정한다. 숫자 혼합(integer/number)은 number, bool은 integer와 구분한다.
+- 최종 enum/const 판정은 원래 schema를 사용한다. 혼합 primitive/객체/배열/null-only 값은 자동 타입 추론하지 않는다. 기존 명시 type·참조·조합·prefixItems 경로 유지. UI/API/DB 변경 없음.
+- 관련 계약/runner/이력·실HTTP·생성 검증 후 프로젝트에 승인된 커밋→기능push→develop병합/push를 수행한다. 강제 푸시 없음.
+
 ## prefixItems 로컬 병합·원격 반영 (2026-11-04)
 
 - 사용자 승인으로 기능b62f12a를 커밋하고 origin/feature/openapi-prefix-header-arrays에 일반 푸시했다. 로컬 develop 병합은 충돌 없으며 검증한 제품 코드와 동일하다. 커밋 전 계약119개(16.256초)/diff 통과, 이전 관련187개/집중5개 증거 유지. 전체 Python/브라우저 재실행은 아니다.
