@@ -1,5 +1,22 @@
 # API 개발 기능 진행 기록
 
+## 배열 oneOf·anyOf 헤더 로컬 병합 완료 (2026-11-04)
+
+- 사용자 승인으로df64b38을 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약98개(15.900초)/diff 통과. 직전 관련166개·실HTTP·생성 최신성 근거 유지. 제품 코드는 기능 커밋과 동일하고 완료 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은 동일 필드 타입 객체 container oneOf/anyOf다.
+
+## OAS-2 배열 container oneOf/anyOf 완료 (2026-11-04)
+
+- 동종 primitive 항목 배열의 최상위 oneOf/anyOf를 디코딩한다. 내부참조·중첩 union/지원 allOf 분기·nullable·explode 지원. 원래 schema로 전체 배열의 분기 일치/개수/enum 등을 검사해 교차 분기 항목 혼합과 oneOf 중복일치를 올바르게 거부한다.
+- 검증: 계약98개(신규5개 포함,13.144초), 저장 케이스/결과9개(3.157초), runner49개(0.094초), 이력10개(0.165초), 합계166개 통과. 실HTTP 정상/교차분기 실패·모호한 타입/비배열/순환/한도 및 기존 회귀 확인. 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- 이번 전체 Python/프런트엔드/브라우저 재실행 없음. API/UI/DB 구조 변경 없음. 직전 전체659개 및 이관 테스트 재검증은 당시 기록대로 유지한다.
+- Git: 객체 allOf 기능5a432e5·로컬 develop병합ebf7672 완료. 새 feature/openapi-union-header-arrays는ebf7672 기준 미커밋, 원격 푸시·원본 worktree 변경 없음. 로그 /tmp/union-array-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 배열 container oneOf/anyOf 시작 (2026-11-04)
+
+- developebf7672에서 feature/openapi-union-header-arrays 분기. 모든 분기가 명시적 array 또는 지원하는 array allOf이고 primitive 항목 타입이 같을 때만 배열 디코딩한다. nested union/내부참조 및 기존 nullable 타입 포함.
+- 분기별 items 제약을 합쳐 느슨하게 만들지 않는다. 최종 원래 schema로 전체 배열의 oneOf/anyOf·개수·enum·중복을 판정한다. 혼합 항목 타입/비배열/조건부/튜플/순환/한도 초과는 추론하지 않는다.
+- 두 버전·분기 의미·교차 분기 항목 거부·실HTTP와 기존 계약/runner/이력 회귀·생성 최신성 검증. UI/API/DB 변경 없음. 새 변경 미커밋, 원격 푸시 없음.
+
 ## 객체 allOf 헤더 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로5a432e5를 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약93개(21.778초)/diff 통과. 기존 집중161개 및 전체659개 실행/이관 기대값 보완 후1개 재검증 기록은 정확한 범위대로 유지한다. 제품 코드는 기능 커밋과 동일하고 완료 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은 배열 container oneOf/anyOf다.

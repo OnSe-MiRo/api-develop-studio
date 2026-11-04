@@ -337,6 +337,47 @@ def _header_allof_array_items(document, schema):
     return {'allOf': items}
 
 
+def _header_union_array_items(document, schema):
+    if not isinstance(schema, dict) or not any(key in schema for key in ('oneOf', 'anyOf')):
+        return None
+    active = set()
+    remaining = 128
+
+    def item_type(value, depth=0):
+        nonlocal remaining
+        remaining -= 1
+        if remaining < 0 or depth > 32 or id(value) in active or not isinstance(value, dict):
+            raise ValueError('Header array union traversal limit')
+        if any(key in value for key in ('not', 'if', 'prefixItems')):
+            raise ValueError('Unsupported array union')
+        active.add(id(value))
+        try:
+            if '$ref' in value:
+                return item_type(pointer(document, value['$ref']), depth + 1)
+            keywords = [key for key in ('oneOf', 'anyOf') if key in value]
+            if keywords:
+                if 'allOf' in value or ('type' in value and _header_type(value) != 'array'):
+                    raise ValueError('Ambiguous array union')
+                kinds = {item_type(child, depth + 1) for key in keywords for child in value[key]}
+                if len(kinds) != 1 or None in kinds:
+                    raise ValueError('Mixed array item types')
+                return next(iter(kinds))
+            items = _header_allof_array_items(document, value)
+            if items is None:
+                if _header_type(value) != 'array':
+                    raise ValueError('Non-array union branch')
+                items = value.get('items', {})
+            return _header_primitive_type(document, items)
+        finally:
+            active.remove(id(value))
+
+    try:
+        kind = item_type(schema)
+    except (ValueError, ContractError):
+        return None
+    return {'type': kind} if kind is not None else None
+
+
 def _header_allof_object_schema(document, schema):
     if not isinstance(schema, dict) or 'allOf' not in schema:
         return None
@@ -474,6 +515,8 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
             schema = resolve(document, header['schema'])
             value = normalized[name.lower()]
             composed_items = _header_allof_array_items(document, schema)
+            if composed_items is None:
+                composed_items = _header_union_array_items(document, schema)
             composed_object = _header_allof_object_schema(document, schema)
             if isinstance(schema, dict) and (_header_type(schema) == 'array' or composed_items is not None):
                 items = composed_items if composed_items is not None else resolve(document, schema.get('items', {}))
