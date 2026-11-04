@@ -1,5 +1,19 @@
 # API 개발 기능 진행 기록
 
+## OAS-2 JSON 응답 본문 검증 보완 완료 (2026-11-04)
+
+- schema 없는 JSON 응답 문법 오류와 NaN/중복 key가 valid=true로 잘못 통과하는3경로를 재현 후 수정했다. JSON 헤더/본문에 동일 strict parser 적용, schema 유무와 무관한 원문 검증 및 값 비노출 invalid_json을 제공한다. 비JSON·본문 금지 status·계약 opt-out은 유지한다.
+- 검증: 계약72개(신규6개 포함,10.147초), 저장 케이스/결과9개(4.375초), runner49개(0.159초), 이력10개(0.229초), 합계140개 통과. 실제 HTTP opt-in 정상/중복키 실패·opt-out 기존 통과와 보고서 비노출, 빠른 호출 연결 확인. 생성 최신성/diff 통과.
+- 최초 계약 테스트4개 subtest 실패는2,000중첩 유효 JSON이 항상 RecursionError를 낸다는 잘못된 fixture 가정이었다. 해당 가정을 제거하고 관련 전체를 재실행했다. 제품에 임의 depth 차단은 추가하지 않았고 실제 파서 RecursionError는 invalid_json으로 처리한다.
+- 전체 Python/프런트엔드/브라우저 재실행 없음. API/UI/DB 구조 변경 없음. 과거 전체603개 결과와 구분한다.
+- Git: text/plain·nullable 기능50dd28a·로컬 병합875f5f1 완료. fix/openapi-json-response-validation에 다음 수정만 미커밋, 원격 푸시·원본 worktree 변경 없음. 로그 /tmp/strict-body-{contracts,contracts-final,saved,runner,history,generated}.log.
+
+## OAS-2 JSON 응답 본문 검증 보완 시작 (2026-11-04)
+
+- develop875f5f1에서 fix/openapi-json-response-validation 분기. 현재 코드에서 schema 없는 application/json의 not-json, 빈 schema의 NaN, 중복 JSON key가 모두 valid=true로 통과함을 재현했다.
+- schema 유무와 무관하게 raw JSON 본문을 검사하고 JSON 헤더와 동일한 strict parser를 사용한다. 중복 key·비유한 숫자·overflow·문법/과도한 중첩 오류는 원문 비노출 invalid_json으로 판정한다. 중복 key 거부는 제품 정책이다.
+- 비JSON 본문·HEAD/204/304 및 원문 없이 이미 파싱된 객체를 전달하는 기존 함수 호출은 유지한다. 실제 빠른 호출/runner는 raw body를 전달한다. API/UI/DB 변경 없음. 새 변경은 미커밋, 원격 푸시 없음.
+
 ## text/plain·nullable 헤더 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로 기능50dd28a를 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약66개(8.290초)/diff 통과, 직전 관련134개 증거 유지. 제품 코드는 기능 커밋과 동일하며 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은 JSON 응답 본문 파싱 계약 보완이다.

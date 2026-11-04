@@ -219,7 +219,7 @@ def match_operation(document, method, url, base_url=None, server_variables=None,
     return matches[0][1:]
 
 
-def _header_json(value):
+def _strict_json(value):
     def reject_constant(_):
         raise ValueError('Non-JSON number')
 
@@ -327,7 +327,7 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                     value = normalized[name.lower()]
                 elif re.fullmatch(r'application/(?:json|[^\s/*;]+\+json)', media):
                     try:
-                        value = _header_json(normalized[name.lower()])
+                        value = _strict_json(normalized[name.lower()])
                     except (ValueError, TypeError, RecursionError):
                         errors.append(issue('invalid_header_json', location))
                         continue
@@ -369,15 +369,15 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
             media_schema = content.get(media, content.get(media.split('/')[0] + '/*', content.get('*/*')))
             if media_schema is None:
                 errors.append(issue('undocumented_content_type', '#/response/content-type'))
-            elif 'schema' in media_schema:
+            else:
                 if raw_body is not None and (media == 'application/json' or media.endswith('+json')):
-                    import json
                     try:
-                        body = json.loads(raw_body)
-                    except (ValueError, TypeError):
+                        body = _strict_json(raw_body)
+                    except (ValueError, TypeError, RecursionError):
                         errors.append(issue('invalid_json', '#/response/body'))
                         return {'valid': False, 'issues': errors}
-                errors.extend(schema_errors(document, media_schema['schema'], body, '#/response/body'))
+                if 'schema' in media_schema:
+                    errors.extend(schema_errors(document, media_schema['schema'], body, '#/response/body'))
         return {'valid': not errors, 'operation': method.upper() + ' ' + path, 'issues': errors[:100]}
     except ContractError:
         return {'valid': False, 'issues': [issue('operation_or_reference_error', '#/response')]}
