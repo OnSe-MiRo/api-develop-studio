@@ -38,3 +38,7 @@
 - 로그: /tmp/saved-contract-focused-python.log, /tmp/saved-contract-python-verified.log, /tmp/saved-contract-web-all.log, /tmp/saved-contract-build.log, /tmp/saved-contract-generated-check.log.
 
 서버 변수/상대 URL 변경은 커밋0de1fca·develop 병합a51c176이다. 이 기능은 feature/saved-case-contract-validation의 미커밋 변경이며 원격 푸시는 하지 않았다. 운영 공급자·배포·전체 부하 캠페인 및 기존 부하 실패/unknown은 이번 기능 검증과 별개다.
+
+## 결과 화면
+
+실시간 단계별 결과와 실행 이력 상세에 계약 요약·명세 지문을 표시한다. [표시 의미와 검증](contract-result-summary.md)을 참조한다.

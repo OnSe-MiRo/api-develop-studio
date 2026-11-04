@@ -1,3 +1,4 @@
+import { ContractSummary } from './ContractSummary.jsx'
 import { asText } from '../utils/studio.js'
 
 function RunResult({ result, onCancel }) {
@@ -19,7 +20,7 @@ function RunResult({ result, onCancel }) {
     <div className="result-heading"><strong>{statusLabels[result.status] || (result.error ? '실행 오류' : result.exitCode ? `실행 실패 (종료 코드 ${result.exitCode})` : '실행 완료')}</strong></div>
     {apiCallResults.length > 0 && <div style={{ padding: '14px', borderTop: '1px solid #dbe4f0', background: '#f8fbff' }}><strong style={{ color: '#334155', fontSize: 13 }}>API 호출 결과</strong><pre style={{ maxHeight: 260, margin: '10px 0 0', border: '1px solid #dbe4f0', borderRadius: 8 }}>{apiCallResults.map((value, index) => `${apiCallResults.length > 1 ? `호출 ${index + 1}\n` : ''}${value}`).join('\n\n')}</pre></div>}
     {result.result?.cleanupStatus && result.result.cleanupStatus !== 'not_run' && <p>본 실행: {statusLabels[result.result.mainStatus] || result.result.mainStatus} · 정리: {statusLabels[result.result.cleanupStatus] || result.result.cleanupStatus}</p>}
-    {result.result?.targets?.length > 0 && <div><strong>단계별 결과</strong><ul>{result.result.targets.map((item, index) => <li key={index}>{item.phase === 'teardown' ? '정리 · ' : item.phase === 'setup' ? '준비 · ' : '테스트 · '}{item.caseId} · {statusLabels[item.status] || item.status}{item.httpStatus != null ? ` · HTTP ${item.httpStatus}` : ''}{item.errorCategory ? ` · ${item.errorCategory}` : ''}</li>)}</ul></div>}
+    {result.result?.targets?.length > 0 && <div><strong>단계별 결과</strong><ul>{result.result.targets.map((item, index) => <li key={index}>{item.phase === 'teardown' ? '정리 · ' : item.phase === 'setup' ? '준비 · ' : '테스트 · '}{item.caseId} · {statusLabels[item.status] || item.status}{item.httpStatus != null ? ` · HTTP ${item.httpStatus}` : ''}{item.errorCategory ? ` · ${item.errorCategory}` : ''}<ContractSummary contract={item.contract} /></li>)}</ul></div>}
     {(result.error || executionLog) && <div className="result-heading"><strong>실행 로그</strong></div>}
     {(result.error || executionLog) && <pre>{result.error || executionLog}</pre>}
   </section>

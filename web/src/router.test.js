@@ -70,3 +70,23 @@ it('round-trips pipeline page filters independently of editor routes', () => {
   expect(parseLocation()).toMatchObject({tab:'pipeline-list',activeProject:'demo.json',pipelineFilters})
   expect(buildUrl({tab:'pipeline-settings',activeProject:'demo.json',pipelineReference:'a.json',pipelineFilters})).not.toContain('cursor=')
 })
+
+it('round-trips dashboard filters and selected detail with encoded values', () => {
+  const dashboardFilters={days:30,status:'failed',page:2,search:'한글 + 100%'}
+  const url=buildUrl({tab:'dashboard',activeProject:'team/demo.json',dashboardFilters,runId:'run +/one'})
+  window.history.replaceState(null,'',url)
+  expect(parseLocation()).toMatchObject({tab:'dashboard',activeProject:'team/demo.json',dashboardFilters,runId:'run +/one'})
+  expect(buildUrl({tab:'case-list',activeProject:'demo.json',dashboardFilters,runId:'old'})).toBe('/cases?project=demo')
+  expect(buildUrl({tab:'load-tests',dashboardFilters,runId:'old'})).toBe('/load-tests')
+})
+it('normalizes invalid dashboard URL filters and retains API boundary values', () => {
+  window.history.replaceState(null,'','/dashboard?days=99&status=unknown&page=1000001&search='+encodeURIComponent('x'.repeat(201)))
+  expect(parseLocation().dashboardFilters).toEqual({days:7,status:'',page:1,search:'x'.repeat(200)})
+  window.history.replaceState(null,'','/dashboard?days=90&status=timeout&page=1000000')
+  expect(parseLocation().dashboardFilters).toEqual({days:90,status:'timeout',page:1000000,search:''})
+  for (const page of ['0','-2','1.2','1e3','abc']) {
+    window.history.replaceState(null,'','/dashboard?page='+page)
+    expect(parseLocation().dashboardFilters.page).toBe(1)
+  }
+  expect(buildUrl({tab:'dashboard',dashboardFilters:{days:7,page:1,search:' '}})).toBe('/dashboard')
+})
