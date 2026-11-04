@@ -1,5 +1,18 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## 실행 상세 케이스 검색 완료 (2026-11-04)
+
+- 수집된 caseReference/caseId의 대소문자 무시 부분검색을 상태 필터와 결합했다. Enter/버튼 적용·검색만 초기화, 최대200자 정규화, caseSearch URL로 reload/back/forward 복원을 지원한다. 다른 Run/상세 닫기/목록 조건 변경은 검색을 초기화한다. 원문 응답을 검색하거나 재실행 대상을 바꾸지 않는다.
+- 검증: frontend158개(34파일,worker2), production build, diff 검사 통과. 신규3개 회귀에서 한글/특수문자/대소문자·caseId·빈 결과·식별자 없는 과거항목 보존·초기화·URL 복원·추가 API 호출 없음/POST0회를 확인했다. backend 변경·전체 Python 재실행 없음.
+- 실제 브라우저: 격리 DB의 합성 이력으로 대문자 CONTRACT 검색1개 직접진입/reload, timeout Enter검색1개, back/forward 결과 복원, 계약필터와 결합한 빈 결과, 검색만 초기화 후 계약필터 보존을 확인했다. 콘솔 오류/경고0. 실제 대상 호출/운영 인증/부하 측정이 아니다. [화면](execution-detail-search.png).
+- Git: 이전 URL복원407ac2c·로컬 develop병합7e25788 완료. 새 feature/execution-detail-search에 검색 변경만 미커밋으로 남긴다. 원격 푸시·원본 worktree 변경 없음. 브라우저 검증 탭 종료.
+
+## 실행 상세 케이스 검색 시작 (2026-11-04)
+
+- develop7e25788에서 feature/execution-detail-search 분기. caseReference/caseId 부분 문자열 검색(대소문자 무시)을 상세 상태 필터와 AND 결합한다. Enter/검색 버튼 적용 및 검색만 초기화 제공. 원문 응답·secret 검색은 하지 않는다.
+- caseSearch query는 최대200자/앞뒤 공백 제거, 선택 Run에 연결한다. 필터 변경 시 검색 유지, 다른 Run/닫기/목록 조건 변경 시 초기화, reload/back/forward 복원. 표시만 바꾸며 기존 재실행 대상/API/DB 계약 유지.
+- 검증은 혼합 조건·한글/특수문자·빈 결과·초기화·URL 복원·추가 호출/자동 실행 없음 회귀, 전체 frontend/build 및 실제 브라우저로 수행한다. 새 변경은 미커밋이며 원격 푸시 없음.
+
 ## 상세 필터 URL 복원 로컬 병합 완료 (2026-11-04)
 
 - 기능 커밋407ac2c를 로컬 develop에 충돌 없이 병합했다. 제품 코드는 검증한 기능 커밋과 동일하고 이 완료 기록만 추가한다. 원격 푸시·원본 worktree 변경·브랜치 삭제 없음.

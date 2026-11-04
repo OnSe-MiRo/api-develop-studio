@@ -6,8 +6,9 @@ import { api } from '../../utils/studio.js'
 
 function ExecutionDetail(props) {
   const [filter, setFilter] = useState('all')
-  useEffect(() => { setFilter('all') }, [props.runId])
-  return <Detail {...props} outcomeFilter={filter} onOutcomeFilterChange={setFilter} />
+  const [search, setSearch] = useState('')
+  useEffect(() => { setFilter('all'); setSearch('') }, [props.runId])
+  return <Detail {...props} outcomeFilter={filter} onOutcomeFilterChange={setFilter} outcomeSearch={search} onOutcomeSearchChange={setSearch} />
 }
 
 vi.mock('../../utils/studio.js', () => ({ api: vi.fn(), asText: value => value == null ? '' : String(value) }))
@@ -116,4 +117,35 @@ it('shows empty filters and resets to all on a different run', async () => {
   view.rerender(<ExecutionDetail runId="empty" onClose={vi.fn()} />)
   expect(await screen.findByText('수집된 상세 항목이 없습니다.')).toBeInTheDocument()
   expect(screen.getByText('수집된 상세 0개 중 0개 표시')).toBeInTheDocument()
+})
+
+it('searches only case identifiers, combines filters and clears only the search', async () => {
+  api.mockResolvedValue({ ...run, detail: { reportAvailable: true, outcomes: [
+    { caseReference: '한글/API/Order+1.json', caseId: 'order-id', status: 'failed' },
+    { caseReference: '한글/API/Order+2.json', status: 'passed' },
+    { caseId: 'other', status: 'failed', errorCategory: 'Order+1' },
+    { status: 'passed' },
+  ] } })
+  render(<ExecutionDetail runId="old" onClose={vi.fn()} />)
+  const input = await screen.findByLabelText('상세 케이스 이름·경로 검색')
+  fireEvent.change(input, { target: { value: '  order+  ' } })
+  expect(screen.getByText('수집된 상세 4개 중 4개 표시')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: '상세 검색', exact: true }))
+  expect(input).toHaveValue('order+')
+  expect(screen.getByText('수집된 상세 4개 중 2개 표시')).toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('상세 항목 필터'), { target: { value: 'failures' } })
+  expect(screen.getByText('수집된 상세 4개 중 1개 표시')).toBeInTheDocument()
+  expect(screen.getByText('한글/API/Order+1.json')).toBeInTheDocument()
+  expect(screen.queryByText('other')).not.toBeInTheDocument()
+  fireEvent.change(input, { target: { value: 'missing' } })
+  fireEvent.submit(input.closest('form'))
+  expect(screen.getByText('선택한 조건에 맞는 상세 항목이 없습니다.')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: '상세 검색 초기화' }))
+  expect(screen.getByLabelText('상세 항목 필터')).toHaveValue('failures')
+  expect(screen.getByText('수집된 상세 4개 중 2개 표시')).toBeInTheDocument()
+  fireEvent.change(input, { target: { value: 'ORDER-ID' } })
+  fireEvent.submit(input.closest('form'))
+  expect(screen.getByText('수집된 상세 4개 중 1개 표시')).toBeInTheDocument()
+  expect(api).toHaveBeenCalledTimes(1)
+  expect(screen.getByText('flow.json')).toBeInTheDocument()
 })
