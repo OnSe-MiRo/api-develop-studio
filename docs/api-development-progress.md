@@ -1,5 +1,17 @@
 # API 개발 기능 진행 기록
 
+## OAS-2 boolean prefixItems 검증 완료 (2026-11-04)
+
+- prefix 위치의 true/false/빈 schema 및 내부참조를 지원했다. 허용 위치는 문자열 보존, false 위치의 존재 여부와 minItems/추가항목 정책은 원래 schema로 검사한다. typed 위치/기존 tail 규칙 유지.
+- 검증: 최종 계약128개(신규4개,19.804초), 저장 케이스/결과9개(3.360초), runner49개(0.078초), 이력10개(0.260초), 합계196개 통과. 실제 HTTP false 위치 생략/존재의 정상/실패·원문 비노출 및 생성 최신성/diff 통과. 최초 계약133개는 imported fixture 클래스의5개 중복 수집을 포함해 통과했고 모듈 참조로 바꾼 후 최종128개 재통과. 제품 테스트 실패 없음.
+- 전체 Python/프런트엔드/브라우저 재실행 없음. UI/API/DB 변경 없음. 프로젝트 승인대로 커밋·기능push·develop병합/push한다. fetch 후 원격/로컬 develop6adef2e 일치.
+- 로그 /tmp/bool-prefix-{contracts,contracts-final,saved,runner,history,generated}.log.
+
+## OAS-2 boolean prefixItems 시작 (2026-11-04)
+
+- develop6adef2e에서 feature/openapi-boolean-prefix-headers 분기. prefixItems 위치의 true/false 및 빈 schema{}를 지원한다. 타입을 추정하지 않고 문자열을 유지하며 최종 원래 schema로 허용/거부한다. 참조된 boolean schema도 포함한다.
+- false 위치가 생략됐다고 실패시키지 않고 minItems/실제 위치 존재에 따라 검증한다. 기존 typed prefix/tail·추가항목 정책 유지. 관련 회귀/실HTTP·생성 검증 후 프로젝트 승인대로 커밋/푸시/병합한다.
+
 ## enum/const 헤더 커밋·푸시·병합 (2026-11-04)
 
 - 프로젝트 한정 사용자 승인으로 기능fa1c6bd를 커밋하고 origin/feature/openapi-literal-header-types에 일반 푸시했다. 로컬 develop에 충돌 없이 병합하며 제품 코드는 검증한 기능 커밋과 동일하다.

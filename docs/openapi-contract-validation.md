@@ -321,3 +321,13 @@ allOf/내부참조로 분산된 명시적 object 타입과 primitive 필드 제�
 - feature/openapi-literal-header-types에서 구현하고, 프로젝트의 완료 후 커밋/기능push/develop병합/push 승인에 따라 게시한다.
 
 검증: 계약124개·저장케이스/결과9개·runner49개·이력10개 합계192개 및 실HTTP·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
+
+## boolean/빈 prefixItems schema (2026-11-04)
+
+OpenAPI3.1 prefixItems에서 true/false/빈 schema{}와 그 내부참조를 지원한다. [JSON Schema boolean schema](https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.2) 의미에 따라 true/{}는 허용하고 false는 해당 위치가 존재할 때 거부한다.
+
+- 타입을 선언하지 않은 허용 위치와 빈 tail schema는 simple 문자열을 그대로 유지한다. 숫자/JSON/null로 추정하지 않는다. typed 위치는 기존 디코더로 처리한다.
+- false 위치가 생략된 짧은 배열은 자동 실패시키지 않는다. 필수 길이는 minItems로 정하고, 추가 항목은 items로 검사한다. 오류에 실제 값을 포함하지 않는다.
+- 3.0 prefixItems/boolean schema는 기존 lint에서 거부한다. 중첩/모호한 타입 및 composition 간 tuple 합성 제한은 유지한다.
+
+검증: 최종 계약128개·저장케이스/결과9개·runner49개·이력10개 합계196개 및 실HTTP·생성 최신성/diff 통과. 최초 fixture 중복 수집5개 제거 후 계약 재검증. 전체 Python/React/브라우저 재실행 없음.
