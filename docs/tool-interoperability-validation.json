@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-13",
+  "branch": "feature/tool-interoperability",
+  "baseCommit": "fb75a467fba8c430f6da4a8e215d1c0f3b995470",
+  "automated": {
+    "python": {
+      "passed": 411,
+      "skipped": 0,
+      "seconds": 54.43
+    },
+    "frontend": {
+      "passed": 53
+    },
+    "build": "passed",
+    "iopTests": 19,
+    "liveCurlEcho": [
+      "method",
+      "URL and duplicate query",
+      "content-type",
+      "custom header",
+      "body bytes"
+    ]
+  },
+  "browser": {
+    "implementationBeforeFinalTagChange": {
+      "preview": "passed",
+      "secretFiltering": "passed",
+      "caseSave": "passed",
+      "curlExport": "passed",
+      "overwriteConfirmation": "passed",
+      "environmentSave": "passed",
+      "viewportWidth": 390,
+      "documentScrollWidth": 378,
+      "consoleErrors": 0
+    },
+    "finalTagAndProjectPathRecheck": "blocked: user denied localhost browser permission",
+    "fileChooserUpload": "not exercised; paste input exercised"
+  },
+  "limitations": [
+    "Explicit supported input subset",
+    "Opaque body omitted with warning",
+    "Heuristic secret candidate filtering",
+    "POSIX shell cURL export",
+    "Individual saves, not atomic batch"
+  ],
+  "sourceSha256": {
+    "api_test/interoperability.py": "65d99dfd6f519aba6b9d39266b1517a16c6bb3a78c569f95b5cb4e7dc8ab23fe",
+    "api_test/services/interoperability.py": "4b21cc9056d533477324db9d2bd387f410de921fedf2a236ab826c22244cf9d8",
+    "web/src/pages/interoperability/ImportExportPanel.jsx": "94211ca538253b918153f0f188b6759d98b3b40c4b6b9bccc001413b56eb0524"
+  }
+}

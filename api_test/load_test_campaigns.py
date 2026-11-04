@@ -121,13 +121,21 @@ def _phase(config, directory, snapshot, environment, executable, server, sampler
     script = "run-admission.js" if config["mode"] == "run-sustained" and config["phase"] != "baseline" else "mixed.js"
     command = [executable, "run", "--out", f"json={raw}", str(REPOSITORY / "load-tests/k6" / script)]
     result = {"phase": config, "serverPid": server.pid, "command": command, "status": "error", "complete": False, "stopReason": None, "resources": []}
+    if config.get("resetCpuAtPhaseStart"):
+        sampler.reset_cpu()
     client = RawTail(raw, config["windowSeconds"])
     policy = StopPolicy(started, config["windowSeconds"], config["resourceSustainSeconds"])
     process = None
+    generator_sampler = None
+    if config.get("captureGenerator"):
+        result["generatorResources"] = []
     try:
         with (directory / "k6.log").open("w") as log, (directory / "server-metrics.jsonl").open("w") as resource_log:
             process = subprocess.Popen(command, cwd=REPOSITORY, env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=os.name == "posix")
             process._isolated_group = os.name == "posix"
+            if config.get("captureGenerator"):
+                generator_sampler = ResourceSampler(process.pid, snapshot, sampler.memory_mb, role="load generator", include_storage=False)
+                result["generatorPid"] = process.pid
             deadline = started + config["durationSeconds"] + 25
             next_sample, stopped_at = 0, None
             while process.poll() is None:
@@ -136,6 +144,8 @@ def _phase(config, directory, snapshot, environment, executable, server, sampler
                 if now >= next_sample:
                     resource = sampler.sample()
                     result["resources"].append(resource)
+                    if generator_sampler is not None:
+                        result["generatorResources"].append(generator_sampler.sample())
                     resource_log.write(json.dumps(resource) + "\n")
                     resource_log.flush()
                     next_sample = now + config["sampleIntervalSeconds"]
@@ -181,6 +191,8 @@ def _phase(config, directory, snapshot, environment, executable, server, sampler
         result["elapsedSeconds"] = time.monotonic() - started
         result["resourceWindowSeconds"] = min(60, config["durationSeconds"] / 2) if config["phase"] == "baseline" else config["durationSeconds"]
         result["resourceAggregate"] = stable_resource_window(result["resources"], result["resourceWindowSeconds"])
+        if generator_sampler is not None:
+            result["generatorResourceAggregate"] = stable_resource_window(result["generatorResources"], result["resourceWindowSeconds"])
         result["growth"] = growth_report(result["resources"])
         result["postRequestCleanup"] = {"childProcesses": result.get("postResource", {}).get("childProcesses"), "tempEntries": result.get("postResource", {}).get("tempEntries"),
             "status": "unknown" if any(result.get("postResource", {}).get(field) is None for field in ("childProcesses", "tempEntries")) else "passed" if result["postResource"]["childProcesses"] == 0 and result["postResource"]["tempEntries"] == 0 else "failed"}

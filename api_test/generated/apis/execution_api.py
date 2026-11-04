@@ -1,7 +1,7 @@
 """Generated from openapi/studio.yaml. Regenerate with scripts/generate_server.py."""
 from fastapi import APIRouter, Depends, Response
-from api_test.dependencies import request_context
-from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests
+from api_test.dependencies import request_context, public_request_context
+from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests, identity, oauth, sdk_generation, interoperability, releases, portal
 from pydantic import StrictStr
 from typing import Any
 from api_test.generated.models.error_response import ErrorResponse
@@ -10,6 +10,7 @@ from api_test.generated.models.quick_response import QuickResponse
 from api_test.generated.models.run_job import RunJob
 from api_test.generated.models.run_request import RunRequest
 from api_test.generated.models.run_response import RunResponse
+from api_test.generated.models.saved_run_list import SavedRunList
 
 router = APIRouter()
 
@@ -76,6 +77,51 @@ async def get_run(context=Depends(request_context)) -> Response:
     )
 
 @router.post(
+    "/api/runs/{runId}/save",
+    operation_id="save_run_result",
+    tags=["execution",],
+    responses={
+        200: {"description": "Saved case execution result", "model": RunJob},400: {"description": "Request rejected", "model": ErrorResponse},403: {"description": "Request rejected", "model": ErrorResponse},404: {"description": "Request rejected", "model": ErrorResponse},409: {"description": "Request rejected", "model": ErrorResponse},413: {"description": "Request rejected", "model": ErrorResponse},503: {"description": "Request rejected", "model": ErrorResponse},
+    },
+)
+async def save_run_result(context=Depends(request_context)) -> Response:
+    return await context.call(
+        execution.save_run_result, [context.request.path_params["runId"]],
+        upload=False,
+
+    )
+
+@router.get(
+    "/api/saved-results",
+    operation_id="list_saved_results",
+    tags=["execution",],
+    responses={
+        200: {"description": "Saved case execution result", "model": SavedRunList},400: {"description": "Request rejected", "model": ErrorResponse},403: {"description": "Request rejected", "model": ErrorResponse},404: {"description": "Request rejected", "model": ErrorResponse},409: {"description": "Request rejected", "model": ErrorResponse},413: {"description": "Request rejected", "model": ErrorResponse},503: {"description": "Request rejected", "model": ErrorResponse},
+    },
+)
+async def list_saved_results(context=Depends(request_context)) -> Response:
+    return await context.call(
+        execution.list_saved_results, [],
+        upload=False,
+
+    )
+
+@router.get(
+    "/api/saved-results/{runId}",
+    operation_id="get_saved_result",
+    tags=["execution",],
+    responses={
+        200: {"description": "Saved case execution result", "model": RunJob},400: {"description": "Request rejected", "model": ErrorResponse},403: {"description": "Request rejected", "model": ErrorResponse},404: {"description": "Request rejected", "model": ErrorResponse},409: {"description": "Request rejected", "model": ErrorResponse},413: {"description": "Request rejected", "model": ErrorResponse},503: {"description": "Request rejected", "model": ErrorResponse},
+    },
+)
+async def get_saved_result(context=Depends(request_context)) -> Response:
+    return await context.call(
+        execution.get_saved_result, [context.request.path_params["runId"]],
+        upload=False,
+
+    )
+
+@router.post(
     "/api/runs/{runId}/cancel",
     operation_id="cancel_run",
     tags=["execution",],
@@ -89,4 +135,3 @@ async def cancel_run(context=Depends(request_context)) -> Response:
         upload=False,
 
     )
-

@@ -240,6 +240,9 @@ def _serve(root: Path, ready: Path) -> None:
     if os.environ.get("STUDIO_LT4_STUB") == "true":
         from api_test.load_test_campaigns import install_stub
         install_stub(application)
+    if os.environ.get("STUDIO_P1_CASE_TRACE"):
+        from api_test.load_test_baseline_diagnostics import install_diagnostics
+        install_diagnostics(application, Path(os.environ["STUDIO_P1_CASE_TRACE"]))
     server = uvicorn.Server(uvicorn.Config(application, log_level="info", access_log=True, proxy_headers=False))
     base_url = f"http://127.0.0.1:{listener.getsockname()[1]}"
     if os.environ.get("STUDIO_MUTATION_MODE") == "target":

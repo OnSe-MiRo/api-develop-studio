@@ -28,7 +28,7 @@ def main():
                         '-c', str(ROOT / 'openapi/generator-config.yaml'), '-t', str(ROOT / 'openapi/templates'),
                         '-o', directory, '--global-property', 'apiTests=false,modelTests=false,apiDocs=false,modelDocs=false'], check=True)
         source = Path(directory) / 'api_test/generated'
-        files = {str(p.relative_to(source)): p.read_bytes() for p in source.rglob('*.py') if p.name != 'security_api.py' and not p.name.endswith('_base.py')}
+        files = {str(p.relative_to(source)): p.read_bytes().rstrip(b'\n') + b'\n' for p in source.rglob('*.py') if p.name != 'security_api.py' and not p.name.endswith('_base.py')}
         destination = ROOT / 'api_test/generated'
         existing = {str(p.relative_to(destination)): p.read_bytes() for p in destination.rglob('*.py')}
         # Generator whitespace must not rewrite otherwise identical existing DTOs.

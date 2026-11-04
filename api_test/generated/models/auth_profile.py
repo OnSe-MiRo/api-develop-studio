@@ -13,7 +13,8 @@
 
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
+from datetime import date, datetime
+from typing import Annotated, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, StrictBool, StrictFloat, StrictInt, StrictStr
 
 
@@ -28,12 +29,34 @@ class AuthProfile(BaseModel):
     username: Optional[StrictStr] = None
     password: Optional[StrictStr] = None
     token: Optional[StrictStr] = None
+    grant_type: Optional[StrictStr] = Field(default=None, alias="grantType")
+    client_id: Optional[StrictStr] = Field(default=None, alias="clientId")
+    client_secret: Optional[StrictStr] = Field(default=None, description="Encrypted project variable reference {{project.NAME}} only; never a literal client secret.", alias="clientSecret")
+    token_url: Optional[StrictStr] = Field(default=None, alias="tokenUrl")
+    authorization_url: Optional[StrictStr] = Field(default=None, alias="authorizationUrl")
+    scopes: Optional[List[StrictStr]] = None
+    client_auth_method: Optional[StrictStr] = Field(default=None, alias="clientAuthMethod")
+    issuer: Optional[StrictStr] = None
 
     @field_validator('type')
     @classmethod
     def validate_type(cls, value):
-        if value is not None and value not in ('No Auth', 'API Key', 'Basic Auth', 'Bearer Token', ):
+        if value is not None and value not in ('No Auth', 'API Key', 'Basic Auth', 'Bearer Token', 'OAuth 2.0', ):
             raise ValueError('Unsupported type')
+        return value
+
+    @field_validator('grant_type')
+    @classmethod
+    def validate_grant_type(cls, value):
+        if value is not None and value not in ('client_credentials', 'authorization_code', ):
+            raise ValueError('Unsupported grantType')
+        return value
+
+    @field_validator('client_auth_method')
+    @classmethod
+    def validate_client_auth_method(cls, value):
+        if value is not None and value not in ('basic', 'post', 'none', ):
+            raise ValueError('Unsupported clientAuthMethod')
         return value
 
 
@@ -43,4 +66,3 @@ class AuthProfile(BaseModel):
     @classmethod
     def from_dict(cls, value):
         return cls.model_validate(value)
-

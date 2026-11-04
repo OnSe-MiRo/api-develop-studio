@@ -81,7 +81,7 @@ npm install
 npm run dev
 ```
 
-백엔드는 FastAPI와 Uvicorn을 사용합니다. 실행 명령과 `API_TEST_HOST`·`API_TEST_PORT` 설정은 유지합니다. SQLite와 SDK/테스트 subprocess의 동시성 기준이 정립되기 전까지 **worker는 1개**로 운영합니다. 동기 저장·실행 작업은 ASGI 이벤트 루프 밖의 thread pool에서 처리합니다. `LOCAL_SERVER=true`이면 loopback bind만 허용하며, 프록시 전달 header를 신뢰하지 않습니다. 내부 API schema는 `/api/schema.json`에서 조회할 수 있고 기존 `/docs` SPA 경로는 유지합니다. [HTTP 계약 및 검증 범위](docs/fnd-3-http-contract.md)를 참고하세요.
+백엔드는 FastAPI와 Uvicorn을 사용합니다. 실행 명령과 `API_TEST_HOST`·`API_TEST_PORT` 설정은 유지합니다. SQLite와 SDK/테스트 subprocess의 동시성 기준이 정립되기 전까지 **worker는 1개**로 운영합니다. 동기 저장·실행 작업은 ASGI 이벤트 루프 밖의 thread pool에서 처리합니다. `STUDIO_AUTH_MODE=local`(native 기본값) 또는 `LOCAL_SERVER=true`이면 loopback bind만 허용하며, 프록시 전달 header를 신뢰하지 않습니다. 내부 API schema는 `/api/schema.json`에서 조회할 수 있고 기존 `/docs` SPA 경로는 유지합니다. [HTTP 계약 및 검증 범위](docs/fnd-3-http-contract.md)를 참고하세요. Docker는 `STUDIO_AUTH_MODE=remote`이며 검증된 CurrentUser 인증 어댑터가 없으면 데이터 API가401로 차단됩니다. `/health`는 프로세스 상태만 확인합니다. 실제 로그인 연결 전 배포 제한과 역할 표는 [Workspace 격리](docs/workspace-isolation.md)를 참고하세요.
 
 처음 로컬 실행할 때는 프로젝트 루트에서 Python 의존성도 설치합니다.
 

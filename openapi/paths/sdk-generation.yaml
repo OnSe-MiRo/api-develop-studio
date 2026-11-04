@@ -1,0 +1,119 @@
+/api/generations:
+  post:
+    operationId: submit_sdk_generation
+    tags:
+    - sdk_generation
+    summary: Submit bounded SDK generation using the shared run lifecycle
+    responses:
+      '202':
+        description: Accepted. Poll the returned runId through GET /api/runs/{runId};
+          acceptance is not generation success.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/execution.yaml#/RunJob
+      '400':
+        description: Invalid generation request or source
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Job, project or retained artifact not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Project revision conflict or SDK artifact not ready
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '413':
+        description: Request body too large
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Shared queue or download limit exceeded
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Worker or storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: sdk_generation.submit_generation
+    x-studio-parts: '[]'
+    x-studio-route: /api/generations
+    x-studio-upload: false
+    x-studio-alias: false
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/sdk-generation.yaml#/SdkGenerationRequest
+/api/generations/{runId}/artifact:
+  get:
+    operationId: download_sdk_artifact
+    tags:
+    - sdk_generation
+    summary: Download the retained SDK ZIP owned by the requesting run context
+    responses:
+      '200':
+        description: Bounded generated SDK ZIP. Temporary source and Java output directories
+          have already been removed.
+        headers:
+          Content-Disposition:
+            schema:
+              type: string
+          Content-Length:
+            schema:
+              type: integer
+              format: int64
+        content:
+          application/zip:
+            schema:
+              type: string
+              format: binary
+      '404':
+        description: Job, project or retained artifact not found
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Project revision conflict or SDK artifact not ready
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Shared queue or download limit exceeded
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Worker or storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: sdk_generation.download_artifact
+    x-studio-parts: '[]'
+    x-studio-route: /api/generations/{runId}/artifact
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: runId
+      in: path
+      required: true
+      schema:
+        type: string

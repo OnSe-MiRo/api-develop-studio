@@ -220,28 +220,41 @@ class OwnershipStore:
 
 
 def execution_guard(project, project_root, external=False):
+    from api_test.request_scope import current_context
+    context = current_context()
     def check(url, method):
+        if (context.workspace_id,context.user_id) != (LOCAL_CONTEXT.workspace_id,LOCAL_CONTEXT.user_id):
+            from contextlib import closing
+            try:
+                with closing(connect(Path(os.environ.get('STUDIO_DB_PATH', 'data/studio.db')))) as membership_db:
+                    role = require_membership(membership_db,context)
+                    if role not in ('owner','admin','editor','runner'):
+                        raise PermissionError('Execution role required')
+            except PermissionError as exc:
+                raise OwnershipError('Workspace 실행 권한이 없습니다.') from exc
         if local_policy()["skip_verification"] and not external:
             return
         if not isinstance(project, str) or not project:
             raise OwnershipError("소유권 확인을 위한 프로젝트가 필요합니다.")
+        if '_workspaces' in project.replace(chr(92),'/').split('/'):
+            raise OwnershipError('예약된 Workspace 경로입니다.')
         path = (project_root / project).resolve()
         if project_root.resolve() not in path.parents:
             raise OwnershipError("프로젝트 경로가 올바르지 않습니다.")
         if postgres_enabled():
             from contextlib import closing
             with closing(connect(path)) as db, db:
-                require_membership(db, LOCAL_CONTEXT)
+                require_membership(db, context)
                 row = db.execute(
                     "SELECT r.content FROM documents d JOIN document_revisions r "
                     "ON r.document_id=d.id AND r.revision=d.current_revision "
                     "WHERE d.workspace_id=? AND d.kind='projects' AND d.reference=? AND d.deleted_at IS NULL",
-                    (LOCAL_CONTEXT.workspace_id, project),
+                    (context.workspace_id, project),
                 ).fetchone()
                 if row is None:
                     raise OwnershipError("소유권 확인을 위한 저장된 프로젝트가 필요합니다.")
                 document = json.loads(row["content"])
         else:
             document = json.loads(path.read_text(encoding="utf-8"))
-        OwnershipStore().authorize(project, document, url, method, external=external)
+        OwnershipStore(context=context).authorize(project, document, url, method, external=external)
     return check

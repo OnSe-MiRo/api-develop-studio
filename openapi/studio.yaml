@@ -5,6 +5,20 @@ info:
   description: Studio management API. Existing business validation and error contracts
     are retained.
 paths:
+  /auth/login:
+    $ref: ./paths/identity.yaml#/~1auth~1login
+  /auth/callback:
+    $ref: ./paths/identity.yaml#/~1auth~1callback
+  /api/session:
+    $ref: ./paths/identity.yaml#/~1api~1session
+  /api/session/logout:
+    $ref: ./paths/identity.yaml#/~1api~1session~1logout
+  /api/session/workspace:
+    $ref: ./paths/identity.yaml#/~1api~1session~1workspace
+  /api/workspace/members:
+    $ref: ./paths/identity.yaml#/~1api~1workspace~1members
+  /api/workspace/audit:
+    $ref: ./paths/identity.yaml#/~1api~1workspace~1audit
   /api/projects:
     $ref: ./paths/projects.yaml#/~1api~1projects
   /api/projects/{reference}/revisions:
@@ -23,6 +37,8 @@ paths:
     $ref: ./paths/pipelines.yaml#/~1api~1pipelines~1{reference}~1revisions
   /api/pipelines/{reference}:
     $ref: ./paths/pipelines.yaml#/~1api~1pipelines~1{reference}
+  /api/projects/{reference}/openapi/editor:
+    $ref: ./paths/openapi.yaml#/~1api~1projects~1{reference}~1openapi~1editor
   /api/projects/{reference}/openapi/operations:
     $ref: ./paths/openapi.yaml#/~1api~1projects~1{reference}~1openapi~1operations
   /api/projects/{reference}/openapi/contract:
@@ -41,6 +57,12 @@ paths:
     $ref: ./paths/execution.yaml#/~1api~1runs
   /api/runs/{runId}:
     $ref: ./paths/execution.yaml#/~1api~1runs~1{runId}
+  /api/runs/{runId}/save:
+    $ref: ./paths/execution.yaml#/~1api~1runs~1{runId}~1save
+  /api/saved-results:
+    $ref: ./paths/execution.yaml#/~1api~1saved-results
+  /api/saved-results/{runId}:
+    $ref: ./paths/execution.yaml#/~1api~1saved-results~1{runId}
   /api/runs/{runId}/cancel:
     $ref: ./paths/execution.yaml#/~1api~1runs~1{runId}~1cancel
   /api/executions/{runId}:
@@ -77,6 +99,42 @@ paths:
     $ref: ./paths/example.yaml#/~1example-api
   /example-api/{reference}:
     $ref: ./paths/example.yaml#/~1example-api~1{reference}
+  /api/projects/{reference}/oauth/profiles/{profile}:
+    $ref: ./paths/oauth.yaml#/~1api~1projects~1{reference}~1oauth~1profiles~1{profile}
+  /api/projects/{reference}/oauth/profiles/{profile}/token:
+    $ref: ./paths/oauth.yaml#/~1api~1projects~1{reference}~1oauth~1profiles~1{profile}~1token
+  /api/projects/{reference}/oauth/profiles/{profile}/authorize:
+    $ref: ./paths/oauth.yaml#/~1api~1projects~1{reference}~1oauth~1profiles~1{profile}~1authorize
+  /api/oauth/callback/{providerKey}:
+    $ref: ./paths/oauth.yaml#/~1api~1oauth~1callback~1{providerKey}
+  /api/generations:
+    $ref: ./paths/sdk-generation.yaml#/~1api~1generations
+  /api/generations/{runId}/artifact:
+    $ref: ./paths/sdk-generation.yaml#/~1api~1generations~1{runId}~1artifact
+  /api/interoperability/preview:
+    $ref: ./paths/interoperability.yaml#/~1api~1interoperability~1preview
+  /api/interoperability/apply:
+    $ref: ./paths/interoperability.yaml#/~1api~1interoperability~1apply
+  /api/interoperability/curl:
+    $ref: ./paths/interoperability.yaml#/~1api~1interoperability~1curl
+  /api/projects/{reference}/portal:
+    $ref: ./paths/portal.yaml#/~1api~1projects~1{reference}~1portal
+  /api/projects/{reference}/portal/{releaseId}:
+    $ref: ./paths/portal.yaml#/~1api~1projects~1{reference}~1portal~1{releaseId}
+  /api/projects/{reference}/portal/{releaseId}/sdk:
+    $ref: ./paths/portal.yaml#/~1api~1projects~1{reference}~1portal~1{releaseId}~1sdk
+  /api/projects/{reference}/portal/{releaseId}/sdk/{language}:
+    $ref: ./paths/portal.yaml#/~1api~1projects~1{reference}~1portal~1{releaseId}~1sdk~1{language}
+  /api/projects/{reference}/portal/{releaseId}/sdk/{language}/purge:
+    $ref: ./paths/portal.yaml#/~1api~1projects~1{reference}~1portal~1{releaseId}~1sdk~1{language}~1purge
+  /api/projects/{reference}/releases:
+    $ref: ./paths/releases.yaml#/~1api~1projects~1{reference}~1releases
+  /api/projects/{reference}/releases/{releaseId}:
+    $ref: ./paths/releases.yaml#/~1api~1projects~1{reference}~1releases~1{releaseId}
+  /api/projects/{reference}/releases/{releaseId}/source:
+    $ref: ./paths/releases.yaml#/~1api~1projects~1{reference}~1releases~1{releaseId}~1source
+  /api/projects/{reference}/releases/{releaseId}/transition:
+    $ref: ./paths/releases.yaml#/~1api~1projects~1{reference}~1releases~1{releaseId}~1transition
 components:
   headers:
     XRequestId:
@@ -84,6 +142,12 @@ components:
     ETag:
       $ref: ./components/headers.yaml#/ETag
   schemas:
+    OpenApiEditorSource:
+      $ref: ./components/schemas/openapi.yaml#/OpenApiEditorSource
+    OpenApiEditorRequest:
+      $ref: ./components/schemas/openapi.yaml#/OpenApiEditorRequest
+    OpenApiEditorResponse:
+      $ref: ./components/schemas/openapi.yaml#/OpenApiEditorResponse
     ContractCheckRequest:
       $ref: ./components/schemas/openapi.yaml#/ContractCheckRequest
     ContractCheckResponse:
@@ -180,3 +244,55 @@ components:
       $ref: ./components/schemas/mock.yaml#/MockConfigUpdateRequest
     MockActionResponse:
       $ref: ./components/schemas/mock.yaml#/MockActionResponse
+    SessionInfo:
+      $ref: ./components/schemas/identity.yaml#/SessionInfo
+    WorkspaceSelectRequest:
+      $ref: ./components/schemas/identity.yaml#/WorkspaceSelectRequest
+    MemberChangeRequest:
+      $ref: ./components/schemas/identity.yaml#/MemberChangeRequest
+    IdentityResult:
+      $ref: ./components/schemas/identity.yaml#/IdentityResult
+    IdentityItems:
+      $ref: ./components/schemas/identity.yaml#/IdentityItems
+    OAuthProfileStatus:
+      $ref: ./components/schemas/oauth.yaml#/OAuthProfileStatus
+    OAuthTokenRequest:
+      $ref: ./components/schemas/oauth.yaml#/OAuthTokenRequest
+    OAuthAuthorizeRequest:
+      $ref: ./components/schemas/oauth.yaml#/OAuthAuthorizeRequest
+    OAuthAuthorizeResponse:
+      $ref: ./components/schemas/oauth.yaml#/OAuthAuthorizeResponse
+    SdkGenerationRequest:
+      $ref: ./components/schemas/sdk-generation.yaml#/SdkGenerationRequest
+    SdkArtifactMetadata:
+      $ref: ./components/schemas/sdk-generation.yaml#/SdkArtifactMetadata
+    SdkGenerationMetadata:
+      $ref: ./components/schemas/sdk-generation.yaml#/SdkGenerationMetadata
+    ImportRequest:
+      $ref: ./components/schemas/interoperability.yaml#/ImportRequest
+    ImportPreview:
+      $ref: ./components/schemas/interoperability.yaml#/ImportPreview
+    ImportResult:
+      $ref: ./components/schemas/interoperability.yaml#/ImportResult
+    CurlExportRequest:
+      $ref: ./components/schemas/interoperability.yaml#/CurlExportRequest
+    CurlExportResponse:
+      $ref: ./components/schemas/interoperability.yaml#/CurlExportResponse
+    ReleaseCreateRequest:
+      $ref: ./components/schemas/releases.yaml#/ReleaseCreateRequest
+    ReleaseTransitionRequest:
+      $ref: ./components/schemas/releases.yaml#/ReleaseTransitionRequest
+    ApiRelease:
+      $ref: ./components/schemas/releases.yaml#/ApiRelease
+    ApiReleaseList:
+      $ref: ./components/schemas/releases.yaml#/ApiReleaseList
+    ApiReleaseSource:
+      $ref: ./components/schemas/releases.yaml#/ApiReleaseSource
+    ReleasePortal:
+      $ref: ./components/schemas/releases.yaml#/ReleasePortal
+    ReleaseSdkRequest:
+      $ref: ./components/schemas/releases.yaml#/ReleaseSdkRequest
+    ReleaseSdkPurgeRequest:
+      $ref: ./components/schemas/releases.yaml#/ReleaseSdkPurgeRequest
+    ReleaseSdkPurgeResult:
+      $ref: ./components/schemas/releases.yaml#/ReleaseSdkPurgeResult

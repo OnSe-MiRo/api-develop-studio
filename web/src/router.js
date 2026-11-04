@@ -9,6 +9,25 @@ export function restoreJson(value) {
   return value.toLowerCase().endsWith('.json') ? value : `${value}.json`
 }
 
+export function normalizeOutcomeSearch(value) {
+  return typeof value === 'string' ? value.trim().slice(0, 200) : ''
+}
+
+export function normalizeOutcomeFilter(value) {
+  return ['failures', 'contract'].includes(value) ? value : 'all'
+}
+
+export function normalizeDashboardFilters(filters = {}) {
+  const days = Number(filters.days)
+  const page = String(filters.page ?? '1')
+  return {
+    days: [7, 30, 90].includes(days) ? days : 7,
+    status: ['passed', 'failed', 'error', 'timeout', 'cancelled'].includes(filters.status) ? filters.status : '',
+    page: /^[1-9][0-9]{0,6}$/.test(page) && Number(page) <= 1000000 ? Number(page) : 1,
+    search: typeof filters.search === 'string' ? filters.search.trim().slice(0, 200) : '',
+  }
+}
+
 export function parseLocation() {
   const { pathname, search } = window.location
   const query = new URLSearchParams(search)
@@ -35,7 +54,7 @@ export function parseLocation() {
     return { tab: 'api-call', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/dashboard') {
-    return { tab: 'dashboard', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
+    return { tab: 'dashboard', outcomeSearch: query.get('run') ? normalizeOutcomeSearch(query.get('caseSearch')) : '', outcomeFilter: query.get('run') ? normalizeOutcomeFilter(query.get('outcomes')) : 'all', dashboardFilters: normalizeDashboardFilters(Object.fromEntries(['days', 'status', 'page', 'search'].map(name => [name, query.get(name)]))), runId: query.get('run') || '', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/projects/new') {
     return { tab: 'project-settings', projectSettingsReference: '', activeProject: '', caseReference: '', pipelineReference: '' }
@@ -50,7 +69,7 @@ export function parseLocation() {
     return { tab: 'case-settings', activeProject: project, caseReference: ref, pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/cases') {
-    return { tab: 'case-list', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
+    return { tab: 'case-list', caseFilters: { q: query.get('q') || '', tag: query.get('tag') || '', sort: query.get('sort') || 'name_asc', page_size: query.get('page_size') || '20', cursor: query.get('cursor') || '' }, activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/pipelines/new') {
     return { tab: 'pipeline-settings', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
@@ -59,7 +78,7 @@ export function parseLocation() {
     return { tab: 'pipeline-settings', activeProject: project, caseReference: '', pipelineReference: ref, projectSettingsReference: '' }
   }
   if (pathname === '/pipelines') {
-    return { tab: 'pipeline-list', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
+    return { tab: 'pipeline-list', pipelineFilters: { q: query.get('q') || '', sort: query.get('sort') || 'reference_asc', page_size: query.get('page_size') || '20', cursor: query.get('cursor') || '' }, activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/apis/new') {
     return { tab: 'api-create', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
@@ -67,11 +86,14 @@ export function parseLocation() {
   if (pathname === '/apis') {
     return { tab: 'api-list', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
+  if (pathname === '/portal') {
+    return { tab: 'portal', activeProject: project, releaseId: query.get('release') || '', caseReference: '', pipelineReference: '', projectSettingsReference: '' }
+  }
   if (pathname === '/generator') {
     return { tab: 'generator', activeProject: project, caseReference: '', pipelineReference: '', projectSettingsReference: '' }
   }
   if (pathname === '/projects') {
-    return { tab: 'project', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
+    return { tab: 'project', projectFilters: { q: query.get('q') || '', sort: query.get('sort') || 'reference_asc', page_size: query.get('page_size') || '20', cursor: query.get('cursor') || '' }, activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
   }
   if (pathname === '/') {
     return { tab: 'api-call', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
@@ -79,7 +101,7 @@ export function parseLocation() {
   return { tab: 'api-call', activeProject: project, projectSettingsReference: '', caseReference: '', pipelineReference: '' }
 }
 
-export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, runId, baselineId, candidateId }) {
+export function buildUrl({ tab, activeProject, projectSettingsReference, caseReference, pipelineReference, loadFilters = {}, projectFilters = {}, caseFilters = {}, pipelineFilters = {}, dashboardFilters = {}, outcomeFilter = 'all', outcomeSearch = '', runId, baselineId, candidateId, releaseId }) {
   const query = new URLSearchParams()
   const projectSlug = stripJson(activeProject)
   let pathname = '/api-call'
@@ -88,10 +110,23 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
     case 'api-call':
       pathname = '/api-call'
       break
-    case 'dashboard':
+    case 'dashboard': {
       pathname = '/dashboard'
       if (projectSlug) query.set('project', projectSlug)
+      const filters = normalizeDashboardFilters(dashboardFilters)
+      if (filters.days !== 7) query.set('days', String(filters.days))
+      if (filters.status) query.set('status', filters.status)
+      if (filters.page !== 1) query.set('page', String(filters.page))
+      if (filters.search) query.set('search', filters.search)
+      if (runId) {
+        query.set('run', runId)
+        const outcome = normalizeOutcomeFilter(outcomeFilter)
+        if (outcome !== 'all') query.set('outcomes', outcome)
+        const search = normalizeOutcomeSearch(outcomeSearch)
+        if (search) query.set('caseSearch', search)
+      }
       break
+    }
     case 'load-tests':
     case 'load-test-result':
     case 'load-test-compare':
@@ -117,6 +152,9 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
     case 'case-list':
       pathname = '/cases'
       if (projectSlug) query.set('project', projectSlug)
+      for (const name of ['q', 'tag', 'sort', 'page_size', 'cursor']) {
+        if (caseFilters[name]) query.set(name, caseFilters[name])
+      }
       break
     case 'case-settings':
       if (caseReference) {
@@ -131,6 +169,9 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
     case 'pipeline-list':
       pathname = '/pipelines'
       if (projectSlug) query.set('project', projectSlug)
+      for (const name of ['q', 'sort', 'page_size', 'cursor']) {
+        if (pipelineFilters[name]) query.set(name, pipelineFilters[name])
+      }
       break
     case 'pipeline-settings':
       if (pipelineReference) {
@@ -150,12 +191,20 @@ export function buildUrl({ tab, activeProject, projectSettingsReference, caseRef
       pathname = '/apis/new'
       if (projectSlug) query.set('project', projectSlug)
       break
+    case 'portal':
+      pathname = '/portal'
+      if (projectSlug) query.set('project', projectSlug)
+      if (releaseId) query.set('release', releaseId)
+      break
     case 'generator':
       pathname = '/generator'
       if (projectSlug) query.set('project', projectSlug)
       break
     case 'project':
       pathname = '/projects'
+      for (const name of ['q', 'sort', 'page_size', 'cursor']) {
+        if (projectFilters[name]) query.set(name, projectFilters[name])
+      }
       break
     default:
       pathname = '/api-call'

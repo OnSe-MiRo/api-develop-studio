@@ -13,10 +13,12 @@
 
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
+from datetime import date, datetime
+from typing import Annotated, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, StrictBool, StrictFloat, StrictInt, StrictStr
 
 
+from api_test.generated.models.case_contract_validation import CaseContractValidation
 from api_test.generated.models.case_request import CaseRequest
 from api_test.generated.models.expected_response import ExpectedResponse
 from api_test.generated.models.storage_metadata import StorageMetadata
@@ -26,6 +28,7 @@ class CaseInput(BaseModel):
     """Generated contract DTO. Additional document fields and explicit nulls are retained."""
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
     name: Optional[StrictStr] = None
+    contract_validation: Optional[CaseContractValidation] = None
     project: Optional[StrictStr] = None
     base_url_name: Optional[StrictStr] = None
     timeout: Optional[Union[StrictFloat, StrictInt]] = None
@@ -42,4 +45,3 @@ class CaseInput(BaseModel):
     @classmethod
     def from_dict(cls, value):
         return cls.model_validate(value)
-

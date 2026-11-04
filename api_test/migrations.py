@@ -172,12 +172,49 @@ def _execution_details(connection):
     connection.execute("ALTER TABLE executions ADD COLUMN detail_json TEXT")
 
 
+def _oauth_token_state(connection):
+    """Transient encrypted OAuth credentials and one-time browser state."""
+    for statement in (
+        """CREATE TABLE oauth_tokens (
+            workspace_id TEXT NOT NULL, user_id TEXT NOT NULL,
+            project_reference TEXT NOT NULL, environment TEXT NOT NULL, profile TEXT NOT NULL,
+            config_hash TEXT NOT NULL, access_ciphertext TEXT NOT NULL,
+            refresh_ciphertext TEXT, expires_at INTEGER, retained_until INTEGER NOT NULL,
+            generation INTEGER NOT NULL DEFAULT 1, lease_id TEXT, lease_until INTEGER,
+            updated_at INTEGER NOT NULL,
+            PRIMARY KEY(workspace_id,user_id,project_reference,environment,profile))""",
+        """CREATE TABLE oauth_pending (
+            state_hash TEXT PRIMARY KEY, cookie_hash TEXT NOT NULL,
+            workspace_id TEXT NOT NULL, user_id TEXT NOT NULL,
+            project_reference TEXT NOT NULL, environment TEXT NOT NULL, profile TEXT NOT NULL,
+            provider_key TEXT NOT NULL, config_hash TEXT NOT NULL,
+            verifier_ciphertext TEXT NOT NULL, callback_uri TEXT NOT NULL,
+            user_agent_hash TEXT NOT NULL, expires_at INTEGER NOT NULL)""",
+        "CREATE INDEX oauth_tokens_retention ON oauth_tokens(retained_until)",
+        "CREATE INDEX oauth_pending_expiry ON oauth_pending(expires_at)",
+    ):
+        connection.execute(statement)
+
+
+def _saved_run_results(connection):
+    connection.execute("""CREATE TABLE saved_run_results (
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+        user_id TEXT NOT NULL REFERENCES users(id), run_id TEXT NOT NULL,
+        project_reference TEXT NOT NULL, case_reference TEXT NOT NULL,
+        saved_at TEXT NOT NULL, status TEXT NOT NULL, snapshot TEXT NOT NULL,
+        PRIMARY KEY(workspace_id, user_id, run_id))""")
+    connection.execute("""CREATE INDEX saved_run_results_case ON saved_run_results
+        (workspace_id, user_id, project_reference, case_reference, saved_at)""")
+
+
 STUDIO_MIGRATIONS = (
     Migration(1, "collaboration schema", _create_collaboration_schema),
     Migration(2, "execution history schema", _create_execution_schema),
     Migration(3, "request context and projection recovery", _create_context_schema),
     Migration(4, "load test results", _create_load_test_schema),
     Migration(5, "functional execution details", _execution_details),
+    Migration(6, "encrypted OAuth token and one-time state", _oauth_token_state),
+    Migration(7, "explicitly saved case run results", _saved_run_results),
 )
 
 

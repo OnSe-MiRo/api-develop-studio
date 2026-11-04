@@ -13,7 +13,8 @@
 
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
+from datetime import date, datetime
+from typing import Annotated, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, StrictBool, StrictFloat, StrictInt, StrictStr
 
 
@@ -26,7 +27,7 @@ class ExpectedResponse(BaseModel):
     strict: Optional[StrictBool] = None
     max_response_time_ms: Optional[Union[StrictFloat, StrictInt]] = None
     assertions: Optional[List[Dict[str, Any]]] = None
-    validation_modes: Optional[Dict[str, StrictBool]] = None
+    validation_modes: Optional[Dict[str, StrictBool]] = Field(default=None, description="call_only=true skips status, body, condition, time and contract checks. Missing call_only preserves legacy validation.")
 
 
     def to_dict(self):
@@ -35,4 +36,3 @@ class ExpectedResponse(BaseModel):
     @classmethod
     def from_dict(cls, value):
         return cls.model_validate(value)
-

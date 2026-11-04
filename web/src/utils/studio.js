@@ -1,7 +1,9 @@
+import { authenticatedFetch } from '../auth/session.js'
 const emptyCase = {
+  callOnly: true, contractEnabled: false, contractVariables: '', contractDocumentUrl: '',
   tag: 'sample', apiName: 'api_name', fileName: 'new_case', timeout: '', baseUrlName: '', method: 'GET', url: '',
   params: [{ key: '', value: '' }], authType: 'No Auth', authValues: {}, headers: '', body: '', bodyMode: 'json', formData: [],
-  expectedStatus: '200', maxResponseTimeMs: '', strict: true, expectedBody: '', validateExact: true, validateConditions: false, assertions: [], secretVariables: [],
+  expectedStatus: '200', maxResponseTimeMs: '', strict: true, expectedBody: '', validateExact: false, validateConditions: false, assertions: [], secretVariables: [],
 }
 
 const asText = value => typeof value === 'string' ? value : ''
@@ -146,14 +148,14 @@ function projectFileName(name, existingProjects) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options })
+  const response = await authenticatedFetch(path, { headers: { 'Content-Type': 'application/json' }, ...options })
   const data = await response.json()
   if (!response.ok) { const error = new Error(data.error || '요청 처리에 실패했습니다.'); error.status = response.status; throw error }
   return data
 }
 
 async function uploadAttachment(reference, file) {
-  const response = await fetch(`/api/uploads/${encodeURIComponent(reference)}`, {
+  const response = await authenticatedFetch(`/api/uploads/${encodeURIComponent(reference)}`, {
     method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file,
   })
   const data = await response.json().catch(() => ({}))

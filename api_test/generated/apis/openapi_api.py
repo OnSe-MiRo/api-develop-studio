@@ -1,7 +1,7 @@
 """Generated from openapi/studio.yaml. Regenerate with scripts/generate_server.py."""
 from fastapi import APIRouter, Depends, Response
-from api_test.dependencies import request_context
-from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests
+from api_test.dependencies import request_context, public_request_context
+from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests, identity, oauth, sdk_generation, interoperability, releases, portal
 from pydantic import Field, StrictBytes, StrictStr
 from typing import Any, Dict, Tuple, Union
 from typing_extensions import Annotated
@@ -13,8 +13,42 @@ from api_test.generated.models.docs_request import DocsRequest
 from api_test.generated.models.docs_response import DocsResponse
 from api_test.generated.models.error_response import ErrorResponse
 from api_test.generated.models.generate_request import GenerateRequest
+from api_test.generated.models.open_api_editor_request import OpenApiEditorRequest
+from api_test.generated.models.open_api_editor_response import OpenApiEditorResponse
 
 router = APIRouter()
+
+@router.get("/api/projects/{reference:path}/openapi/editor/", include_in_schema=False)
+@router.get(
+    "/api/projects/{reference:path}/openapi/editor",
+    operation_id="get_openapi_editor",
+    tags=["openapi",],
+    responses={
+        200: {"description": "Raw source and current revision", "model": OpenApiEditorResponse},400: {"description": "Saved source is unavailable"},404: {"description": "Project not found"},
+    },
+)
+async def get_openapi_editor(context=Depends(request_context)) -> Response:
+    return await context.call(
+        openapi.get_openapi_editor, [],
+        upload=False,
+
+    )
+
+@router.post("/api/projects/{reference:path}/openapi/editor/", include_in_schema=False)
+@router.post(
+    "/api/projects/{reference:path}/openapi/editor",
+    operation_id="edit_openapi_editor",
+    tags=["openapi",],
+    responses={
+        200: {"description": "Preview or saved source and whole-document diagnostics", "model": OpenApiEditorResponse},400: {"description": "Invalid pointer or contract"},404: {"description": "Project not found"},409: {"description": "Revision or source digest conflict"},
+    },
+)
+async def edit_openapi_editor(context=Depends(request_context)) -> Response:
+    return await context.call(
+        openapi.edit_openapi_editor, [],
+        upload=False,
+
+    )
 
 @router.post("/api/projects/{reference:path}/openapi/operations/", include_in_schema=False)
 @router.post(
@@ -95,4 +129,3 @@ async def generate_client(context=Depends(request_context)) -> Response:
         upload=False,
 
     )
-

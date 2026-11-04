@@ -13,7 +13,8 @@
 
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
+from datetime import date, datetime
+from typing import Annotated, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, StrictBool, StrictFloat, StrictInt, StrictStr
 
 
@@ -22,6 +23,8 @@ from api_test.generated.models.form_data_item import FormDataItem
 class QuickRequest(BaseModel):
     """Generated contract DTO. Additional document fields and explicit nulls are retained."""
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
+    contract_document_url: Optional[Annotated[str, Field(min_length=1, strict=True, max_length=2048)]] = Field(default=None, description="Absolute HTTP(S) location of the OpenAPI document for resolving relative servers. No credentials, query or fragment. Never fetched; requires validateContract=true and does not change the request URL.", alias="contractDocumentUrl")
+    server_variables: Optional[Dict[str, Annotated[str, Field(strict=True, max_length=512)]]] = Field(default=None, description="Explicit OpenAPI server variable values for response matching only. Requires validateContract=true; keys are 1-128 characters. Does not modify the request URL.", alias="serverVariables")
     validate_contract: Optional[StrictBool] = Field(default=False, alias="validateContract")
     project: Optional[StrictStr] = None
     environment: Optional[StrictStr] = None
@@ -46,4 +49,3 @@ class QuickRequest(BaseModel):
     @classmethod
     def from_dict(cls, value):
         return cls.model_validate(value)
-

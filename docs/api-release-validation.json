@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-13",
+  "branch": "feature/api-release-lifecycle",
+  "baseCommit": "fb75a467fba8c430f6da4a8e215d1c0f3b995470",
+  "verification": {
+    "python": {
+      "passed": 406,
+      "skipped": 0,
+      "seconds": 56.752
+    },
+    "frontend": {
+      "passed": 54,
+      "build": "passed"
+    },
+    "focusedReleaseTests": 13,
+    "postgresReleaseImport": "snapshot/source/event parity and subsequent state transition passed",
+    "generator": "passed",
+    "diffCheck": "passed",
+    "sdkDigestParity": [
+      {
+        "kind": "file",
+        "sourceDigest": "bd7f1413ded12bea9dbc41cc04cd959850abb230898630cca5cf69517814eb89",
+        "matches": true
+      },
+      {
+        "kind": "bundle",
+        "sourceDigest": "061f390b93ce2a288f273b462958c567e9770e3afc7f570aefd6ddb79372637a",
+        "matches": true
+      }
+    ]
+  },
+  "browser": {
+    "status": "User approved verification in chat; browser tool still denied localhost target access",
+    "performed": false,
+    "target": "http://127.0.0.1:5182"
+  },
+  "scope": [
+    "immutable release source and version",
+    "contract and operation change logs",
+    "transactional approval events and optimistic revision checks",
+    "workspace/role guards inside release store",
+    "SQLite and PostgreSQL migration parity"
+  ],
+  "pending": [
+    "GOV browser interaction and responsive verification",
+    "COL-2 CurrentUser integration regression",
+    "DOC-1 release-bound SDK artifact and consumer portal",
+    "IOP final tag browser verification"
+  ],
+  "sourceSha256": {
+    "api_test/release_store.py": "9dc2956fd91151701ab754e1d7e031a98031ad89e5ceb6250d3beede30f5b563",
+    "api_test/services/releases.py": "ac4031b7f2d26cfd1b72a46a14c26dad69badaac088fff496aa7c8f4cd5fd8b1",
+    "api_test/migrate_postgres.py": "f92b451f0237de34b7006d8931319f65b2880deeeb4dc43ef6d293a6e09a1fb2",
+    "web/src/pages/apis/ReleasePanel.jsx": "8d3cdde37166ee18c99a19f9a754246ac0f713427a011e3c3e4b1e761b8c9e67",
+    "tests/test_release_store.py": "28b55ceb5e98be551a824611af1cc4194232c59c21d5a0508973fc5c0f6c0f9d",
+    "tests/test_release_api.py": "cc7c8621dbbb7b8039eecbcb58ceedd9aa6b28935ff10e31bd5596fd76c4d540"
+  }
+}

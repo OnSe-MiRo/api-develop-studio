@@ -1,7 +1,7 @@
 """Generated from openapi/studio.yaml. Regenerate with scripts/generate_server.py."""
 from fastapi import APIRouter, Depends, Response
-from api_test.dependencies import request_context
-from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests
+from api_test.dependencies import request_context, public_request_context
+from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests, identity, oauth, sdk_generation, interoperability, releases, portal
 from pydantic import Field, StrictStr
 from typing_extensions import Annotated
 from api_test.generated.models.error_response import ErrorResponse
@@ -71,4 +71,3 @@ async def post_example_resource(context=Depends(request_context)) -> Response:
         upload=False,
 
     )
-

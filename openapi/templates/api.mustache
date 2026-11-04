@@ -1,7 +1,7 @@
 """Generated from openapi/studio.yaml. Regenerate with scripts/generate_server.py."""
 from fastapi import APIRouter, Depends, Response
-from api_test.dependencies import request_context
-from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests
+from api_test.dependencies import request_context, public_request_context
+from api_test.implementations import documents, execution, openapi, ownership, uploads, example, dashboard, mock, load_tests, identity, oauth, sdk_generation, interoperability, releases, portal
 {{#imports}}
 {{import}}
 {{/imports}}
@@ -21,7 +21,7 @@ router = APIRouter()
         {{#responses}}{{^isDefault}}{{code}}: {"description": "{{message}}"{{#dataType}}, "model": {{dataType}}{{/dataType}}},{{/isDefault}}{{/responses}}
     },
 )
-async def {{operationId}}(context=Depends(request_context)) -> Response:
+async def {{operationId}}(context=Depends({{#vendorExtensions.x-studio-public}}public_request_context{{/vendorExtensions.x-studio-public}}{{^vendorExtensions.x-studio-public}}request_context{{/vendorExtensions.x-studio-public}})) -> Response:
     return await context.call(
         {{{vendorExtensions.x-studio-handler}}}, {{{vendorExtensions.x-studio-parts}}},
         upload={{#vendorExtensions.x-studio-upload}}True{{/vendorExtensions.x-studio-upload}}{{^vendorExtensions.x-studio-upload}}False{{/vendorExtensions.x-studio-upload}},

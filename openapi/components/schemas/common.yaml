@@ -136,6 +136,7 @@ AuthProfile:
       - API Key
       - Basic Auth
       - Bearer Token
+      - OAuth 2.0
     key:
       type: string
     value:
@@ -148,6 +149,36 @@ AuthProfile:
       type: string
     token:
       type: string
+    grantType:
+      type: string
+      enum:
+      - client_credentials
+      - authorization_code
+    clientId:
+      type: string
+    clientSecret:
+      type: string
+      description: Encrypted project variable reference {{project.NAME}} only; never a
+        literal client secret.
+    tokenUrl:
+      type: string
+      format: uri
+    authorizationUrl:
+      type: string
+      format: uri
+    scopes:
+      type: array
+      items:
+        type: string
+    clientAuthMethod:
+      type: string
+      enum:
+      - basic
+      - post
+      - none
+    issuer:
+      type: string
+      format: uri
   required:
   - type
 EnvironmentInput:

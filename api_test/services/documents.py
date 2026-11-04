@@ -4,14 +4,55 @@ import json
 
 def list_documents(request, studio, kind):
     store = studio.collaboration_store()
+    if kind == 'projects' and any(name in request.request.query_params for name in ('page_size', 'q', 'sort', 'cursor')):
+        from api_test.project_listing import list_project_page
+        try:
+            result = list_project_page(store, page_size=request.query_value('page_size') or '20',
+                                       search=request.query_value('q') or '', sort=request.query_value('sort') or 'reference_asc',
+                                       cursor=request.query_value('cursor') or '', include_example=studio.example_project_enabled())
+        except ValueError as error:
+            raise studio.ApiError(str(error)) from error
+        return request.json_response(200, result)
+    if kind == 'cases' and any(name in request.request.query_params for name in ('page_size', 'q', 'tag', 'sort', 'cursor')):
+        from api_test.document_listing import list_document_page
+        project = request.query_value('project')
+        if not project:
+            raise studio.ApiError('페이지 조회에는 프로젝트가 필요합니다.')
+        studio.ensure_example_project_enabled(project)
+        if store.get('projects', project) is None:
+            raise studio.DocumentNotFoundError('Project not found')
+        try:
+            result = list_document_page(store, kind='cases', project=project,
+                                        page_size=request.query_value('page_size') or '20',
+                                        search=request.query_value('q') or '', tag=request.query_value('tag') or '',
+                                        sort=request.query_value('sort') or 'name_asc', cursor=request.query_value('cursor') or '')
+        except ValueError as error:
+            raise studio.ApiError(str(error)) from error
+        return request.json_response(200, result)
+    if kind == 'pipelines' and any(name in request.request.query_params for name in ('page_size', 'q', 'sort', 'cursor')):
+        from api_test.document_listing import list_document_page
+        project = request.query_value('project')
+        if not project:
+            raise studio.ApiError('페이지 조회에는 프로젝트가 필요합니다.')
+        studio.ensure_example_project_enabled(project)
+        if store.get('projects', project) is None:
+            raise studio.DocumentNotFoundError('Project not found')
+        try:
+            result = list_document_page(store, kind='pipelines', project=project,
+                                        page_size=request.query_value('page_size') or '20',
+                                        search=request.query_value('q') or '',
+                                        sort=request.query_value('sort') or 'reference_asc', cursor=request.query_value('cursor') or '')
+        except ValueError as error:
+            raise studio.ApiError(str(error)) from error
+        return request.json_response(200, result)
     references = store.list_references(kind, request.query_value('project') if kind != 'projects' else None)
     if kind == 'projects' and not studio.example_project_enabled():
         references = [item for item in references if item != studio.EXAMPLE_PROJECT_REFERENCE]
     result = {'items': references}
     if kind == 'projects':
-        result['details'] = studio.project_summaries(studio.PROJECT_ROOT, references)
+        result['details'] = studio.project_summaries(studio.document_root("projects"), references)
     elif kind == 'cases':
-        result['details'] = studio.case_summaries(studio.CASE_ROOT, references)
+        result['details'] = studio.case_summaries(studio.document_root("cases"), references)
     return request.json_response(200, result)
 
 
@@ -60,10 +101,11 @@ def save_document(request, studio, kind):
         studio.validate_project_document(payload)
     stored = store.save(kind, reference, payload, expected_revision=expected_revision, actor_id=request.actor_id())
     if kind == 'projects' and (existing is None or studio.fingerprint(existing) != studio.fingerprint(payload)):
-        studio.OwnershipStore().revoke(reference)
-    root = {'cases': studio.CASE_ROOT, 'pipelines': studio.PIPELINE_ROOT, 'projects': studio.PROJECT_ROOT}[kind]
+        studio.OwnershipStore(context=studio.current_context()).revoke(reference)
+    root = {'cases': studio.document_root("cases"), 'pipelines': studio.document_root("pipelines"), 'projects': studio.document_root("projects")}[kind]
     path = studio.safe_file(root, reference)
-    return request.json_response(200, {'path': path.relative_to(studio.ROOT).as_posix(), '_storage': stored.metadata()})
+    prefix = {'cases': 'case', 'pipelines': 'pipelines', 'projects': 'projects'}[kind]
+    return request.json_response(200, {'path': f'{prefix}/{reference}', '_storage': stored.metadata()})
 
 
 def delete_document(request, studio, kind):
@@ -82,6 +124,6 @@ def delete_document(request, studio, kind):
             store.delete('pipelines', pipeline, actor_id=request.actor_id())
     store.delete(kind, reference, actor_id=request.actor_id())
     if kind == 'projects':
-        studio.OwnershipStore().revoke(reference, remove=True)
+        studio.OwnershipStore(context=studio.current_context()).revoke(reference, remove=True)
     root = {'cases': 'case', 'pipelines': 'pipelines', 'projects': 'projects'}[kind]
     return request.json_response(200, {'deleted': f'{root}/{reference}', 'deleted_pipelines': deleted_pipelines})

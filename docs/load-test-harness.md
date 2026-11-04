@@ -236,3 +236,32 @@ queue phase는 준비된 local stub의 지연을 500ms로 고정한 뒤 5개를 
 실행 API 선택·429와 중복 제출 주의사항은 [접수 정책](async-runs.md#실행-접수-정책)을 따른다.
 
 2026-10-01 Small/각10초 실제 검증은 admission passed지만 thread 회복 4.5→5.461538(121.37%)로 전체 campaign failed다. sync1 32회·sync2 각31회, async5개 terminal passed·모든 phase child/tmp0을 확인했다. [별도 검증 기록](run-admission-validation.json)의 진단 실패와 최종 실행을 함께 보존한다.
+
+## P1 동일 조건 기준선과 회복 진단
+
+```bash
+python -m api_test.load_test_baseline repeat-baseline --fixture data/lt-fixtures/medium-01 --output data/load-tests/p1-repeat-01 --k6 k6
+python -m api_test.load_test_baseline recovery-diagnose --fixture data/lt-fixtures/medium-01 --output data/load-tests/p1-recovery-01 --k6 k6
+```
+
+`repeat-baseline`은 격리된 한 서버·DB에서 async worker 1건을 먼저 terminal/정리까지 확인하고, 읽기25초로 cache를 준비한 뒤 **5 VU·300초 Baseline 3회**를 직렬로 실행한다. source 파일과 k6 binary SHA256, 원본 fixture, app/commit/Python/k6 버전, OS·CPU·메모리·디스크 device를 각 실행 전후 확인한다. 요청·threshold·resource interval·worker native ID·case 목록 trace가 모두 맞는 3회에서만 RPS와 p95의 **실행별 중앙값**을 계산한다. 과거 LT-2의 새 서버 단일 Baseline이나 짧은 P1 실행을 합쳐 중앙값을 만들지 않는다.
+
+`recovery-diagnose`는 같은 서버에서 사전 준비→읽기 기준선→async 5개 batch 2회→읽기 회복을 측정한다. census의 Python thread 이름/native ID와 `ps`의 thread 수를 구분하며, AnyIO worker 이름이 같아도 native ID 교체를 기록한다. async worker를 미리 만드는 것은 과거 P0의 회복 실패를 지우거나 단독 원인을 증명하기 위한 조치가 아니다.
+
+개발 검증에는 `--validation-seconds 25`부터120초까지만 사용한다. 이 값은 명시적으로 validation으로 표시하며 **3×300초 기준선**으로 판정하지 않는다. 출력 디렉터리는 매번 새 경로이고 `/tmp` 원본·resource/trace는 private 증거다.
+
+case 목록의 진단은 하네스 프로세스에만 설치된다. 기준 구현과 같은 200 응답을 유지하며 `list_references`의 연결+SQL+row 반환, 경로 검사, 파일 읽기, UTF-8 해독, JSON 파싱, 필드 추출, `json_response` 직렬화를 exclusive 구간으로 측정한다. 로그에는 참조·본문·URL을 넣지 않고 건수·byte·시간만 남긴다. 응답 전 trace 쓰기와 ASGI 전송·네트워크·클라이언트 시간은 handler 구간에 포함되지 않으며 각 구간의 p95를 더하지 않는다. 서버 process tree와 k6 발생기 tree의 CPU/RSS는 다른 표본이다. CPU는 host의 논리 CPU 수로 나눈 값이고 sample 사이에 종료한 자식 CPU나 device IOPS/latency, host 전체 CPU는 미수집이다.
+
+P1 결과를 동일한 input에서 사람이 읽는 Markdown으로 다시 만들거나 검증하려면 아래 명령을 사용한다. `--check`는 보고서를 바꾸지 않고 일치 여부만 확인하며, 저장된 3회 비교값도 개별 실행 증거에서 다시 계산한다.
+
+```bash
+python -m api_test.load_test_baseline render --result data/load-tests/p1-repeat-01/p1-result.json --output docs/p1-baseline-recovery-report.md
+python -m api_test.load_test_baseline render --result data/load-tests/p1-repeat-01/p1-result.json --output docs/p1-baseline-recovery-report.md --check
+```
+
+2026-10-04의 정규 Medium 실측 증거는 [3×300초 Baseline JSON](p1-baseline-evidence.json), [Baseline 보고서](p1-baseline-report.md), [300초 전후 회복 JSON](p1-recovery-evidence.json), [회복 보고서](p1-recovery-report.md)에 있다. 새 checkout에서는 아래 두 명령으로 보고서가 저장된 증거와 일치하는지 확인할 수 있다. 원시 `raw.jsonl`은 당시 로컬 실행 디렉터리에 남아 있으며 JSON 안의 SHA-256은 그 원본의 식별자다. 문서만으로 원시 표본을 다시 분석할 수 있다고 주장하지 않는다.
+
+```bash
+python -m api_test.load_test_baseline render --result docs/p1-baseline-evidence.json --output docs/p1-baseline-report.md --check
+python -m api_test.load_test_baseline render --result docs/p1-recovery-evidence.json --output docs/p1-recovery-report.md --check
+```

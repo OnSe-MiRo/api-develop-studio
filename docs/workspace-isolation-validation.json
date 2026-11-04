@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-13",
+  "branch": "feature/workspace-isolation",
+  "baseCommit": "fb75a467fba8c430f6da4a8e215d1c0f3b995470",
+  "scope": "Current develop HTTP/storage/execution isolation; independent uncommitted feature worktrees not integrated",
+  "verification": {
+    "pythonFull": {
+      "passed": 407,
+      "skipped": 0,
+      "seconds": 52.395
+    },
+    "finalContextFocused": {
+      "passed": 14
+    },
+    "postgres": {
+      "passed": 49,
+      "skipped": 0,
+      "seconds": 26.668
+    },
+    "frontend": {
+      "passed": 48,
+      "build": "passed"
+    },
+    "generatedServer": "passed",
+    "composeConfig": "passed",
+    "gitDiffCheck": "passed",
+    "actualProcesses": [
+      "two workspace Python runners calling local echo server",
+      "two workspace Mock listeners; stop A leaves B running"
+    ]
+  },
+  "authorization": [
+    "server verified CurrentUser boundary",
+    "active database memberships and roles",
+    "actor/body ignored; workspace header mismatch403",
+    "foreign workspace job/result404",
+    "queued revoked membership stops before execute",
+    "local symlink and reserved workspace path blocked"
+  ],
+  "limitations": [
+    "No production OIDC/session adapter in this COL-2 branch",
+    "Remote Docker data APIs fail401 until a verified adapter is configured",
+    "OAuth SDK IOP worktrees require integration regression",
+    "Mock loopback listener is not OS/network tenant isolation",
+    "IOP final tag browser recheck still denied in prior task"
+  ],
+  "sha256": {
+    "api_test/request_scope.py": "1140b77ffbe8926076a89877c1cf7de6b2542d9848ff68a22a7e3ff758076aa5",
+    "api_test/dependencies.py": "2deaaac5e641637a98dc0994d241eaf230a94a25f2b72364a95ccc3ed414ae3b",
+    "api_test/services/studio.py": "8e59331da16511d1f4882ded9c6827b6faaaca07fade4e1138fca278b1794d82",
+    "api_test/services/execution.py": "ded90bbdc1d8071ad3b0a5c7bf2f55b1a8526c4db685b6191b4b04ecf283019b",
+    "api_test/collaboration_store.py": "b6fd8d3cd9131768152c6771ffc98c78701997160b24fa7b369d7c560e55247a",
+    "api_test/ownership.py": "8a56aab2069d9d34f37bc46911a94f95955faba70c7c08ff0abdb95ee6287b34",
+    "api_test/jobs.py": "102084b5ec599eba16025f311df1bf3b1a30292caf74682cf98628f61d451607",
+    "tests/test_workspace_isolation.py": "4af4e022b9db3c8b5ead7e7c91b0dc1809856609b3b0316dac2ac4c2745a0bfc"
+  }
+}

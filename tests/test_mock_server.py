@@ -342,7 +342,7 @@ class MockEngineUnitTest(unittest.TestCase):
 
 class MockServerManagementTest(unittest.TestCase):
     def setUp(self):
-        self.client = TestClient(app)
+        self.client = TestClient(app, base_url="http://127.0.0.1:8765")
         self.manager = MockServerManager()
 
     def tearDown(self):

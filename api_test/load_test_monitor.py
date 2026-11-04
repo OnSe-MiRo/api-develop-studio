@@ -107,16 +107,20 @@ class StopPolicy:
 
 
 class ResourceSampler:
-    def __init__(self, pid, root: Path, memory_mb=None):
-        self.pid, self.root, self.memory_mb = pid, root, memory_mb
+    def __init__(self, pid, root: Path, memory_mb=None, *, role="server", include_storage=True):
+        self.pid, self.root, self.memory_mb, self.role, self.include_storage = pid, root, memory_mb, role, include_storage
+        self.last_at = None
+        self.last_cpu = {}
+
+    def reset_cpu(self):
         self.last_at = None
         self.last_cpu = {}
 
     def sample(self):
         now = time.monotonic()
-        result = {"timestamp": datetime.now(timezone.utc).isoformat(), "cpuPercent": None, "memoryMb": None, "memoryPercent": None,
+        result = {"timestamp": datetime.now(timezone.utc).isoformat(), "processPid": self.pid, "treeRole": self.role, "cpuPercent": None, "memoryMb": None, "memoryPercent": None,
                   "threads": None, "handles": None, "childProcesses": None, "dbBytes": None, "walBytes": None,
-                  "diskIops": None, "diskLatencyMs": None, "cpuScope": "sampled live server tree / logical host CPUs", "threadHandleScope": "server process", "warnings": []}
+                  "diskIops": None, "diskLatencyMs": None, "cpuScope": f"sampled live {self.role} tree / logical host CPUs", "threadHandleScope": f"{self.role} process", "warnings": []}
         try:
             rows = subprocess.run(["ps", "-axo", "pid=,ppid=,rss=,time="], capture_output=True, text=True, timeout=2, check=True).stdout.splitlines()
             processes = {}
@@ -153,6 +157,9 @@ class ResourceSampler:
                     result["handles"] = len({line for line in handles if re.match(r"^f\d+", line)}) if handles else None
         except (OSError, ValueError, subprocess.SubprocessError):
             result["warnings"].append("some process resource metrics are unavailable")
+        if not self.include_storage:
+            result["warnings"].append("disk IOPS/latency and children exiting between samples are not measured")
+            return result
         database = self.root / "data/studio.db"
         try:
             result["dbBytes"] = database.stat().st_size

@@ -13,14 +13,21 @@
 
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
+from datetime import date, datetime
+from typing import Annotated, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, StrictBool, StrictFloat, StrictInt, StrictStr
 
 
+from api_test.generated.models.sdk_generation_metadata import SdkGenerationMetadata
 
 class RunJob(BaseModel):
     """Generated contract DTO. Additional document fields and explicit nulls are retained."""
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
+    project: Optional[StrictStr] = None
+    case_reference: Optional[StrictStr] = Field(default=None, alias="caseReference")
+    saved_at: Optional[StrictStr] = Field(default=None, alias="savedAt")
+    kind: Optional[StrictStr] = Field(default=None, description="SDK generation jobs use sdk_generation; existing functional run fields remain unchanged.")
+    generation: Optional[SdkGenerationMetadata] = None
     run_id: StrictStr = Field(alias="runId")
     status: StrictStr
     created_at: StrictStr = Field(alias="createdAt")
@@ -31,6 +38,7 @@ class RunJob(BaseModel):
     output: Optional[StrictStr] = None
     error: Optional[StrictStr] = None
     history_warning: Optional[StrictStr] = Field(default=None, alias="historyWarning")
+    release: Optional[Dict[str, Any]] = None
 
     @field_validator('status')
     @classmethod
@@ -46,4 +54,3 @@ class RunJob(BaseModel):
     @classmethod
     def from_dict(cls, value):
         return cls.model_validate(value)
-

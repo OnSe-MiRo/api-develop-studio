@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-13",
+  "branch": "feature/workspace-isolation",
+  "status": "local implementation verified; browser and production integration pending",
+  "python": {
+    "tests": 419,
+    "skipped": 0,
+    "seconds": 56.519
+  },
+  "frontend": {
+    "tests": 56,
+    "build": "passed"
+  },
+  "httpsFixture": {
+    "realTLS": true,
+    "certificateVerification": true,
+    "PKCE": "passed",
+    "login": "passed",
+    "CSRF": "passed",
+    "workspaceSwitch": "passed",
+    "staleWorkspaceHeader": "blocked",
+    "roleClaimIgnored": "passed",
+    "logout": "passed",
+    "replay": "blocked",
+    "callbackLogRedaction": "passed",
+    "tokensAbsentFromDatabase": true
+  },
+  "gateway": {
+    "imageBuild": "passed",
+    "nginxConfigTest": "passed",
+    "apiHostPorts": [],
+    "productionDeployment": "not performed"
+  },
+  "pending": [
+    "Actual browser SSO and GOV-1 UI verification blocked by browser site policy after user permission",
+    "Production issuer/client configuration",
+    "Integration with independent feature worktrees"
+  ],
+  "git": {
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "generatedServer": "passed",
+  "diffCheck": "passed",
+  "transportFollowup": {
+    "focusedTests": 16,
+    "seconds": 11.036,
+    "checks": [
+      "redirect refused",
+      "size bounded",
+      "non-object JSON refused",
+      "private origin rejected before connect",
+      "invalid CA closes connected socket",
+      "stalled TLS handshake bounded and closed",
+      "closed pinned socket cannot reconnect"
+    ],
+    "realHTTPSFixtureRerun": "passed",
+    "fullSuiteRerun": false
+  }
+}

@@ -1,6 +1,18 @@
 QuickRequest:
   type: object
   properties:
+    contractDocumentUrl:
+      type: string
+      minLength: 1
+      maxLength: 2048
+      description: Absolute HTTP(S) location of the OpenAPI document for resolving relative servers. No credentials, query or fragment. Never fetched; requires validateContract=true and does not change the request URL.
+    serverVariables:
+      type: object
+      maxProperties: 32
+      additionalProperties:
+        type: string
+        maxLength: 512
+      description: Explicit OpenAPI server variable values for response matching only. Requires validateContract=true; keys are 1-128 characters. Does not modify the request URL.
     validateContract:
       type: boolean
       default: false
@@ -91,22 +103,41 @@ RunResponse:
       type: string
     result:
       type: object
-      description: Version 1 sanitized execution report with run metadata and per-case assertions.
+      description: Version 1 sanitized execution report with run metadata and per-case
+        assertions.
       additionalProperties: true
     historyWarning:
       type: string
   required:
   - runId
-
 RunJob:
   type: object
-  required: [runId, status, createdAt]
+  required:
+  - runId
+  - status
+  - createdAt
   properties:
+    project: {type: string}
+    caseReference: {type: string}
+    savedAt: {type: string}
+    kind:
+      type: string
+      description: SDK generation jobs use sdk_generation; existing functional run fields remain unchanged.
+    generation:
+      $ref: ./sdk-generation.yaml#/SdkGenerationMetadata
     runId:
       type: string
     status:
       type: string
-      enum: [queued, running, cancelling, passed, failed, error, timeout, cancelled]
+      enum:
+      - queued
+      - running
+      - cancelling
+      - passed
+      - failed
+      - error
+      - timeout
+      - cancelled
     createdAt:
       type: string
     startedAt:
@@ -128,3 +159,20 @@ RunJob:
       type: string
     historyWarning:
       type: string
+    release:
+      type: object
+      additionalProperties: true
+
+SavedRunList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        type: object
+        required: [runId, savedAt, status]
+        properties:
+          runId: {type: string}
+          savedAt: {type: string}
+          status: {type: string}

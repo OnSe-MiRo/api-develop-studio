@@ -1,0 +1,468 @@
+/auth/login:
+  get:
+    operationId: login_start
+    tags:
+    - identity
+    summary: login start
+    x-studio-handler: identity.login_start
+    x-studio-parts: '[]'
+    x-studio-route: /auth/login
+    x-studio-public: true
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '303':
+        description: Redirect to provider or application
+      '400':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '401':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+/auth/callback:
+  get:
+    operationId: login_callback
+    tags:
+    - identity
+    summary: login callback
+    x-studio-handler: identity.login_callback
+    x-studio-parts: '[]'
+    x-studio-route: /auth/callback
+    x-studio-public: true
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '303':
+        description: Redirect to provider or application
+      '400':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '401':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    parameters:
+    - in: query
+      name: code
+      required: false
+      schema:
+        type: string
+    - in: query
+      name: state
+      required: false
+      schema:
+        type: string
+    - in: query
+      name: error
+      required: false
+      schema:
+        type: string
+/api/session:
+  get:
+    operationId: session_info
+    tags:
+    - identity
+    summary: session info
+    x-studio-handler: identity.session_info
+    x-studio-parts: '[]'
+    x-studio-route: /api/session
+    x-studio-public: true
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/identity.yaml#/SessionInfo
+      '400':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '401':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+/api/session/logout:
+  post:
+    operationId: logout
+    tags:
+    - identity
+    summary: logout
+    x-studio-handler: identity.logout
+    x-studio-parts: '[]'
+    x-studio-route: /api/session/logout
+    x-studio-public: true
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/identity.yaml#/IdentityResult
+      '400':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '401':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+/api/session/workspace:
+  post:
+    operationId: select_workspace
+    tags:
+    - identity
+    summary: select workspace
+    x-studio-handler: identity.select_workspace
+    x-studio-parts: '[]'
+    x-studio-route: /api/session/workspace
+    x-studio-public: true
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/identity.yaml#/SessionInfo
+      '400':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '401':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/identity.yaml#/WorkspaceSelectRequest
+/api/workspace/members:
+  get:
+    operationId: list_members
+    tags:
+    - identity
+    summary: list members
+    x-studio-handler: identity.list_members
+    x-studio-parts: '[]'
+    x-studio-route: /api/workspace/members
+    x-studio-public: false
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/identity.yaml#/IdentityItems
+      '400':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '401':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+  post:
+    operationId: change_member
+    tags:
+    - identity
+    summary: change member
+    x-studio-handler: identity.change_member
+    x-studio-parts: '[]'
+    x-studio-route: /api/workspace/members
+    x-studio-public: false
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/identity.yaml#/IdentityResult
+      '400':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '401':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/identity.yaml#/MemberChangeRequest
+/api/workspace/audit:
+  get:
+    operationId: audit_events
+    tags:
+    - identity
+    summary: audit events
+    x-studio-handler: identity.audit_events
+    x-studio-parts: '[]'
+    x-studio-route: /api/workspace/audit
+    x-studio-public: false
+    x-studio-upload: false
+    x-studio-alias: false
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/identity.yaml#/IdentityItems
+      '400':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '401':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '429':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Request rejected
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    parameters:
+    - in: query
+      name: limit
+      schema:
+        type: integer
+    - in: query
+      name: before
+      schema:
+        type: string

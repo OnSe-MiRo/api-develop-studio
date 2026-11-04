@@ -1,3 +1,4 @@
+import { normalizeDashboardFilters, normalizeOutcomeFilter, normalizeOutcomeSearch } from '../../router.js'
 import { useEffect, useState } from 'react'
 import { api } from '../../utils/studio.js'
 import './dashboard.css'
@@ -7,13 +8,17 @@ const statusLabels = { passed: '성공', failed: '실패', error: '오류', time
 const duration = value => value == null ? '—' : value < 1000 ? `${Math.round(value).toLocaleString('ko-KR')} ms` : `${(value / 1000).toLocaleString('ko-KR', { maximumFractionDigits: 2 })} 초`
 const count = value => value.toLocaleString('ko-KR')
 
-function ExecutionDashboard({ projects, projectDetails, projectRef, onProjectChange, onOpenCases, refreshKey }) {
-  const [days, setDays] = useState(7)
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
-  const [selectedRun, setSelectedRun] = useState('')
-  const [status, setStatus] = useState('')
-  const [page, setPage] = useState(1)
+function ExecutionDashboard({ projects, projectDetails, projectRef, onOpenCases, refreshKey, route = {}, onNavigate }) {
+  const filters = normalizeDashboardFilters(route.dashboardFilters)
+  const { days, status, page, search } = filters
+  const selectedRun = route.runId || ''
+  const outcomeSearch = normalizeOutcomeSearch(route.outcomeSearch)
+  const [searchInput, setSearchInput] = useState(search)
+  useEffect(() => { setSearchInput(search) }, [search])
+  const navigate = (nextFilters, runId = '', project = projectRef, outcomeFilter = 'all', outcomeSearch = '') => onNavigate({
+    tab: 'dashboard', activeProject: project, dashboardFilters: nextFilters, runId, outcomeFilter, outcomeSearch,
+  })
+  const changeFilters = patch => navigate({ ...filters, page: 1, ...patch })
   const [revision, setRevision] = useState(0)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
@@ -50,12 +55,12 @@ function ExecutionDashboard({ projects, projectDetails, projectRef, onProjectCha
       <div className="actions"><button className="ghost" onClick={() => setRevision(value => value + 1)}>↻ 이력 새로고침</button>{projectRef && <button className="primary" onClick={onOpenCases}>API 케이스 열기 →</button>}</div>
     </div>
     <div className="dashboard-filters card">
-      <label className="field"><span>프로젝트</span><select aria-label="프로젝트" value={projectRef} onChange={event => { setPage(1); onProjectChange(event.target.value) }}><option value="">전체 프로젝트</option>{projects.map(reference => <option key={reference} value={reference}>{projectDetails[reference]?.name || reference}</option>)}</select></label>
-      <label className="field"><span>조회 기간</span><select aria-label="조회 기간" value={days} onChange={event => { setDays(Number(event.target.value)); setPage(1) }}>{[7, 30, 90].map(value => <option key={value} value={value}>최근 {value}일</option>)}</select></label>
+      <label className="field"><span>프로젝트</span><select aria-label="프로젝트" value={projectRef} onChange={event => navigate({ ...filters, page: 1 }, '', event.target.value)}><option value="">전체 프로젝트</option>{projects.map(reference => <option key={reference} value={reference}>{projectDetails[reference]?.name || reference}</option>)}</select></label>
+      <label className="field"><span>조회 기간</span><select aria-label="조회 기간" value={days} onChange={event => changeFilters({ days: Number(event.target.value) })}>{[7, 30, 90].map(value => <option key={value} value={value}>최근 {value}일</option>)}</select></label>
       <p className="hint">{updatedAt ? `${updatedAt.toLocaleTimeString('ko-KR')} 갱신` : '실행 이력 조회 중'}<br />기간과 일별 집계는 UTC 기준입니다.</p>
     </div>
-    <form className="dashboard-search" onSubmit={event => { event.preventDefault(); setSearch(searchInput.trim()); setPage(1) }}><label className="field"><span>Run ID·실행 대상 검색</span><input aria-label="Run ID·실행 대상 검색" maxLength={200} value={searchInput} onChange={event => setSearchInput(event.target.value)} /></label><button type="submit">검색</button></form>
-    {selectedRun && <ExecutionDetail key={selectedRun} runId={selectedRun} onClose={() => setSelectedRun('')} />}
+    <form className="dashboard-search" onSubmit={event => { event.preventDefault(); changeFilters({ search: searchInput.trim() }) }}><label className="field"><span>Run ID·실행 대상 검색</span><input aria-label="Run ID·실행 대상 검색" maxLength={200} value={searchInput} onChange={event => setSearchInput(event.target.value)} /></label><button type="submit">검색</button></form>
+    {selectedRun && <ExecutionDetail key={selectedRun} runId={selectedRun} outcomeFilter={normalizeOutcomeFilter(route.outcomeFilter)} onOutcomeFilterChange={value => navigate(filters, selectedRun, projectRef, value, outcomeSearch)} outcomeSearch={outcomeSearch} onOutcomeSearchChange={value => navigate(filters, selectedRun, projectRef, route.outcomeFilter, value)} onClose={() => navigate(filters)} />}
     {error && <div className="dashboard-error" role="alert">{error}<button onClick={() => setRevision(value => value + 1)}>다시 시도</button></div>}
     {!data && !error && <div className="empty" role="status">실행 이력을 불러오는 중입니다…</div>}
     {data && <>
@@ -70,11 +75,11 @@ function ExecutionDashboard({ projects, projectDetails, projectRef, onProjectCha
         {summary.total === 0 ? <div className="empty">선택한 기간에 완료된 실행이 없습니다.</div> : <div className="dashboard-chart-scroll"><div className="dashboard-chart" style={{ minWidth: days * 23 }} role="list" aria-label="UTC 기준 일별 실행 횟수">{data.trend.map((day, index) => <div key={day.date} className="dashboard-day" role="listitem" tabIndex={0} aria-label={`${day.date}: 전체 ${day.total}회, 성공 ${day.passed}회, 실패·오류 ${day.failed}회`} title={`${day.date} · 성공 ${day.passed} · 실패·오류 ${day.failed}`}><div className="dashboard-bar"><div className="dashboard-bar-failed" style={{ height: `${day.failed / maximum * 100}%` }} /><div className="dashboard-bar-passed" style={{ height: `${day.passed / maximum * 100}%` }} /></div><span>{days === 7 || index % (days === 30 ? 5 : 15) === 0 || index === days - 1 ? day.date.slice(5).replace('-', '/') : ' '}</span></div>)}</div></div>}
       </section>
       <section className="card dashboard-history">
-        <div className="section-header"><div><h2>최근 실행 이력</h2><p className="hint">{count(data.total)}건 · 결과·검색 필터는 목록에만 적용됩니다.</p></div><label className="field"><span>실행 결과</span><select aria-label="실행 결과" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="">전체 결과</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
-        {data.items.length === 0 ? <div className="empty">조회 조건에 맞는 실행 이력이 없습니다.</div> : <div className="dashboard-table-scroll"><table><thead><tr><th>실행 시각</th><th>Run ID·대상</th><th>프로젝트</th><th>결과</th><th>소요 시간</th></tr></thead><tbody>{data.items.map(item => <tr key={item.runId}><td><time dateTime={item.startedAt}>{new Date(item.startedAt).toLocaleString('ko-KR')}</time></td><td><button className="dashboard-run-id" aria-label={`실행 상세 ${item.runId}`} onClick={() => setSelectedRun(item.runId)}>{item.runId}</button><details><summary>{item.targets[0]?.reference || '전체 파이프라인'}{item.targets.length > 1 ? ` 외 ${item.targets.length - 1}개` : ''}</summary><ul>{item.targets.map((target, index) => <li key={`${target.kind}-${target.reference}-${index}`}>{target.kind === 'case' ? '케이스' : '파이프라인'} · {target.reference}{target.preview ? ' (저장 전 내용 실행)' : ''}</li>)}</ul><p>종료 코드: {item.exitCode ?? '없음'}</p></details></td><td>{item.projects.map(reference => projectDetails[reference]?.name || reference).join(', ') || '프로젝트 미지정'}</td><td><span className={`dashboard-status ${item.status}`}>{statusLabels[item.status]}</span></td><td>{duration(item.durationMs)}</td></tr>)}</tbody></table></div>}
-        <div className="dashboard-pagination"><button disabled={page <= 1} onClick={() => setPage(value => value - 1)}>이전</button><span>{page} / {totalPages}</span><button disabled={page >= totalPages} onClick={() => setPage(value => value + 1)}>다음</button></div>
+        <div className="section-header"><div><h2>최근 실행 이력</h2><p className="hint">{count(data.total)}건 · 결과·검색 필터는 목록에만 적용됩니다.</p></div><label className="field"><span>실행 결과</span><select aria-label="실행 결과" value={status} onChange={event => changeFilters({ status: event.target.value })}><option value="">전체 결과</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
+        {data.items.length === 0 ? <div className="empty">조회 조건에 맞는 실행 이력이 없습니다.</div> : <div className="dashboard-table-scroll"><table><thead><tr><th>실행 시각</th><th>Run ID·대상</th><th>프로젝트</th><th>결과</th><th>소요 시간</th></tr></thead><tbody>{data.items.map(item => <tr key={item.runId}><td><time dateTime={item.startedAt}>{new Date(item.startedAt).toLocaleString('ko-KR')}</time></td><td><button className="dashboard-run-id" aria-label={`실행 상세 ${item.runId}`} onClick={() => navigate(filters, item.runId)}>{item.runId}</button><details><summary>{item.targets[0]?.reference || '전체 파이프라인'}{item.targets.length > 1 ? ` 외 ${item.targets.length - 1}개` : ''}</summary><ul>{item.targets.map((target, index) => <li key={`${target.kind}-${target.reference}-${index}`}>{target.kind === 'case' ? '케이스' : '파이프라인'} · {target.reference}{target.preview ? ' (저장 전 내용 실행)' : ''}</li>)}</ul><p>종료 코드: {item.exitCode ?? '없음'}</p></details></td><td>{item.projects.map(reference => projectDetails[reference]?.name || reference).join(', ') || '프로젝트 미지정'}</td><td><span className={`dashboard-status ${item.status}`}>{statusLabels[item.status]}</span></td><td>{duration(item.durationMs)}</td></tr>)}</tbody></table></div>}
+        <div className="dashboard-pagination"><button disabled={page <= 1} onClick={() => changeFilters({ page: page - 1 })}>이전</button><span>{page} / {totalPages}</span><button disabled={page >= totalPages} onClick={() => changeFilters({ page: page + 1 })}>다음</button></div>
       </section>
-      <p className="hint">대시보드에는 Run ID, 대상, 프로젝트, 환경, 버전, 실행자, 시각, 결과와 assertion 판정만 저장합니다. 요청·응답 본문, 헤더, 인증정보와 실행 출력은 저장하지 않습니다.</p>
+      <p className="hint">대시보드에는 Run ID, 대상, 프로젝트, 환경, 버전, 실행자, 시각, 결과·assertion 판정·계약 요약만 저장합니다. 요청·응답 본문, 헤더, 인증정보와 실행 출력은 저장하지 않습니다.</p>
     </>}
   </main>
 }

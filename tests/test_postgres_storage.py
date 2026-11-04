@@ -82,6 +82,141 @@ class PostgresStorageTest(unittest.TestCase):
         store.initialize(False)
         return store
 
+    def test_pipeline_cursor_pages_search_and_conditions(self):
+        from test_pipeline_listing import exercise_pipeline_pages
+        exercise_pipeline_pages(self, self.store())
+
+    def test_case_cursor_pages_search_and_conditions(self):
+        from test_case_listing import exercise_case_pages
+        exercise_case_pages(self, self.store())
+
+    def test_project_cursor_pages_search_and_conditions(self):
+        from test_project_listing import exercise_pages
+        exercise_pages(self, self.store())
+
+    def test_http_workspace_identity_roles_and_revocation(self):
+        from fastapi.testclient import TestClient
+        from api_test.main import create_app
+        from api_test.services import studio
+        from api_test.request_scope import CurrentUser
+        local=self.store()
+        with closing(local.connect()) as db,db:
+            for workspace in ('http-a','http-b'):
+                db.execute("INSERT INTO workspaces(id,name,created_at) VALUES (?,?,?)",(workspace,workspace,'now'))
+                db.execute("INSERT INTO users(id,display_name,created_at) VALUES (?,?,?)",(workspace,workspace,'now'))
+                db.execute("INSERT INTO memberships(workspace_id,user_id,role,created_at) VALUES (?,?,?,?)",(workspace,workspace,'editor','now'))
+        for workspace in ('http-a','http-b'):
+            store=self.store(RequestContext(workspace,workspace))
+            store.save('projects','same.json',{'name':workspace,'base_url':'https://example.test'})
+        with patch.dict(os.environ,{'STUDIO_DB_PATH':str(self.root/'unused'),'LOCAL_SERVER':'false','STUDIO_AUTH_MODE':'remote','EXAMPLE_PROJECT':'false'}), patch.multiple(studio,ROOT=self.root,PROJECT_ROOT=self.roots['projects'],CASE_ROOT=self.roots['cases'],PIPELINE_ROOT=self.roots['pipelines'],_COLLABORATION_STORE=None):
+            application=create_app(studio)
+            application.state.current_user_provider=lambda request: CurrentUser(request.headers['test-principal'],request.headers['test-principal'])
+            with TestClient(application) as client:
+                for workspace in ('http-a','http-b'):
+                    response=client.get('/api/projects/same.json',headers={'test-principal':workspace})
+                    self.assertEqual(response.status_code,200,response.text)
+                    self.assertEqual(response.json()['name'],workspace)
+                self.assertEqual(client.get('/api/projects/same.json',headers={'test-principal':'http-a','X-Studio-Workspace':'http-b'}).status_code,403)
+                with closing(local.connect()) as db,db:db.execute("UPDATE memberships SET role='viewer' WHERE user_id='http-a'")
+                response=client.put('/api/projects/new.json',headers={'test-principal':'http-a'},json={'name':'no','base_url':'https://example.test'})
+                self.assertEqual(response.status_code,403)
+                with closing(local.connect()) as db,db:db.execute("UPDATE memberships SET status='disabled' WHERE user_id='http-a'")
+                self.assertEqual(client.get('/api/projects/same.json',headers={'test-principal':'http-a'}).status_code,403)
+                self.assertEqual(client.get('/api/projects/same.json',headers={'test-principal':'http-b'}).status_code,200)
+
+    def test_identity_audit_migrates_but_sessions_and_login_states_do_not(self):
+        from api_test.identity_store import IdentityStore
+        from api_test.migrations import migrate_ownership_database
+        source=self.root/'identity-source.db';ownership=self.root/'identity-ownership.db'
+        with patch.dict(os.environ,{'STUDIO_DATABASE_URL':'','STUDIO_DATABASE_URL_FILE':''}):
+            identities=IdentityStore(source)
+            identities.provision(issuer='https://issuer.test',subject='alice-sub',user_id='alice',display_name='Alice',workspace_id='team',workspace_name='Team',role='owner')
+            token=identities.start_session('https://issuer.test','alice-sub','config',300,600)
+            identities.save_state('s'*43,'b'*43,'config','encrypted fixture')
+            with closing(sqlite3.connect(ownership)) as db:migrate_ownership_database(db)
+        manifest=migrate(source,ownership,url=self.url)
+        self.assertEqual(manifest['security_events']['rows'],2)
+        with closing(connect(self.root/'unused')) as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM login_sessions').fetchone()[0],0)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM oidc_login_states').fetchone()[0],0)
+            self.assertEqual(db.execute('SELECT user_id FROM user_identities WHERE provider_subject=?',('alice-sub',)).fetchone()[0],'alice')
+        target=IdentityStore(self.root/'unused')
+        token=target.start_session('https://issuer.test','alice-sub','config',300,600)
+        self.assertEqual(target.session(token,'config',300)['userId'],'alice')
+        target.logout(token,'config',300)
+    def test_combined_identity_oauth_release_artifact_migration(self):
+        from cryptography.fernet import Fernet
+        from api_test.identity_store import IdentityStore
+        from api_test.oauth_vault import Vault
+        from api_test.release_store import ReleaseStore
+        from api_test.services.portal import _manifest_zip
+        from api_test.migrations import migrate_ownership_database
+        from test_release_store import spec
+        from test_release_portal import archive
+        source=self.root/'combined.db';ownership=self.root/'combined-ownership.db'
+        context=RequestContext('team','alice')
+        with patch.dict(os.environ,{'STUDIO_DATABASE_URL':'','STUDIO_DATABASE_URL_FILE':'','API_TEST_ENCRYPTION_KEY':Fernet.generate_key().decode(),'API_TEST_ENCRYPTION_URL':''}):
+            identities=IdentityStore(source)
+            identities.provision(issuer='https://issuer.test',subject='alice',user_id='alice',display_name='Alice',workspace_id='team',workspace_name='Team',role='owner')
+            identities.start_session('https://issuer.test','alice','config',300,600)
+            identities.save_state('s'*43,'b'*43,'config','encrypted fixture')
+            documents=CollaborationStore(source,{kind:self.root/'combined'/kind for kind in ('projects','cases','pipelines')},context=context)
+            documents.initialize(False);documents.save('projects','p.json',{'name':'Combined','docs_file':{'document':spec()}})
+            releases=ReleaseStore(source,context=context)
+            release=releases.create('p.json',{'version':'1.0.0','projectRevision':1})
+            release=releases.transition('p.json',release['id'],{'revision':1,'state':'published','reason':'reviewed'})
+            snapshot,metadata=releases.sdk_snapshot('p.json',release['id'],'python')
+            payload=_manifest_zip(archive(spec()),metadata,'python','7.24.0',snapshot)
+            releases.keep_artifact('p.json',release['id'],'python',payload,'client.zip',release['sourceDigest'],'7.24.0')
+            vault=Vault(source,context=context)
+            lease=vault.acquire(vault.identity('p.json','','service'),'a'*64,'client_credentials')
+            vault.finish(lease,{'access_token':'TRANSIENT_TOKEN','token_type':'Bearer','expires_in':3600})
+            with closing(sqlite3.connect(ownership)) as db:migrate_ownership_database(db)
+        before=source.read_bytes()
+        manifest=migrate(source,ownership,url=self.url)
+        self.assertEqual(source.read_bytes(),before)
+        self.assertEqual(manifest['api_release_artifacts']['rows'],1)
+        self.assertEqual(manifest['security_events']['rows'],2)
+        migrated=ReleaseStore(self.root/'unused',context=context)
+        self.assertEqual(migrated.download_artifact('p.json',release['id'],'python')[0],payload)
+        with closing(connect(self.root/'unused')) as db:
+            for table in ('oauth_tokens','oauth_pending','login_sessions','oidc_login_states'):
+                self.assertEqual(db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0],0,table)
+            self.assertEqual(db.execute("SELECT version FROM memberships WHERE workspace_id='team' AND user_id='alice'").fetchone()[0],1)
+            self.assertEqual(db.execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0],7)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM saved_run_results').fetchone()[0],0)
+            self.assertEqual(db.execute('SELECT MAX(version) FROM identity_schema_migrations').fetchone()[0],2)
+            self.assertEqual(db.execute('SELECT MAX(version) FROM release_schema_migrations').fetchone()[0],2)
+
+    def test_release_transition_and_sqlite_import_parity(self):
+        from api_test.release_store import ReleaseStore
+        from api_test.migrations import migrate_ownership_database
+        from test_release_store import spec
+        sqlite_root=self.root/'release-source';sqlite_root.mkdir()
+        with patch.dict(os.environ,{'STUDIO_DATABASE_URL':'','STUDIO_DATABASE_URL_FILE':''}):
+            documents=CollaborationStore(sqlite_root/'studio.db',{k:sqlite_root/k for k in ('projects','cases','pipelines')})
+            documents.initialize(False)
+            documents.save('projects','release.json',{'docs_file':{'document':spec()}})
+            releases=ReleaseStore(sqlite_root/'studio.db',context=LOCAL_CONTEXT)
+            draft=releases.create('release.json',{'version':'1.0.0','projectRevision':1})
+            published=releases.transition('release.json',draft['id'],{'state':'published','revision':1,'reason':'Reviewed'})
+            from test_release_portal import archive
+            payload=archive()
+            artifact=releases.keep_artifact('release.json',draft['id'],'python',payload,'release.zip',draft['sourceDigest'],'7.24.0')
+            with closing(sqlite3.connect(sqlite_root/'ownership.db')) as db:migrate_ownership_database(db)
+        manifest=migrate(sqlite_root/'studio.db',sqlite_root/'ownership.db',url=self.url)
+        self.assertEqual(manifest['api_releases']['rows'],1)
+        self.assertEqual(manifest['api_release_events']['rows'],2)
+        self.assertEqual(manifest['api_release_artifacts']['rows'],1)
+        target=ReleaseStore(self.root/'unused',context=LOCAL_CONTEXT)
+        copied=target.detail('release.json',draft['id'])
+        self.assertEqual(copied,published)
+        self.assertEqual(target.download_artifact('release.json',draft['id'],'python')[0],payload)
+        self.assertEqual(target.portal('release.json',draft['id'])['artifacts'][0]['sha256'],artifact['sha256'])
+        self.assertEqual(target.source('release.json',draft['id'])['source']['document'],spec())
+        changed=target.transition('release.json',draft['id'],{'state':'deprecated','revision':2,'reason':'Replacement available'})
+        self.assertEqual(changed['revision'],3)
+
     def test_functional_history_details_search_and_restart(self):
         history = ExecutionHistory(self.root / 'unused')
         stamp = datetime.now(timezone.utc).isoformat()

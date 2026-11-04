@@ -6,19 +6,20 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from api_test.database import database_url
+from api_test.database import database_url, RequestContext
 from api_test.load_results import LoadResultError
 from api_test.load_test_store import DuplicateRunError, LoadTestStore, MAX_RESPONSE_BYTES
 
 
 @lru_cache(maxsize=8)
-def _cached_store(path, database_url):
-    return LoadTestStore(Path(path), url=database_url)
+def _cached_store(path, database_url, workspace, user):
+    return LoadTestStore(Path(path), url=database_url, context=RequestContext(workspace,user))
 
 
 def _store(studio):
     path = os.environ.get("STUDIO_DB_PATH", str(studio.ROOT / "data" / "studio.db"))
-    return _cached_store(path, database_url())
+    context = studio.current_context()
+    return _cached_store(path, database_url(), context.workspace_id, context.user_id)
 
 
 def _integer(request, name, default):

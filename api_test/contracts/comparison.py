@@ -1,6 +1,6 @@
 """Conservative directional compatibility checks; uncertain changes require review."""
 import hashlib
-from .documents import ContractError, digest, escape, resolve
+from .documents import ContractError, digest, escape, resolve, walk
 from .validation import lint, operations
 
 ANNOTATIONS = {'title', 'description', 'example', 'examples', 'externalDocs', 'deprecated'}
@@ -29,6 +29,14 @@ def compare(baseline, current, approvals=None):
         if not any(item['id'] == identifier for item in changes):
             changes.append({'id': identifier, 'code': code, 'path': path, 'severity': severity, 'approved': False})
     def schema(old, new, path, direction, seen=None):
+        # OAS 3.1 Schema Object $ref siblings are live constraints. resolve()
+        # follows the reference-only target, so changed siblings need review.
+        def meaningful_siblings(document, value):
+            if not document['openapi'].startswith('3.1.') or not isinstance(value, dict) or '$ref' not in value:
+                return {}
+            return {key: item for key, item in value.items() if key not in ANNOTATIONS | {'$ref'}}
+        if meaningful_siblings(baseline, old) != meaningful_siblings(current, new):
+            add('schema_ref_siblings_changed', path, 'review')
         old, new = resolve(baseline, old), resolve(current, new)
         seen = set() if seen is None else seen
         pair = (id(old), id(new), direction)
@@ -86,6 +94,21 @@ def compare(baseline, current, approvals=None):
         return result
     if not any(item['severity'] == 'error' for item in issues):
         try:
+            # Intermediate 3.1 $ref wrappers can carry live Schema Object
+            # constraints that resolve() omits. Report any changed wrapper
+            # conservatively, even when it is reached through another alias.
+            def ref_sibling_signature(document):
+                if not document['openapi'].startswith('3.1.'):
+                    return {}
+                return {path: {key: child for key, child in value.items() if key not in ANNOTATIONS | {'$ref'}}
+                        for path, value in walk(document)
+                        if isinstance(value, dict) and '$ref' in value and
+                        any(key not in ANNOTATIONS | {'$ref'} for key in value)}
+            before_siblings = ref_sibling_signature(baseline)
+            after_siblings = ref_sibling_signature(current)
+            for sibling_path in sorted(before_siblings.keys() | after_siblings.keys()):
+                if before_siblings.get(sibling_path) != after_siblings.get(sibling_path):
+                    add('schema_ref_siblings_changed', sibling_path, 'review')
             old_ops = {(path, method): (op, item) for path, method, op, item in operations(baseline)}
             new_ops = {(path, method): (op, item) for path, method, op, item in operations(current)}
             if baseline.get('openapi') != current.get('openapi'):

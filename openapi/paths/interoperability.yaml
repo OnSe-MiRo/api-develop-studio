@@ -1,0 +1,144 @@
+/api/interoperability/preview:
+  post:
+    operationId: interoperability_preview
+    tags:
+    - interoperability
+    summary: Tool interoperability preview
+    x-studio-handler: interoperability.preview
+    x-studio-parts: '[]'
+    x-studio-route: /api/interoperability/preview
+    x-studio-upload: false
+    x-studio-alias: false
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/interoperability.yaml#/ImportRequest
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/interoperability.yaml#/ImportPreview
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Missing document
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Preview or revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+/api/interoperability/apply:
+  post:
+    operationId: interoperability_apply
+    tags:
+    - interoperability
+    summary: Tool interoperability apply
+    x-studio-handler: interoperability.apply_import
+    x-studio-parts: '[]'
+    x-studio-route: /api/interoperability/apply
+    x-studio-upload: false
+    x-studio-alias: false
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/interoperability.yaml#/ImportRequest
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/interoperability.yaml#/ImportResult
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Missing document
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Preview or revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+/api/interoperability/curl:
+  post:
+    operationId: interoperability_curl
+    tags:
+    - interoperability
+    summary: Tool interoperability curl
+    x-studio-handler: interoperability.export
+    x-studio-parts: '[]'
+    x-studio-route: /api/interoperability/curl
+    x-studio-upload: false
+    x-studio-alias: false
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/interoperability.yaml#/CurlExportRequest
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/interoperability.yaml#/CurlExportResponse
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '404':
+        description: Missing document
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Preview or revision conflict
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse

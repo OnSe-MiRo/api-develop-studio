@@ -1,0 +1,380 @@
+/api/projects/{reference}/oauth/profiles/{profile}:
+  get:
+    operationId: get_oauth_profile_status
+    tags:
+    - oauth
+    summary: get oauth profile status
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/oauth.yaml#/OAuthProfileStatus
+      '400':
+        description: Invalid OAuth request or saved configuration
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Authorization state, issuance ownership or refresh conflict;
+          reconnect if required
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '502':
+        description: Sanitized provider or transport failure
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '504':
+        description: OAuth endpoint timeout
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: oauth.profile_status
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/oauth/profiles/{profile}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: profile
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    - name: environment
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+      description: Saved environment; omitted selects project-common configuration.
+  delete:
+    operationId: disconnect_oauth_profile
+    tags:
+    - oauth
+    summary: disconnect oauth profile
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/oauth.yaml#/OAuthProfileStatus
+      '400':
+        description: Invalid OAuth request or saved configuration
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Authorization state, issuance ownership or refresh conflict;
+          reconnect if required
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '502':
+        description: Sanitized provider or transport failure
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '504':
+        description: OAuth endpoint timeout
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: oauth.disconnect
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/oauth/profiles/{profile}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: profile
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    - name: environment
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+      description: Saved environment; omitted selects project-common configuration.
+/api/projects/{reference}/oauth/profiles/{profile}/token:
+  post:
+    operationId: issue_or_refresh_oauth_token
+    tags:
+    - oauth
+    summary: issue or refresh oauth token
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/oauth.yaml#/OAuthProfileStatus
+      '400':
+        description: Invalid OAuth request or saved configuration
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Authorization state, issuance ownership or refresh conflict;
+          reconnect if required
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '502':
+        description: Sanitized provider or transport failure
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '504':
+        description: OAuth endpoint timeout
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: oauth.token_action
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/oauth/profiles/{profile}/token
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: profile
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/oauth.yaml#/OAuthTokenRequest
+/api/projects/{reference}/oauth/profiles/{profile}/authorize:
+  post:
+    operationId: authorize_oauth_profile
+    tags:
+    - oauth
+    summary: authorize oauth profile
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/oauth.yaml#/OAuthAuthorizeResponse
+      '400':
+        description: Invalid OAuth request or saved configuration
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Authorization state, issuance ownership or refresh conflict;
+          reconnect if required
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '502':
+        description: Sanitized provider or transport failure
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '504':
+        description: OAuth endpoint timeout
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: oauth.authorize
+    x-studio-parts: '[]'
+    x-studio-route: /api/projects/{reference:path}/oauth/profiles/{profile}/authorize
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: profile
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/oauth.yaml#/OAuthAuthorizeRequest
+/api/oauth/callback/{providerKey}:
+  get:
+    operationId: complete_oauth_authorization
+    tags:
+    - oauth
+    summary: complete oauth authorization
+    responses:
+      '303':
+        description: Authorization completed; redirects to the trusted Studio project
+          settings without code, state or provider details.
+        headers:
+          Location:
+            schema:
+              type: string
+      '400':
+        description: Invalid OAuth request or saved configuration
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '403':
+        description: Policy denied
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '409':
+        description: Authorization state, issuance ownership or refresh conflict;
+          reconnect if required
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '502':
+        description: Sanitized provider or transport failure
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '503':
+        description: Storage unavailable
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+      '504':
+        description: OAuth endpoint timeout
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/common.yaml#/ErrorResponse
+    x-studio-handler: oauth.callback
+    x-studio-parts: '[]'
+    x-studio-route: /api/oauth/callback/{providerKey}
+    x-studio-upload: false
+    x-studio-alias: false
+    parameters:
+    - name: providerKey
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^[a-f0-9]{24}$
+    - name: state
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: code
+      in: query
+      required: false
+      schema:
+        type: string
+    - name: error
+      in: query
+      required: false
+      schema:
+        type: string
+    - name: iss
+      in: query
+      required: false
+      schema:
+        type: string

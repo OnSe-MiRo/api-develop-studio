@@ -51,3 +51,16 @@ PipelineDocument:
       additionalProperties: true
     _storage:
       $ref: ./common.yaml#/StorageMetadata
+
+PipelineListResponse:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items: {type: string}
+    details:
+      type: object
+      description: Empty in pipeline pages; step contents are not exposed.
+    nextCursor: {type: string, nullable: true}
+    previousCursor: {type: string, nullable: true}

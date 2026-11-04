@@ -42,3 +42,81 @@ describe('router', () => {
     expect(buildUrl({ tab: 'load-tests', loadFilters: filters })).toContain('project=demo')
   })
 })
+
+it('preserves the selected immutable release in the portal URL', () => {
+  const url = buildUrl({ tab: 'portal', activeProject: 'team/demo.json', releaseId: 'release-123' })
+  expect(url).toBe('/portal?project=team%2Fdemo&release=release-123')
+  window.history.replaceState(null, '', url)
+  expect(parseLocation()).toMatchObject({ tab: 'portal', activeProject: 'team/demo.json', releaseId: 'release-123' })
+})
+
+it('round-trips project list query and cursor without contaminating other routes', () => {
+  const projectFilters = { q: '한글 + %', sort: 'created_desc', page_size: '50', cursor: 'opaque/+=token' }
+  window.history.replaceState(null, '', buildUrl({ tab: 'project', projectFilters }))
+  expect(parseLocation()).toMatchObject({ tab: 'project', projectFilters })
+  expect(buildUrl({ tab: 'case-list', activeProject: 'a.json', projectFilters })).toBe('/cases?project=a')
+})
+
+it('round-trips case filters and resets them on editor navigation', () => {
+  const caseFilters={q:'한글 +',tag:'auth',sort:'name_desc',page_size:'50',cursor:'cursor/+=x'}
+  window.history.replaceState(null,'',buildUrl({tab:'case-list',activeProject:'demo.json',caseFilters}))
+  expect(parseLocation()).toMatchObject({tab:'case-list',activeProject:'demo.json',caseFilters})
+  expect(buildUrl({tab:'case-settings',activeProject:'demo.json',caseReference:'tag/api/case.json',caseFilters})).not.toContain('cursor=')
+})
+
+it('round-trips pipeline page filters independently of editor routes', () => {
+  const pipelineFilters={q:'한글 +',sort:'created_desc',page_size:'50',cursor:'opaque/+='}
+  window.history.replaceState(null,'',buildUrl({tab:'pipeline-list',activeProject:'demo.json',pipelineFilters}))
+  expect(parseLocation()).toMatchObject({tab:'pipeline-list',activeProject:'demo.json',pipelineFilters})
+  expect(buildUrl({tab:'pipeline-settings',activeProject:'demo.json',pipelineReference:'a.json',pipelineFilters})).not.toContain('cursor=')
+})
+
+it('round-trips dashboard filters and selected detail with encoded values', () => {
+  const dashboardFilters={days:30,status:'failed',page:2,search:'한글 + 100%'}
+  const url=buildUrl({tab:'dashboard',activeProject:'team/demo.json',dashboardFilters,runId:'run +/one'})
+  window.history.replaceState(null,'',url)
+  expect(parseLocation()).toMatchObject({tab:'dashboard',activeProject:'team/demo.json',dashboardFilters,runId:'run +/one'})
+  expect(buildUrl({tab:'case-list',activeProject:'demo.json',dashboardFilters,runId:'old'})).toBe('/cases?project=demo')
+  expect(buildUrl({tab:'load-tests',dashboardFilters,runId:'old'})).toBe('/load-tests')
+})
+it('normalizes invalid dashboard URL filters and retains API boundary values', () => {
+  window.history.replaceState(null,'','/dashboard?days=99&status=unknown&page=1000001&search='+encodeURIComponent('x'.repeat(201)))
+  expect(parseLocation().dashboardFilters).toEqual({days:7,status:'',page:1,search:'x'.repeat(200)})
+  window.history.replaceState(null,'','/dashboard?days=90&status=timeout&page=1000000')
+  expect(parseLocation().dashboardFilters).toEqual({days:90,status:'timeout',page:1000000,search:''})
+  for (const page of ['0','-2','1.2','1e3','abc']) {
+    window.history.replaceState(null,'','/dashboard?page='+page)
+    expect(parseLocation().dashboardFilters.page).toBe(1)
+  }
+  expect(buildUrl({tab:'dashboard',dashboardFilters:{days:7,page:1,search:' '}})).toBe('/dashboard')
+})
+
+it('round-trips detail filters only for a selected dashboard run', () => {
+  for (const outcomeFilter of ['failures', 'contract']) {
+    const url = buildUrl({ tab: 'dashboard', runId: 'run +1', outcomeFilter, dashboardFilters: { page: 2, search: 'case' } })
+    window.history.replaceState(null, '', url)
+    expect(parseLocation()).toMatchObject({ runId: 'run +1', outcomeFilter, dashboardFilters: { page: 2, search: 'case' } })
+  }
+  for (const value of ['all', 'unexpected', '']) {
+    expect(buildUrl({ tab: 'dashboard', runId: 'run', outcomeFilter: value })).toBe('/dashboard?run=run')
+    window.history.replaceState(null, '', `/dashboard?run=run&outcomes=${value}`)
+    expect(parseLocation().outcomeFilter).toBe('all')
+  }
+  window.history.replaceState(null, '', '/dashboard?outcomes=contract')
+  expect(parseLocation().outcomeFilter).toBe('all')
+  expect(buildUrl({ tab: 'dashboard', outcomeFilter: 'contract' })).toBe('/dashboard')
+  expect(buildUrl({ tab: 'api-call', outcomeFilter: 'contract', runId: 'run' })).toBe('/api-call')
+})
+
+it('normalizes and encodes case search only within dashboard details', () => {
+  const state = { tab: 'dashboard', runId: 'run', outcomeFilter: 'failures', outcomeSearch: '  한글/API +%?  ' }
+  window.history.replaceState(null, '', buildUrl(state))
+  expect(parseLocation()).toMatchObject({ runId: 'run', outcomeFilter: 'failures', outcomeSearch: '한글/API +%?' })
+  window.history.replaceState(null, '', buildUrl({ ...state, outcomeSearch: 'x'.repeat(250) }))
+  expect(parseLocation().outcomeSearch).toHaveLength(200)
+  for (const outcomeSearch of ['', '  ', null, 12]) expect(buildUrl({ ...state, outcomeSearch })).not.toContain('caseSearch')
+  expect(buildUrl({ ...state, runId: '' })).toBe('/dashboard')
+  window.history.replaceState(null, '', '/dashboard?caseSearch=orphan')
+  expect(parseLocation().outcomeSearch).toBe('')
+  expect(buildUrl({ ...state, tab: 'api-call' })).toBe('/api-call')
+})

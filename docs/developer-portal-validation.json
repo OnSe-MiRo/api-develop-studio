@@ -1,0 +1,123 @@
+{
+  "date": "2026-10-13",
+  "branch": "feature/api-release-lifecycle",
+  "baseCommit": "fb75a467fba8c430f6da4a8e215d1c0f3b995470",
+  "automated": {
+    "pythonFull": {
+      "passed": 422,
+      "skipped": 0,
+      "seconds": 49.396
+    },
+    "laterPortalFocused": {
+      "passed": 17,
+      "seconds": 3.426,
+      "includesAdditionalMembershipRevocationTest": true
+    },
+    "frontend": {
+      "passed": 64,
+      "build": "passed"
+    },
+    "generator": "passed",
+    "compileall": "passed",
+    "diffCheck": "passed",
+    "postgresArtifactMigration": "passed"
+  },
+  "actualJavaAndHTTP": {
+    "releaseId": "f9e9ccce-db8d-49e3-bef9-428cb40fad77",
+    "sourceDigest": "1b738525bdb6719159def8c93314f191ae0172fe835669ca4f820e55d6279258",
+    "frozenSourceRevision": 1,
+    "liveProjectRevision": 2,
+    "artifacts": [
+      {
+        "language": "python",
+        "bytes": 34552,
+        "sha256": "718eea1b0e55ff64e0c5efce2201cdde1efa9a0ff929c6dcec20bdbab360cebd",
+        "seconds": 1.422,
+        "sourceRevision": 1,
+        "zipCRC": "passed"
+      },
+      {
+        "language": "javascript",
+        "bytes": 19696,
+        "sha256": "6a15cfb61b0406b016a54aa7c34a695cda0fcc2449a1a8d768c0a6784016e0f4",
+        "seconds": 1.194,
+        "sourceRevision": 1,
+        "zipCRC": "passed"
+      },
+      {
+        "language": "typescript",
+        "bytes": 10604,
+        "sha256": "6f79fd0614974f35daf8cba7704a318ca16f2c46941f3bdfee25406b424c488b",
+        "seconds": 1.317,
+        "sourceRevision": 1,
+        "zipCRC": "passed"
+      },
+      {
+        "language": "java",
+        "bytes": 95360,
+        "sha256": "cf0b8cb92927ee163731a5e3b880efdb6bf05c58adcad1670b894336c57f52c8",
+        "seconds": 1.206,
+        "sourceRevision": 1,
+        "zipCRC": "passed"
+      },
+      {
+        "language": "kotlin",
+        "bytes": 67668,
+        "sha256": "28b2ffc8f6e737a60b53f94731f87e7db0c266943812073a701d86e917695519",
+        "seconds": 1.199,
+        "sourceRevision": 1,
+        "zipCRC": "passed"
+      },
+      {
+        "language": "go",
+        "bytes": 20756,
+        "sha256": "b203332994a3091e83e117f1d3fc17816868a733e311f4caf3900a0fe01bbf63",
+        "seconds": 1.194,
+        "sourceRevision": 1,
+        "zipCRC": "passed"
+      },
+      {
+        "language": "csharp",
+        "bytes": 46541,
+        "sha256": "04bd3402da285e147448b70ddef3df50b2cff0b458b03f231818cad821681c6a",
+        "seconds": 1.202,
+        "sourceRevision": 1,
+        "zipCRC": "passed"
+      }
+    ],
+    "applicationRestartDownloadParity": true,
+    "pythonSyntax": "passed",
+    "realHTTP": true
+  },
+  "bundleAndLifecycle": {
+    "bundleRawFiles": 3,
+    "recursiveBundleActualJava": "passed",
+    "manifestSourcePath": "openapi/openapi.yaml",
+    "timeout": "timeout",
+    "realJavaCancellation": "cancelled",
+    "childProcessesReaped": 2,
+    "temporaryCleanup": "passed"
+  },
+  "browser": {
+    "performed": false,
+    "reason": "Localhost access rejected by browser tool after user approval; no bypass attempted"
+  },
+  "pending": [
+    "real browser, responsive layout and browser file transfer",
+    "COL-2/COL-1 identity integration and portal Runner route policy",
+    "cross-feature job committed cancellation barrier merge verification",
+    "compilation and live target calls for all generated SDK languages",
+    "remaining full load-test campaigns"
+  ],
+  "sourceSha256": {
+    "api_test/release_store.py": "982a8d94a7b0c608e2a080ec8b55114333403ff37cbcfa06ccc95ca8781db5ce",
+    "api_test/portal_document.py": "fdfcec5754b947e343e640d94a0771789de6409cf387f28902a546941dba71e6",
+    "api_test/services/portal.py": "44b1ef75684cf14e3735c6b55dd883831ae21c2761b0bc728e277c2ab2f1873e",
+    "api_test/sdk_generation.py": "bd5f64e8a2bbf054ca8c16c6a415ed8d858ce9761236a116fcade1d6935b0005",
+    "api_test/jobs.py": "c8873b8734ebbaeabbf64c838b903dbd3fc293c249f3a9d9e53dabacf99cd34c",
+    "api_test/migrate_postgres.py": "4a8f1e5d573e9ba642afe619c496291de8c8a782062390470aa20194af4e4258",
+    "web/src/pages/portal/DeveloperPortal.jsx": "4218271cde91f3bed320e296896972661dfb74f9577c1b8da84cb18722684752",
+    "web/src/pages/portal/document.js": "62480efc723db23778108c3a5116716fc166b5744450770258758aca0c94dd69",
+    "scripts/validate_release_sdk.py": "85ec7cf21afc23176307bd4c831e8de28dad633e0dd79229897c868188470c14"
+  }
+}

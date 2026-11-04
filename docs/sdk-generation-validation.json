@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-13",
+  "browser": "Codex in-app browser",
+  "generation": {
+    "runId": "a2788627-0d5a-4bb6-82fc-6caba5bcf8f8",
+    "language": "go",
+    "status": "passed",
+    "zipBytes": 17674,
+    "sha256": "8706ef571310d9e87fc0f45325955618b9301f7c115eb4d153a7653117114e45",
+    "crc": "passed",
+    "goSources": true
+  },
+  "reload": {
+    "sameRunId": true,
+    "language": "go",
+    "automaticResubmission": false,
+    "automaticDownload": false
+  },
+  "requests": {
+    "submissions": 2,
+    "artifactGets": 1
+  },
+  "cancel": {
+    "runId": "b40b5396-ec80-48b4-a79e-cae78b8b3262",
+    "status": "cancelled"
+  },
+  "timeout": {
+    "status": "timeout",
+    "elapsedSeconds": 1.046,
+    "artifact": false,
+    "temporaryCleanup": true
+  },
+  "responsive": {
+    "viewportWidth": 390,
+    "documentScrollWidth": 375,
+    "consoleErrors": 0
+  },
+  "tests": {
+    "python": 410,
+    "frontend": 57,
+    "build": "passed"
+  }
+}

@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "milestone": "API-3",
+  "recordedAt": "2026-10-04T12:34:04.063063+00:00",
+  "status": "local implementation and verification complete",
+  "branch": "feature/oauth-profile-issuance",
+  "baseCommit": "fb75a467fba8c430f6da4a8e215d1c0f3b995470",
+  "publication": "uncommitted; no push or merge",
+  "pythonFull": {
+    "count": 415,
+    "skipped": 0,
+    "seconds": 47.511,
+    "log": "/private/tmp/api3-final-python.log",
+    "sourceBoundary": "Before narrow provider error classification and configured public callback Host fixes; covered by current focused suite and API/HTTP checks."
+  },
+  "pythonFocusedCurrent": {
+    "count": 25,
+    "seconds": 2.574,
+    "log": "/private/tmp/api3-final-focused.log",
+    "scope": "OAuth API6, vault8, execution6, transport4, PostgreSQL1"
+  },
+  "frontendCurrent": {
+    "count": 60,
+    "files": 17,
+    "seconds": 3.85,
+    "log": "/private/tmp/api3-final-frontend.log"
+  },
+  "build": {
+    "status": "passed",
+    "command": "npm run build -- --outDir /private/tmp/api3-parent-final-dist",
+    "log": "/private/tmp/api3-parent-build.log"
+  },
+  "generatedServerCheck": "passed",
+  "diffCheck": "passed",
+  "reports": {
+    "realHttp": {
+      "status": "passed",
+      "scope": "independent loopback issuer, real TLS token endpoint and Studio HTTP/CLI",
+      "checks": [
+        "TLS client credentials issue; metadata-only API; cached quick calls redact provider token echo",
+        "saved case and pipeline use same encrypted cached credential through actual CLI children",
+        "environment-bound token cache separates stage from project default",
+        "OAuth resource redirects disabled and credential refused for a different origin",
+        "authorization code S256 flow; cookie binding, clean callback redirect and one-time state; CLI consumes connected token",
+        "five concurrent refresh requests perform one rotation and preserve a usable token",
+        "public authorization code client uses S256 without a client secret",
+        "POST client authentication and RFC optional expires_in retain unknown expiry metadata",
+        "provider errors, redirects and oversized payloads rejected without secret disclosure or implicit follow",
+        "disconnect removes local token and authorization code execution requires reconnect",
+        "ambient HTTP_PROXY capture sees zero credential-bearing resource requests",
+        "project/case/pipeline projection, DB files, CLI logs and callback access log contain no credential sentinels"
+      ],
+      "count": 12,
+      "root": "/private/var/folders/zf/zg_4gtxn0p3_2pp9290vzycc0000gn/T/api3-parent-validation-1c5xu7my",
+      "metrics": {
+        "client_credentials": 4,
+        "authorization_code": 2,
+        "refresh_token": 1,
+        "resource": 11,
+        "resource_authenticated": 11,
+        "redirect_sink": 0,
+        "pkce_rejected": 0,
+        "proxy_requests": 0
+      }
+    },
+    "expiryAndAsync": {
+      "status": "passed",
+      "checks": [
+        "expired client_credentials reacquires once",
+        "expired authorization_code rotates refresh token once",
+        "refresh metadata retained after access expiry",
+        "async saved OAuth case completes passed through actual CLI child",
+        "same runtime source hashes as real HTTP suite"
+      ],
+      "count": 5,
+      "runId": "4460cd76-f546-46e4-a204-fd759dc81fae",
+      "root": "/private/var/folders/zf/zg_4gtxn0p3_2pp9290vzycc0000gn/T/api3-parent-validation-1c5xu7my"
+    },
+    "providerErrors": {
+      "status": "passed",
+      "checks": [
+        {
+          "mode": "malformed",
+          "status": 502,
+          "durationSeconds": 0.006
+        },
+        {
+          "mode": "timeout",
+          "status": 504,
+          "durationSeconds": 8.014
+        }
+      ]
+    }
+  },
+  "browser": {
+    "status": "passed",
+    "browser": "Chrome",
+    "fixture": "synthetic OAuth provider only",
+    "checks": [
+      "authorization popup, cross-site localhost-to-127.0.0.1 consent and clean callback",
+      "original page connected state; refresh and local disconnect",
+      "new Client Credentials profile uses encrypted variable reference; save-first gate",
+      "project save and reopen preserve new profile; connection succeeds",
+      "quick call returns 200 with token echo redacted",
+      "automatic issue after expiry refreshes the displayed connection state"
+    ],
+    "viewport": {
+      "requestedWidth": 390,
+      "height": 844,
+      "clientWidth": 375,
+      "scrollWidth": 375,
+      "horizontalOverflow": false
+    },
+    "finalConsoleErrorsAndWarnings": 0,
+    "screenshot": "/private/tmp/api3-oauth-mobile.jpg",
+    "harnessCorrection": "Temporary root was normalized from /var to /private/var before final save/reopen verification; no product code change required."
+  },
+  "runtimeSourceHashesAtHttpStart": {
+    "api_test/oauth_transport.py": "08af25e7d39e5da9e1feea9944989c76ad5b2f55fca22c280eb5c5265aceb1ff",
+    "api_test/oauth_vault.py": "cb5a3458bde6757456781a678036f74bd9b5fd63586940d454a82ee461f9b0b8",
+    "api_test/oauth_service.py": "05d094613be401cef83e4452a2a9e1b95efc4ffa060d04a273f26819938ca485",
+    "api_test/runner.py": "f6762d185bb725dfa0a4aa71db668154b6f3a36efb0467ca6fbdd414946884e1",
+    "api_test/cli.py": "944c5dcb7667ceaed72e14b9071a6c6254a8ee02419dab7604f81b5ad8717b35",
+    "api_test/request_profiles.py": "fd5eff5a0be3400a72cf9c9d99a6dcb12756196a2f132ed8ec66638e0944bfb4",
+    "api_test/main.py": "96fa7c40ff01f3b824c2bed47f3ae443c8c04ef3da8681d93d7bffcc4731f2ea",
+    "api_test/services/studio.py": "da6be44b73951fda50be62329e22b6cdfa3c9e0e5a5d7779eecdc99bf43953a6",
+    "api_test/migrations.py": "0b25c72b514ae168ffdc35f440e77d83a25ffa2ba60661717223d8ff59eba560",
+    "api_test/generated/apis/oauth_api.py": "90fd82140159d30b7d94681e1c16adf122bca268929b56490b0bed38b046ac99"
+  },
+  "finalRuntimeSourceHashes": {
+    "api_test/oauth_transport.py": "08af25e7d39e5da9e1feea9944989c76ad5b2f55fca22c280eb5c5265aceb1ff",
+    "api_test/oauth_vault.py": "cb5a3458bde6757456781a678036f74bd9b5fd63586940d454a82ee461f9b0b8",
+    "api_test/oauth_service.py": "b11002eb368006a7548af506edca7d3a5abd00f29703fffe5edd6b0e0107a143",
+    "api_test/runner.py": "f6762d185bb725dfa0a4aa71db668154b6f3a36efb0467ca6fbdd414946884e1",
+    "api_test/cli.py": "944c5dcb7667ceaed72e14b9071a6c6254a8ee02419dab7604f81b5ad8717b35",
+    "api_test/request_profiles.py": "fd5eff5a0be3400a72cf9c9d99a6dcb12756196a2f132ed8ec66638e0944bfb4",
+    "api_test/main.py": "96fa7c40ff01f3b824c2bed47f3ae443c8c04ef3da8681d93d7bffcc4731f2ea",
+    "api_test/services/studio.py": "da6be44b73951fda50be62329e22b6cdfa3c9e0e5a5d7779eecdc99bf43953a6",
+    "api_test/migrations.py": "0b25c72b514ae168ffdc35f440e77d83a25ffa2ba60661717223d8ff59eba560",
+    "api_test/generated/apis/oauth_api.py": "90fd82140159d30b7d94681e1c16adf122bca268929b56490b0bed38b046ac99"
+  },
+  "postHttpRuntimeChange": {
+    "files": [
+      "api_test/oauth_service.py"
+    ],
+    "scope": "Configured HTTPS callback origin behind a trusted Host-preserving HTTP reverse proxy; local branch unchanged.",
+    "validation": "Current focused suite verifies valid preserved Host and wrong Host despite forwarded headers."
+  },
+  "frontendSourceHashes": {
+    "web/src/components/OAuthProfileStatus.jsx": "9d0fa2c2cccba0028d4497fee654210a42a7a89b62e4fab660e4ae64f4ff4b65",
+    "web/src/pages/project-settings/OAuthProfileSettings.jsx": "b944c7439757a27837ac0bc980fbc8a0207f005acf3406d1c592b207626b33db",
+    "web/src/pages/project-settings/ProjectSettings.jsx": "c3fab93b6aad4568d602f44e494da7d0e4b77c17d2ee7429296473d42671a23b",
+    "web/src/pages/api-call/ApiCallPage.jsx": "47004f3e9a94e5379debbb7d4985dc25fcfc2eeab594ee41a7d696739f2cb747",
+    "web/src/pages/case-editor/CaseEditor.jsx": "d9ee86175bff8fe86fb346b65535ff8c28e6b282f128de9c0673603282108969",
+    "web/src/pages/pipeline-editor/PipelineEditor.jsx": "82f87a92eb34c93bd10e0dd3b9449ca0f15204aba0d27cd121fe32ea32d34dec",
+    "web/src/pages/pipeline-editor/PipelineAuthStatus.jsx": "a7041c744522a78e8dbc1da7987105997a4999d7fda72027c4a5df9a7a7f6631",
+    "web/src/styles.css": "af65d320c08f0b3f5c0c5bca8efadffc25c1418b38e9815438b12f456f09d9a1",
+    "web/vite.config.js": "4df6995d1f881eb22f54518cf00d2dd51468808f7ae6c08d5e0704c57cfbc064"
+  },
+  "preservedFailures": [
+    {
+      "scope": "Initial real concurrent manual refresh",
+      "result": "5 rotations instead of1; fixed by immediate409 for manual lease contenders",
+      "artifact": "/var/folders/zf/zg_4gtxn0p3_2pp9290vzycc0000gn/T/api3-parent-validation-44tihbj4/first-http-failure.json"
+    },
+    {
+      "scope": "Initial full Python inventory",
+      "result": "Migration/schema file inventory expectations updated for v6 and OAuth schema"
+    },
+    {
+      "scope": "Browser fixture path",
+      "result": "Parent harness /var alias mismatch after save; normalized fixture path and repeated save/reopen successfully"
+    },
+    {
+      "scope": "Browser connection display",
+      "result": "Stale state after automatic issuance; refresh on execution completion added and browser retested"
+    }
+  ],
+  "limitations": [
+    "No real external provider registration or production credentials used.",
+    "Production reverse-proxy access logs must remove callback query strings; no deployment performed.",
+    "Studio login and HTTP workspace context wiring remain COL-1/COL-2 work.",
+    "P0/P1/OAS-1 changes remain in their separate branches/worktrees and are not included in this develop-based branch.",
+    "Raw local test artifacts under temporary directories may be removed by the operating system."
+  ],
+  "cleanup": {
+    "studioAndProviderServer": "stopped",
+    "viteServer": "stopped",
+    "agentBrowserTabs": "closed",
+    "viewportOverride": "reset",
+    "finalServerLogSentinelScan": "passed",
+    "log": "/private/var/folders/zf/zg_4gtxn0p3_2pp9290vzycc0000gn/T/api3-parent-validation-1c5xu7my/server.log"
+  }
+}

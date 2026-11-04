@@ -355,7 +355,7 @@ class LoadTestOperationsTests(unittest.TestCase):
         value = detailed_fixture()
         value["endpointMetrics"] = [{**copy.deepcopy(value["endpointMetrics"][0]), "endpoint": "/" + "가" * 450 + chr(97 + i // 26 % 26) + chr(97 + i % 26) + chr(97 + i // 676)} for i in range(800)]
         value["summary"]["requests"] = 800
-        client = TestClient(app)
+        client = TestClient(app, base_url="http://127.0.0.1:8765")
         self.assertEqual(client.post("/api/load-tests/runs", json=value).status_code, 201)
         response = client.get("/api/load-tests/runs/bench-detail")
         # 800 long Unicode endpoints push the actual UTF-8 detail over 1 MiB.

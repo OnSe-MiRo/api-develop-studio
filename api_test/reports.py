@@ -32,13 +32,14 @@ class RunReport:
             if result.error_category == "request_timeout" or result.error and ("timed out" in result.error.lower() or "timeout" in result.error.lower() or "타임아웃" in result.error):
                 status, reason = "timeout", "request_timeout"
         elif status == "failed":
-            reason = "assertion_failed"
+            reason = "contract_failed" if result.contract and not result.contract["valid"] else "assertion_failed"
         self.data["targets"].append({
             "target": target, "caseId": result.case_id, "project": project,
             "caseReference": case_reference, "phase": phase,
             "startedAt": started_at, "finishedAt": now(), "status": status,
             "attempts": result.attempts, "httpStatus": result.response.status if result.response else None,
             "elapsedMs": result.response_time_ms, "errorCategory": reason,
+            **({"contract": dict(result.contract)} if result.contract is not None else {}),
             "assertions": [{"index": i, "passed": item.passed} for i, item in enumerate(result.assertion_results)],
         })
 
@@ -108,6 +109,7 @@ def execution_detail(targets, report, environment, actor):
         outcomes.append({
             **{key: item.get(key) for key in ('caseId', 'caseReference', 'project', 'phase', 'status',
                                              'httpStatus', 'elapsedMs', 'attempts', 'errorCategory')},
+            **({'contract': {key: item['contract'].get(key) for key in ('valid', 'issueCount', 'documentDigest')}} if isinstance(item.get('contract'), dict) else {}),
             'sourceKind': target['kind'] if target else None,
             'sourceReference': target['reference'] if target else None,
             'assertions': [{'index': a['index'], 'passed': a['passed']} for a in item.get('assertions', [])],

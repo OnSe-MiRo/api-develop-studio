@@ -18,7 +18,7 @@ from datetime import date, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import parse_qsl, urlparse, urlunparse
 
 from .request_profiles import select_environment, resolve_auth_profile
 from .authorization import AuthorizationError, apply_authorization, authorization_sensitive_values, sensitive_value_variants
@@ -62,6 +62,8 @@ class ProjectRequestSettings:
     variables: dict[str, str] = field(default_factory=dict)
     encrypted_variables: dict[str, str] = field(default_factory=dict)
     auth_profiles: dict[str, Any] = field(default_factory=dict)
+    environment_name: str = ""
+    contract_document: dict[str, Any] | None = None
 
 
 @dataclass
@@ -95,6 +97,8 @@ class CaseResult:
     sensitive_values: set[str] = field(default_factory=set)
     response_time_ms: float | None = None
     error_category: str | None = None
+    contract: dict[str, Any] | None = None
+    request_snapshot: dict[str, Any] | None = None
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -110,9 +114,11 @@ def read_json(path: Path) -> dict[str, Any]:
 
 
 def resolve_case_path(case_root: Path, reference: str) -> Path:
+    if not isinstance(reference,str) or '_workspaces' in reference.replace(chr(92),'/').split('/'):
+        raise CaseConfigurationError('Reserved workspace reference')
     candidate = (case_root / reference).resolve()
     root = case_root.resolve()
-    if root not in candidate.parents:
+    if root not in candidate.parents or "_workspaces" in candidate.relative_to(root).parts:
         raise CaseConfigurationError(f"Case path escapes root: {reference}")
     if not candidate.is_file():
         raise CaseConfigurationError(f"Case file not found: {reference}")
@@ -120,9 +126,11 @@ def resolve_case_path(case_root: Path, reference: str) -> Path:
 
 
 def resolve_attachment_path(file_root: Path, reference: str) -> Path:
+    if not isinstance(reference,str) or '_workspaces' in reference.replace(chr(92),'/').split('/'):
+        raise CaseConfigurationError('Reserved workspace attachment reference')
     candidate = (file_root / reference).resolve()
     root = file_root.resolve()
-    if root not in candidate.parents or not candidate.is_file():
+    if root not in candidate.parents or "_workspaces" in candidate.relative_to(root).parts or not candidate.is_file():
         raise CaseConfigurationError(f"Attachment file not found: {reference}")
     return candidate
 
@@ -175,7 +183,9 @@ def project_request_settings(case: dict[str, Any], project_root: Path, environme
         raise CaseConfigurationError("case.project must be a non-empty project JSON reference")
     project_path = resolve_case_path(project_root, project_reference)
     try:
-        project = select_environment(read_json(project_path), environment)
+        source_project = read_json(project_path)
+        selected_environment = environment or source_project.get("default_environment", "")
+        project = select_environment(source_project, environment)
     except ProjectVariableError as exc:
         raise CaseConfigurationError(str(exc)) from exc
     base_url_name = None if environment or project.get("default_environment") else case.get("base_url_name")
@@ -248,6 +258,14 @@ def project_request_settings(case: dict[str, Any], project_root: Path, environme
     except ProjectVariableError as exc:
         raise CaseConfigurationError(str(exc)) from exc
     no_proxy = not use_proxy
+    contract_document = None
+    config = case.get('contract_validation')
+    if isinstance(config, dict) and config.get('enabled') is True:
+        from .contracts import project_document, ContractError
+        try:
+            contract_document = project_document(source_project)
+        except (ContractError, ValueError, TypeError, AttributeError, RecursionError) as exc:
+            raise CaseConfigurationError('A valid saved project OpenAPI contract is required') from exc
     return ProjectRequestSettings(
         auth_profiles=project.get("auth_profiles", {}),
         base_url=urlunparse(parsed._replace(path=parsed.path.rstrip("/"))),
@@ -257,6 +275,8 @@ def project_request_settings(case: dict[str, Any], project_root: Path, environme
         verify_ssl=verify_ssl,
         variables=variables,
         encrypted_variables=encrypted_variables,
+        environment_name=selected_environment,
+        contract_document=contract_document,
     )
 
 
@@ -794,6 +814,9 @@ class ApiTestRunner:
         project_variables: dict[str, str] | None = None,
         encrypted_project_variables: dict[str, str] | None = None,
         auth_profiles: dict[str, Any] | None = None,
+        oauth_project_reference: str | None = None,
+        oauth_environment: str = "",
+        contract_document: dict[str, Any] | None = None,
     ) -> CaseResult:
         request_definition = case.get("request")
         expected = case.get("expected")
@@ -801,6 +824,14 @@ class ApiTestRunner:
             raise CaseConfigurationError("A case needs object-valued request and expected fields")
         if not isinstance(request_definition.get("url"), str):
             raise CaseConfigurationError("request.url is required")
+        modes = expected.get("validation_modes")
+        if modes is not None and not isinstance(modes, dict):
+            raise CaseConfigurationError("expected.validation_modes must be an object")
+        call_only = (modes or {}).get("call_only", False)
+        if not isinstance(call_only, bool):
+            raise CaseConfigurationError("expected.validation_modes.call_only must be true or false")
+        if call_only:
+            expected = {"validation_modes": {"call_only": True, "exact_body": False, "conditions": False}}
         _, validate_conditions = response_validation_modes(expected)
         validate_response_time_limit(expected)
         if validate_conditions:
@@ -815,8 +846,12 @@ class ApiTestRunner:
         from .test_data import resolve
         resolved_request = resolve(copy.deepcopy(request_definition), getattr(self, 'run_variables', {}))
         resolved_request = resolve_references(resolved_request, context or {})
+        profile_reference = resolved_request.get("auth_profile")
+        oauth_profile = None
         try:
             resolved_request = resolve_auth_profile(resolved_request, auth_profiles or {})
+            if isinstance(resolved_request.get("auth"), dict) and resolved_request["auth"].get("type") == "OAuth 2.0" and resolved_request["auth"].get("grantType"):
+                oauth_profile = resolved_request.pop("auth")
             case_plain, case_secret = stored_project_variables(case, case_id)
             plain = {**(project_variables or {}), **case_plain}
             encrypted = {**(encrypted_project_variables or {}), **case_secret}
@@ -837,15 +872,42 @@ class ApiTestRunner:
             from .authorization import sensitive_value_variants
             from .test_data import sensitive_strings
             sensitive_values.update(sensitive_value_variants(sensitive_strings(getattr(self, 'run_variables', {}))))
+            if oauth_profile is not None:
+                resolved_request["auth"] = oauth_profile
         except ProjectVariableError as exc:
             raise CaseConfigurationError(str(exc)) from exc
         resolved_request["url"] = resolve_request_url(resolved_request["url"], base_url)
+        prepared_contract = None
+        if not call_only and 'contract_validation' in case:
+            from .contracts.cases import prepare_case_contract
+            from .contracts import ContractError
+            try:
+                if case['contract_validation'].get('enabled') is True and not case.get('project'):
+                    raise ContractError('Project is required')
+                prepared_contract = prepare_case_contract(case['contract_validation'], contract_document,
+                    str(resolved_request.get('method', 'GET')), resolved_request['url'], base_url)
+            except (ContractError, AttributeError, TypeError, RecursionError) as exc:
+                raise CaseConfigurationError('Invalid case OpenAPI contract settings or operation') from exc
+        oauth_token = None
+        if oauth_profile is not None:
+            if not isinstance(profile_reference, str) or not profile_reference or not oauth_project_reference or not base_url:
+                raise CaseConfigurationError("OAuth 2.0 requires a saved project authentication profile")
+            if resolved_request["url"].startswith("http://") and not no_proxy and (proxy_url or proxy_urls):
+                raise CaseConfigurationError("OAuth loopback HTTP resource cannot use a proxy")
+            from .oauth_service import OAuthError, resource_token
+            try:
+                oauth_token = resource_token(oauth_project_reference, oauth_environment, profile_reference,
+                                             oauth_profile, encrypted_project_variables or {}, base_url,
+                                             resolved_request["url"])
+            except OAuthError as exc:
+                raise CaseConfigurationError(str(exc)) from exc
+            sensitive_values.update(sensitive_value_variants({oauth_token}))
         attempts = max(0, retry) + 1
         last_result: CaseResult | None = None
         for attempt in range(1, attempts + 1):
             result = self._run_once(
                 case_id, resolved_request, expected, attempt, proxy_url, verify_ssl,
-                file_root, proxy_urls, no_proxy, sensitive_values, timeout_seconds,
+                file_root, proxy_urls, no_proxy, sensitive_values, timeout_seconds, oauth_token, prepared_contract,
             )
             if result.status == "passed":
                 return result
@@ -859,7 +921,7 @@ class ApiTestRunner:
         self, case_id: str, request_definition: dict[str, Any], expected: dict[str, Any], attempt: int,
         proxy_url: str | None = None, verify_ssl: bool = True, file_root: Path | None = None,
         proxy_urls: dict[str, str] | None = None, no_proxy: bool = False, sensitive_values: set[str] | None = None,
-        timeout_seconds: float | None = None,
+        timeout_seconds: float | None = None, oauth_token: str | None = None, prepared_contract=None,
     ) -> CaseResult:
         method = str(request_definition.get("method", "GET")).upper()
         headers = {str(key): str(value) for key, value in request_definition.get("headers", {}).items()}
@@ -877,7 +939,7 @@ class ApiTestRunner:
         elif payload is not None:
             data = json.dumps(payload).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
-        auth = request_definition.get("auth")
+        auth = {"type": "Bearer Token", "token": oauth_token} if oauth_token is not None else request_definition.get("auth")
         try:
             authorized = apply_authorization(request_definition["url"], method, headers, auth, data)
         except AuthorizationError as exc:
@@ -886,12 +948,33 @@ class ApiTestRunner:
                 expected_definition=expected, sensitive_values=set(sensitive_values or ()) | authorization_sensitive_values(auth),
             )
         sensitive_values = sensitive_value_variants(set(sensitive_values or ())) | authorization_sensitive_values(auth)
+        # Direct credential headers/query parameters can also be echoed by a target.
+        credential_values = set()
+        parsed_url = urlparse(authorized.url)
+        for key, value in [*authorized.headers.items(), *parse_qsl(parsed_url.query)]:
+            normalized = re.sub(r"[^a-z0-9]", "", key.lower())
+            if any(part in normalized for part in ("authorization", "token", "secret", "password", "apikey", "cookie")) and value:
+                credential_values.add(value)
+                if normalized.endswith("authorization") and " " in value:
+                    credential_values.add(value.split(" ", 1)[1])
+        if parsed_url.password:
+            credential_values.add(parsed_url.password)
+        sensitive_values.update(sensitive_value_variants(credential_values))
+        request_snapshot = {"method": method, "url": authorized.url, "headers": dict(authorized.headers)}
+        for key in ("body", "text", "form_data"):
+            if key in request_definition:
+                request_snapshot[key] = copy.deepcopy(request_definition[key])
         request_timeout = self.timeout_seconds if timeout_seconds is None else timeout_seconds
         started_at = time.perf_counter()
         transport_options = {}
         if self.request_guard is not None:
             self.request_guard(authorized.url, method)
             transport_options["allow_redirects"] = False
+        if oauth_token is not None:
+            transport_options["allow_redirects"] = False
+            verify_ssl = True
+            if authorized.url.startswith("http://"):
+                no_proxy = True  # Prevent ambient HTTP_PROXY from receiving a local Bearer token.
         try:
             status, response_headers, raw_body, _elapsed = execute_http_call(
                 authorized.url, method=method, headers=authorized.headers, data=data,
@@ -905,6 +988,7 @@ class ApiTestRunner:
                 case_id, "error", attempt, error=str(exc),
                 error_category="request_timeout" if isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError) else "request_error",
                 request_definition=request_definition, expected_definition=expected,
+                request_snapshot=request_snapshot,
                 sensitive_values=set(sensitive_values or ()),
                 response_time_ms=(time.perf_counter() - started_at) * 1000,
             )
@@ -927,10 +1011,21 @@ class ApiTestRunner:
         if validate_conditions:
             assertion_results, assertion_differences = evaluate_assertions(expected.get("assertions"), response)
             differences.extend(assertion_differences)
+        contract = None
+        if prepared_contract is not None:
+            from .contracts import validate_response
+            document, options, document_digest = prepared_contract
+            verdict = validate_response(document, method, authorized.url, status, response_headers, body,
+                                        raw_body=raw_body, **options)
+            contract = {'valid': verdict['valid'], 'issueCount': len(verdict['issues']), 'documentDigest': document_digest}
+            for item in verdict['issues']:
+                differences.append(Difference('$.contract', 'valid', 'invalid', 'OpenAPI contract: ' + item['code']))
         return CaseResult(
             case_id, "passed" if not differences else "failed", attempt, response, differences,
             assertion_results=assertion_results,
             request_definition=request_definition, expected_definition=expected,
             sensitive_values=set(sensitive_values or ()),
             response_time_ms=response_time_ms,
+            request_snapshot=request_snapshot,
+            contract=contract,
         )

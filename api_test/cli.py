@@ -50,7 +50,7 @@ def _redact(value: Any, key: str = "", sensitive_values: set[str] | None = None)
     if isinstance(value, list):
         return [_redact(item, sensitive_values=sensitive_values) for item in value]
     if isinstance(value, str):
-        for secret in sensitive_values or ():
+        for secret in sorted(sensitive_values or (), key=len, reverse=True):
             if secret:
                 value = value.replace(secret, "***REDACTED***")
     return value
@@ -165,7 +165,15 @@ def _result_lines(result: CaseResult) -> list[str]:
             f"expected={_json_log_value(difference.expected, result.sensitive_values)}, "
             f"actual={_json_log_value(difference.actual, result.sensitive_values)}"
         )
-    if result.response:
+    if result.request_snapshot is not None:
+        call = {"caseId": result.case_id, "status": result.status, "attempts": result.attempts,
+                "mode": "call_only" if (result.expected_definition or {}).get("validation_modes", {}).get("call_only") else "validate",
+                "request": result.request_snapshot, "elapsedMs": result.response_time_ms,
+                "response": {"status": result.response.status, "headers": result.response.headers,
+                             "body": result.response.body} if result.response else None,
+                "error": result.error}
+        lines.append(f"  call_details={_json_log_value(call, result.sensitive_values)}")
+    elif result.response:
         lines.append(f"  actual_response={_json_log_value({'status': result.response.status, 'body': result.response.body}, result.sensitive_values)}")
     if result.status != "passed":
         request_value = result.request_definition or {}
@@ -248,6 +256,9 @@ def _run_case_with_project_settings(
         no_proxy=project_settings.no_proxy if project_settings else False,
         project_variables=project_settings.variables if project_settings else None,
         encrypted_project_variables=project_settings.encrypted_variables if project_settings else None,
+        oauth_project_reference=case_document.get("project"),
+        oauth_environment=project_settings.environment_name if project_settings else "",
+        contract_document=project_settings.contract_document if project_settings else None,
     )
 
 
@@ -396,6 +407,12 @@ def run_case_file(
 
 
 def main() -> int:
+    from api_test.request_scope import bind_context, runner_context
+    with bind_context(runner_context()):
+        return _main()
+
+
+def _main() -> int:
     parser = argparse.ArgumentParser(description="Run API test pipelines and direct case files.")
     parser.add_argument("pipelines", nargs="*", type=Path, help="One or more pipeline JSON files")
     parser.add_argument("--case-root", type=Path, default=Path("case"), help="Root directory containing test cases")
@@ -411,7 +428,7 @@ def main() -> int:
     args = parser.parse_args()
     report_result = RunReport(args.environment, args.run_id)
     if not args.case_references and not args.pipelines:
-        args.pipelines = [path for path in sorted(Path("pipelines").rglob("*.json")) if not is_disabled_example_pipeline(path)]
+        args.pipelines = [path for path in sorted(Path("pipelines").rglob("*.json")) if "_workspaces" not in path.relative_to(Path("pipelines")).parts and not is_disabled_example_pipeline(path)]
         if not args.pipelines:
             parser.error("no pipeline files found under pipelines/; provide a pipeline file or --case")
         print(f"No pipeline specified. Running all {len(args.pipelines)} pipeline file(s) under pipelines/.")
