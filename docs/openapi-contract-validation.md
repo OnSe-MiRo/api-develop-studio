@@ -252,3 +252,14 @@ allOf/내부참조로 분산된 명시적 object 타입과 primitive 필드 제�
 - feature/openapi-allof-header-objects, develop7dbaf91 기준 미커밋. 원격 푸시 없음.
 
 검증: 집중161개·실HTTP·생성 최신성/diff 통과. 전체 Python659개 실행에서658통과·기존 DB version 기대값1실패를 확인하고 기대값7 및 saved_run_results 테이블 확인으로 보완, 실제 PostgreSQL 결합 이관1개 재검증 통과. 이 테스트 수정 후 전체659개를 재실행한 것은 아니다. 프런트엔드/브라우저 재실행 없음.
+
+## 배열 헤더의 최상위 oneOf/anyOf (2026-11-04)
+
+각 분기가 명시적 array 또는 지원하는 array allOf이고 primitive 항목 타입이 같을 때 최상위 oneOf/anyOf를 배열로 디코딩한다. 내부 참조·중첩 union·nullable array/items 및 두 explode 표현을 지원한다.
+
+- 공통 항목 타입만 디코딩에 사용한다. items enum/범위·min/maxItems·uniqueItems 등의 분기 제약은 원래 schema로 검사한다. 일부 항목은 A분기, 나머지는 B분기에 맞는다는 이유로 전체 배열을 통과시키지 않는다.
+- [JSON Schema 조합 규칙](https://json-schema.org/understanding-json-schema/reference/combining)에 따라 배열 전체가 oneOf의 정확히 한 분기 또는 anyOf의 하나 이상 분기를 만족해야 한다. 중복일치 oneOf는 실패한다.
+- 혼합 항목 타입/비배열/타입 미정/조건부/prefixItems·순환/탐색한도 초과는 union 배열로 추론하지 않는다. 기존 직접 array의 디코딩과 원래 schema 검증은 유지한다. union 탐색은32단계/128방문, 각 분기의 기존 allOf/type 탐색 한도도 유지한다.
+- 객체 container union 및 고급 reference/dialect는 별도 범위다. feature/openapi-union-header-arrays, developebf7672 기준 미커밋이며 원격 푸시 없음.
+
+검증: 계약98개·저장 케이스/결과9개·runner49개·이력10개 합계166개, 실HTTP 정상/교차분기실패 및 생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
