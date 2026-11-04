@@ -15,7 +15,7 @@
 - 응답 schema: `openapi-schema-validator` 0.6.3, version별 nullable/JSON Schema 처리, format 및 read-context required 검사.
 - 구조 오류, 중복 operationId, 잘못된 참조는 오류로 차단한다. operationId/summary 누락은 조직 lint 경고다.
 - 응답은 정확한 status → `2XX` 등 범위 → `default` 순서로 선택한다. content type은 parameter를 제거하고 정확한 media type → `type/*` → `*/*` 순서로 선택한다.
-- 헤더 이름은 대소문자를 구별하지 않는다. required header 누락, scalar schema 및 simple 형식의 primitive 배열을 검사한다. header content와 복합/중첩 배열 직렬화는 미지원으로 실패한다.
+- 헤더 이름은 대소문자를 구별하지 않는다. required header 누락, scalar schema 및 simple 형식의 primitive 배열을 검사한다. JSON content 헤더도 지원한다. simple 형식의 평면 객체도 지원한다. 비JSON content와 중첩 직렬화는 미지원으로 실패한다.
 - HEAD·204·304는 본문이 없어야 한다. JSON media type의 잘못된 JSON은 schema 검증 전에 실패한다.
 - operation은 method·path template으로 연결하고 구체적인 path가 template보다 우선한다. server는 operation → path item → root 순으로 선택하고 각 operation 안에서만 prefix를 제거한다. 빈 override 배열은 상위 설정을 상속하지 않고 루트 경로로 해석한다. 모호하거나 매칭되지 않으면 실패한다.
 - 선언된 server 변수의 문자열 default를 치환한다. enum이 있으면 default가 enum에 속해야 한다. 빠른 호출의 serverVariables 문자열 map으로 명시값을 지정할 수 있다. 아래2026-10-24 계약을 따른다. 명세 위치가 없으면 치환 후 절대 HTTP(S) URL 및 `/`로 시작하는 URL을 지원한다. 선택적 `contractDocumentUrl`이 있으면 일반 상대 server도 이 문서 위치에 대해 해석한다. 문서 위치 정보가 없는 일반 상대 URL(`api/v2`)·query/fragment·미정의 변수는 실패 처리한다.
@@ -145,3 +145,27 @@ OpenAPI 3.0/3.1 Header Object의 `schema.type: array`를 지원한다. `style` �
 - 진단은 코드/위치만 제공하며 실제 헤더 값이나 enum 원문을 추가하지 않는다. 계약 실패는 기존 contract_failed 및 요약/명세digest 보고 규칙을 따른다.
 
 검증: 신규5개(두 버전·primitive4종·explode·참조·제약·비노출·실HTTP runner), 최종 전체 Python603개(skip0,217.717초), 생성 최신성 및 diff 검사 통과. 초기 fixture의 project 누락과 전용 DB 서비스 중지 오류를 보완한 후 전체를 재실행했다. UI/브라우저 재검증은 이번 backend 변경 범위에 포함하지 않는다.
+
+## JSON content 응답 헤더 (2026-11-04)
+
+Header Object의 `content`에 단일 JSON 미디어 타입을 선언한 경우 응답 헤더 문자열을 JSON으로 해석한 뒤 해당 schema를 검사한다. `schema`와 `content`의 동시 선언 또는 여러 content 항목은 기존 명세 lint에서 거부한다. 근거: [OpenAPI Parameter content 규칙](https://spec.openapis.org/oas/v3.1.0.html#parameter-object), [Header Object](https://spec.openapis.org/oas/v3.1.0.html#header-object).
+
+- OpenAPI3.0/3.1에서 application/json 및 구체적인 application/vnd.example+json 등 application 계열 +json을 지원한다. 미디어 타입은 대소문자를 무시하고 parameter를 분리한다. wildcard·XML·text 등 비JSON 타입은 unsupported_header_content다. 응답 본문의 Content-Type과 독립적으로 헤더 선언의 타입을 사용한다.
+- JSON 객체·배열(중첩 포함)·문자열·숫자·불리언·null을 기존 schema validator로 검사한다. JSON 모드에서는 simple 배열처럼 문자열 항목을 숫자로 변환하거나 쉼표로 분할하지 않는다. schema를 생략해도 올바른 JSON인지 검사한다.
+- 필수 헤더 누락은 missing_header, 문법 오류·빈 값·중복 JSON 객체 key·NaN/Infinity·float overflow는 invalid_header_json이다. 중복 key와 비유한 수 거부는 모호한 판정을 막기 위한 제품 정책이다. 오류에는 원문/실제 값/파서 예외 메시지를 포함하지 않는다.
+- 내부 Header/schema 참조와 기존 nullable/read-context/schema 제약을 유지한다. 빠른 호출·저장 케이스·파이프라인의 공통 검사기에 적용하며 보고서에는 기존 계약 요약만 저장한다.
+- 이 확장은 JSON content의 구조화 데이터 지원이다. simple 객체/중첩 직렬화, 비JSON content, 고급 reference/dialect 제한을 해제하지 않는다.
+
+검증: 계약51개(신규6개)·저장 케이스6개·runner49개·이력10개 합계116개 및 생성 최신성/diff 통과. 실제 HTTP runner 정상/타입실패와 빠른 호출 연결·보고서 비노출 확인. 이번 전체 Python/프런트엔드/브라우저 재실행 없음. feature/openapi-json-response-headers 미커밋, 원격 푸시 없음.
+
+## simple 객체 응답 헤더 (2026-11-04)
+
+OpenAPI3.0/3.1에서 `schema.type: object`와 생략/명시된 simple style을 지원한다. [공식 직렬화 예시](https://spec.openapis.org/oas/v3.1.0.html#style-examples)에 따라 explode=false(기본)는 `id,1,active,true`, explode=true는 `id=1,active=true`를 하나의 객체로 해석한다. 기존 JSON content 헤더 지원과 별개의 디코더다.
+
+- 명시한 primitive properties 및 primitive additionalProperties를 타입 변환한다. 내부 Header/schema/property 참조, required·필드 제약·minProperties/maxProperties·additionalProperties=false는 기존 schema validator가 검사한다. 추가속성 허용/생략 시 미선언 값은 문자열로 보존한다.
+- 각 key/value 양끝 space/tab을 제거한다. key는 대소문자를 구별한다. 빈 헤더 문자열은 빈 객체, 빈 value는 빈 문자열이다. explode=true는 첫 등호만 구분자로 사용한다. percent decoding·CSV 따옴표 해석을 하지 않는다.
+- 중복/빈 key, 홀수 key/value 개수, explode=true에서 등호 없는 항목은 invalid_header_serialization이다. 파서 오류에는 key/value 원문을 넣지 않는다.
+- 중첩 객체/배열, 타입 미지정 또는 union property, object-level allOf/anyOf/oneOf/patternProperties/dependentSchemas는 unsupported_header_serialization이다. 구조화된 중첩 데이터에는 앞선 JSON content 지원을 사용할 수 있다.
+- 기존 JSON 헤더 변경 위에 같은 feature/openapi-json-response-headers에서 미커밋으로 추가했다. 이번 커밋·병합·원격 푸시 없음.
+
+검증: 계약57개·저장케이스6개·runner49개·이력10개 합계122개 및 생성 최신성/diff 통과. 실제 HTTP runner 정상/실패·보고서 값 비노출 확인. 전체 Python/React/브라우저 재실행 없음.

@@ -1,5 +1,39 @@
 # API 개발 기능 진행 기록
 
+## JSON·simple 객체 헤더 로컬 병합 완료 (2026-11-04)
+
+- 사용자 승인으로 기능dcd272b 및 최신 develop 동기화1b83065를 로컬 develop에 병합했다. 최초 develop checkout은 다른 worktree 사용으로 거부됐으나 해당 작업 완료/깨끗한 상태 확인 후 그 worktree에서 병합했다. 기존 변경을 stash/삭제하지 않았다. 문서 충돌은 양쪽 기록을 보존했다.
+- 최신 develop 결합 후 계약57개·케이스 호출5개 통과. 기존 관련122개 증거 유지. 원격 푸시 없음. 다음은 text/plain content 헤더 검증이며 별도 feature 브랜치에서 진행한다.
+
+## OAS-2 simple 객체 응답 헤더 완료 (2026-11-04)
+
+- simple 객체의 기본/명시 explode=false key,value와 explode=true key=value를 지원했다. primitive 필드/추가속성 변환과 기존 schema 제약 검사, 빈 객체·빈 value 보존, 중복/빈 key·깨진 쌍의 값 비노출 진단을 추가했다. JSON content 헤더 미커밋 변경은 보존했다.
+- 검증: 계약57개(신규6개 포함,5.875초), 저장 케이스6개(2.796초), runner49개(0.074초), 이력10개(0.176초), 합계122개 통과. 실제 HTTP runner 정상/타입실패·contract_failed·보고서 원문 비노출, OpenAPI3.0/3.1·참조·두 explode 표현·오류 및 기존 JSON/배열 회귀 확인. 생성 최신성·diff 통과. 구현 테스트 실패 없음.
+- 범위: API/UI/DB 구조 변경 없음. 이번 전체 Python·프런트엔드 build·브라우저는 재실행하지 않았으며 과거 전체603개와 구분한다. 중첩/모호한 simple 직렬화·비JSON content·고급 reference 지원은 남아 있다.
+- Git: feature/openapi-json-response-headers·HEAD/develop06215a9 유지. JSON content와 이번 객체 헤더 변경 모두 미커밋, 커밋·병합·푸시·원본 worktree 변경 없음. 로그 /tmp/object-header-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 simple 객체 응답 헤더 시작 (2026-11-04)
+
+- 기존 JSON content 헤더 미커밋 변경을 보존하고 feature/openapi-json-response-headers에서 공통 헤더 검사 범위를 확장한다. 커밋·병합·푸시 없음.
+- simple 객체의 explode=false(기본) key,value 쌍과 explode=true key=value 쌍을 지원한다. 명시된 primitive properties 및 primitive additionalProperties를 변환하고 required/추가속성/개수/필드 제약은 기존 validator로 검사한다.
+- 중복/빈 key·깨진 쌍은 값 비노출 invalid_header_serialization. 중첩/union/타입 모호 필드·객체 composition/patternProperties는 unsupported_header_serialization으로 유지한다. URI decoding/CSV quoting은 추가하지 않는다.
+- 두 버전·두 표현·참조·오류/비노출·실HTTP runner 및 관련 회귀/생성 최신성을 검증한다. API/UI/DB 구조 변경 없음.
+
+## OAS-2 JSON content 응답 헤더 완료 (2026-11-04)
+
+- application/json 및 구체적인 application/*+json 단일 content 헤더를 파싱해 객체/배열/스칼라와 내부 참조 schema를 검증한다. 잘못된 JSON·중복 key·비유한 숫자는 invalid_header_json으로 값 비노출 거부한다. 기존 scalar/simple 배열·필수 헤더·본문 검증은 유지한다.
+- 검증: 계약51개(신규6개 포함,4.647초)·저장 케이스6개(2.581초)·runner49개(0.083초)·이력10개(0.214초), 합계116개 통과. 생성 최신성·diff 통과. 실제 loopback HTTP runner의 정상/잘못된 JSON 타입 및 contract_failed·보고서 원문 비노출, 빠른 호출 계약 연결을 확인했다. 구현 테스트 실패 없음.
+- 이번 단계는 backend 공통 검사기만 변경했다. 전체 Python/React build/실제 브라우저를 새로 실행한 것으로 표기하지 않는다. 이전 전체603개는 배열 단계 결과이며 JSON content 변경 전 결과다. UI/API schema/DB 구조 변경 없음.
+- 남은 범위: 비JSON content, simple 객체/중첩 직렬화, 고급 reference/dialect. 로컬 기능 확장을 전체 로드맵 완료로 보지 않는다.
+- Git: 배열 기능f763896·로컬 develop병합06215a9 완료. 새 feature/openapi-json-response-headers에 JSON 헤더 변경만 미커밋, 원격 푸시·원본 worktree 변경 없음.
+- 자료: [계약 범위](openapi-contract-validation.md), tests/test_contract_json_headers.py. 로그 /tmp/json-header-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 JSON content 응답 헤더 시작 (2026-11-04)
+
+- develop06215a9에서 feature/openapi-json-response-headers 분기. Header Object의 단일 content 미디어 타입 application/json 및 구체적인 application/*+json을 JSON으로 해석하고 기존 schema validator를 적용한다. 비JSON/wildcard 타입은 미지원으로 유지한다.
+- JSON 객체/배열/스칼라·내부 참조·필수 헤더 및 schema 제약을 검사한다. 잘못된 JSON, 중복 객체 key, NaN/Infinity·부동소수점 overflow는 값 비노출 invalid_header_json으로 거부한다. 기존 simple 배열과 본문 검증은 유지한다.
+- 검증 계획: 두 버전·미디어 타입·참조·잘못된 JSON·누락·값 비노출, 실제 HTTP runner, 관련 계약/runner/이력 회귀 및 생성 최신성. API schema/UI/저장 변경은 없다. 원격 푸시 없음, 새 단계는 미커밋.
+
 ## 실행 결과 기본 접기 로컬 develop 병합 완료 (2026-11-04)
 
 - 사용자 요청으로 `fix/result-disclosure`의 `4d47df5`를 로컬 develop에 충돌 없이 병합했다. API 호출 응답은 계속 표시하고 실행 상세와 저장 결과 목록만 기본 접기로 제공한다.
