@@ -1,5 +1,18 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## OAS-2 동종 oneOf/anyOf 헤더 완료 (2026-11-04)
+
+- 같은 primitive 타입을 결정할 수 있는 oneOf/anyOf 분기를 해석해 scalar·배열항목·객체필드/추가속성에 적용했다. 원래 schema로 일치 판정하므로 oneOf 중복일치는 거부하고 anyOf는 허용한다. 내부 참조·allOf 조합·nullable type 배열 및 기존 직접 type 동작 유지.
+- 검증: 계약82개(신규5개 포함,10.255초), 저장 케이스/결과9개(3.386초), runner49개(0.094초), 이력10개(0.183초), 합계150개 통과. 두 버전·분기 제약·중복일치·혼합/미지정 타입·순환/탐색한도·실제 HTTP runner 정상/분기실패 확인. 생성 최신성·diff 통과. 구현 테스트 실패 없음.
+- 전체 Python/프런트엔드/브라우저는 이번에 재실행하지 않았다. API/UI/DB 변경 없음. container-level 조합 병합·고급 참조/dialect 등은 별도이며 전체 로드맵 완료가 아니다.
+- Git: feature/openapi-union-header-types·HEADe21ba24 기준 미커밋. 커밋·병합·푸시·원본 worktree 변경 없음. 로그 /tmp/union-header-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 동종 oneOf/anyOf 헤더 시작 (2026-11-04)
+
+- develope21ba24에서 feature/openapi-union-header-types 분기. 모든 oneOf/anyOf 분기가 같은 primitive 타입을 명시/참조/allOf로 결정할 때만 그 타입으로 변환한다. scalar·배열 items·객체 필드/추가속성에 적용한다.
+- 최종 oneOf/anyOf 일치 판정은 원래 schema validator에 맡긴다. 타입 없는/혼합 타입/순환/한도 초과 분기는 자동 변환하지 않는다. null-only 분기 추론은 이번 비범위이며 기존 nullable type 배열은 유지한다. 32단계/128방문 한도 공유.
+- 두 버전·중첩/참조·oneOf 중복일치 거부·anyOf 허용·배열/객체·실HTTP 및 기존 회귀/생성 최신성 검증. UI/API/DB 변경 없음. 새 변경 미커밋, 커밋·병합·푸시 없음.
+
 ## allOf 헤더 타입 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로 기능 커밋fd84c4a를 로컬 develop에 충돌 없이 병합했다. 커밋 직전 계약77개(9.946초) 및 diff 검사 통과. 기존 관련145개·실HTTP·생성 최신성 증거는 해당 단계 기록대로 유지한다.

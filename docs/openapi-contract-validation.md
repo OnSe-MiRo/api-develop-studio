@@ -216,3 +216,15 @@ OpenAPI3.0/3.1에서 `schema.type: object`와 생략/명시된 simple style을 �
 - feature/openapi-allof-header-types, developef8fcd4 기준 미커밋. 원격 푸시 없음.
 
 검증: 계약77개·저장 케이스/결과9개·runner49개·이력10개 합계145개 및 생성 최신성/diff 통과. 실제 HTTP runner 정상/범위실패 확인. 전체 Python/React/브라우저 재실행 없음.
+
+## 동종 oneOf/anyOf primitive 헤더 (2026-11-04)
+
+모든 분기에서 같은 string/integer/number/boolean 타입을 결정할 수 있는 oneOf/anyOf를 simple 헤더 변환에 지원한다. 내부 참조·중첩 allOf와 조합할 수 있으며 scalar·배열 items·객체 properties/additionalProperties에 적용한다.
+
+- 타입만 해석하고 원래 schema로 검증한다. [JSON Schema 조합 규칙](https://json-schema.org/understanding-json-schema/reference/combining)에 따라 oneOf는 정확히 한 분기, anyOf는 하나 이상 분기를 만족해야 한다. 같은 타입이어도 oneOf 분기 두 개를 동시에 만족하면 실패한다.
+- 타입 미지정 분기, string/integer 등 혼합 분기, integer/number union, null-only 분기, 순환/탐색 한도 초과는 추론하지 않는다. 기존 nullable type 배열은 유지한다. allOf 내부의 integer∩number 추론과 union의 혼합 타입 판단을 구분한다.
+- 전체 재귀 탐색에32단계·128방문 제한을 공유한다. 모호한 배열 items/객체 필드는 unsupported_header_serialization, scalar는 자동변환 없이 원래 문자열로 검증한다. 직접 type이 있는 기존 경로는 유지한다.
+- 객체/배열 container-level 조합 병합, not/if 추론, 고급 참조/dialect는 별도 범위다.
+- feature/openapi-union-header-types, develope21ba24 기준 미커밋. 커밋·병합·원격 푸시 없음.
+
+검증: 계약82개·저장 케이스/결과9개·runner49개·이력10개 합계150개, 실HTTP 정상/실패 및 생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
