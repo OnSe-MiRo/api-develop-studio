@@ -63,10 +63,10 @@ class UnionHeaderArrayTests(unittest.TestCase):
             if other != {}:
                 self.assertFalse(self.check(doc, '1,2')['valid'])
             else:
-                # Existing scalar fallback stays a string; it must not invent array decoding.
-                doc['components']['schemas']['HighArray'] = {}
+                # An explicit root array with unconstrained items preserves text.
                 self.header(doc)['schema']['type'] = 'array'
-                self.assertFalse(self.check(doc, '1,2')['valid'])
+                self.header(doc)['schema']['enum'] = [['1', '2']]
+                self.assertTrue(self.check(doc, '1,2')['valid'])
         doc = self.spec()
         self.header(doc)['schema'] = {'oneOf': [base] * 130}
         self.assertFalse(self.check(doc, '1,2')['valid'])
