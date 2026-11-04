@@ -249,8 +249,48 @@ def _header_type(schema):
     return value
 
 
-def _header_scalar(schema, value):
-    schema_type = _header_type(schema)
+def _header_primitive_type(document, schema):
+    primitives = ('string', 'integer', 'number', 'boolean')
+    direct = _header_type(schema)
+    if direct in primitives:
+        return direct
+    types, active = set(), set()
+    remaining = 128
+
+    def collect(value, depth=0):
+        nonlocal remaining
+        remaining -= 1
+        if remaining < 0 or depth > 32 or id(value) in active:
+            raise ValueError('Header type traversal limit')
+        if value is True:
+            return
+        if not isinstance(value, dict) or any(key in value for key in ('anyOf', 'oneOf', 'not', 'if')):
+            raise ValueError('Ambiguous header type')
+        active.add(id(value))
+        try:
+            if '$ref' in value:
+                collect(pointer(document, value['$ref']), depth + 1)
+            if 'type' in value:
+                kind = _header_type(value)
+                if kind not in primitives:
+                    raise ValueError('Non-primitive header type')
+                types.add(kind)
+            for child in value.get('allOf', []):
+                collect(child, depth + 1)
+        finally:
+            active.remove(id(value))
+
+    try:
+        collect(schema)
+    except (ValueError, ContractError):
+        return None
+    if types == {'integer', 'number'}:
+        return 'integer'
+    return next(iter(types)) if len(types) == 1 else None
+
+
+def _header_scalar(schema, value, document):
+    schema_type = _header_primitive_type(document, schema)
     try:
         if schema_type == 'integer':
             return int(value)
@@ -273,7 +313,7 @@ def _header_object(document, header, schema, raw):
     if isinstance(additional, dict):
         additional = resolve(document, additional)
     decoders = list(properties.values()) + ([additional] if isinstance(additional, dict) else [])
-    if any(not isinstance(value, dict) or _header_type(value) not in
+    if any(not isinstance(value, dict) or _header_primitive_type(document, value) not in
            ('string', 'integer', 'number', 'boolean') for value in decoders):
         return None, 'unsupported_header_serialization'
     parts = raw.split(',') if raw else []
@@ -291,7 +331,7 @@ def _header_object(document, header, schema, raw):
         if not key or key in result:
             return None, 'invalid_header_serialization'
         decoder = properties.get(key, additional)
-        result[key] = _header_scalar(decoder, value)
+        result[key] = _header_scalar(decoder, value, document)
     return result, None
 
 
@@ -344,17 +384,17 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                 # Only homogeneous primitive arrays have an unambiguous decoder here.
                 if (header.get('style', 'simple') != 'simple' or 'prefixItems' in schema or
                         not isinstance(items, dict) or
-                        _header_type(items) not in ('string', 'integer', 'number', 'boolean')):
+                        _header_primitive_type(document, items) not in ('string', 'integer', 'number', 'boolean')):
                     errors.append(issue('unsupported_header_serialization', location))
                     continue
-                value = [_header_scalar(items, part.strip(' \t')) for part in value.split(',')]
+                value = [_header_scalar(items, part.strip(' \t'), document) for part in value.split(',')]
             elif isinstance(schema, dict) and _header_type(schema) == 'object':
                 value, code = _header_object(document, header, schema, value)
                 if code:
                     errors.append(issue(code, location))
                     continue
             else:
-                value = _header_scalar(schema, value)
+                value = _header_scalar(schema, value, document)
             errors.extend(schema_errors(document, header['schema'], value, location))
         if method.upper() == 'HEAD' or status in (204, 304):
             if raw_body not in (None, ''):
