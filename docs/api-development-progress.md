@@ -1,5 +1,19 @@
 # API 개발 기능 진행 기록
 
+## OAS-2 객체 container allOf 완료 (2026-11-04)
+
+- allOf/내부참조로 분산된 object/primitive 필드의 디코딩 정보를 수집했다. 각 분기에서 미선언 필드에 적용되는 additionalProperties schema도 타입 결정에 반영한다. 최종 원래 schema 검사로 required/개수/범위/분기별 additionalProperties=false 보존.
+- 집중 검증: 계약93개(신규6개 포함,14.335초), 저장 케이스/결과9개(4.327초), runner49개(0.092초), 이력10개(0.215초), 합계161개 통과. 두 버전·참조·폐쇄 schema 우회 방지·추가속성 교집합·순환/한도·실HTTP 정상/범위실패 및 생성 최신성/diff 통과.
+- 전체 Python659개(276.548초,skip0) 실행:658개 통과·기존 결합 PostgreSQL 이관 테스트1개 실패. 저장 결과 기능으로 schema version7이 되었는데 기존 기대값은6이었다. 현재 migration 및 test_migrations의7 기준을 확인해 기대값을7로 수정하고 saved_run_results 빈 테이블 확인을 추가했다. 수정 후 해당 실제 PostgreSQL 이관1개(1.256초) 재검증 통과. 테스트 기대값만 보완했으며 제품 migration은 변경하지 않았다. 전체659개를 이 수정 후 다시 실행한 것으로 표기하지 않는다.
+- UI/API/DB 구조 변경 없음. 프런트엔드/브라우저 재실행 없음. 운영 배포·전체 부하 및 나머지 고급 계약 범위는 별도다. 테스트용 tmpfs PostgreSQL/Redis는 실행 전 중지 상태였으며 검증 후 중지로 복원한다.
+- Git: 배열 allOf 기능da3acb7·로컬 develop병합7dbaf91 완료. 새 feature/openapi-allof-header-objects는7dbaf91 기준 미커밋. 원격 푸시·원본 worktree 변경 없음. 로그 /tmp/composed-object-{contracts,saved,runner,history,generated,python-all,migration-recheck}.log.
+
+## OAS-2 객체 container allOf 시작 (2026-11-04)
+
+- develop7dbaf91에서 feature/openapi-allof-header-objects 분기. allOf/내부참조의 명시적 object 타입과 primitive property 제약을 디코딩용으로 수집한다. 각 분기에서 미선언 필드에 적용되는 additionalProperties schema도 고려한다.
+- 최종 검증은 원래 schema로 수행해 분기별 additionalProperties=false, required, min/maxProperties 등을 보존한다. container union/조건부/patternProperties/unevaluatedProperties·순환·32단계/128방문 초과는 추론하지 않는다.
+- 두 버전·참조·폐쇄 schema 유지·타입 교집합·두 explode·실HTTP 및 관련 회귀/생성 최신성 검증. API/UI/DB 변경 없음. 새 변경 미커밋·원격 푸시 없음.
+
 ## 배열 allOf 헤더 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로da3acb7을 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약87개(12.007초)/diff 통과. 직전 관련155개·실HTTP·생성 최신성 증거 유지. 제품 코드는 기능 커밋과 동일하고 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은 객체 container allOf 지원이다.
