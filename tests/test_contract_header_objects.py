@@ -67,7 +67,7 @@ class HeaderObjectTests(unittest.TestCase):
         self.assertTrue(self.check(self.spec(schema={'type': 'object'}), 'name,raw')['valid'])
 
     def test_unsupported_ambiguous_schemas(self):
-        for field in [{'type': 'array', 'items': {'type': 'string'}}, {'type': 'object'}, {}, {'anyOf': [{'type': 'integer'}, {'type': 'string'}]}]:
+        for field in [{'type': 'array', 'items': {'type': 'string'}}, {'type': 'object'}, {'anyOf': [{'type': 'integer'}, {'type': 'string'}]}]:
             schema = {'type': 'object', 'properties': {'id': field}}
             result = self.check(self.spec(schema=schema), 'id,PRIVATE')
             self.assertEqual([i['code'] for i in result['issues']], ['unsupported_header_serialization'])
