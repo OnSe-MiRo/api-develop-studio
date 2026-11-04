@@ -341,3 +341,13 @@ OpenAPI3.1 prefixItems에서 true/false/빈 schema{}와 그 내부참조를 지�
 - boolean schema는3.1에서 지원하며3.0은 lint에서 거부한다. 빈 schema{}는3.0에서도 지원한다. container composition의 boolean 필드 추론 및 중첩 직렬화는 별도다.
 
 검증: 계약132개·저장케이스/결과9개·runner49개·이력10개 합계200개 및 실HTTP·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
+
+## patternProperties 객체 헤더 (2026-11-04)
+
+OpenAPI3.1 직접 simple 객체의 patternProperties를 지원한다. [JSON Schema 패턴 필드 규칙](https://json-schema.org/understanding-json-schema/reference/object#patternproperties)에 따라 정규식은 필드명 전체가 아닌 search로 매칭하며 자동 anchor를 추가하지 않는다.
+
+- properties와 모든 매칭 패턴의 제약을 디코딩 타입 결정에 함께 사용하고 최종 원래 schema로 전부 검증한다. properties/패턴 모두 미일치한 필드에만 additionalProperties를 적용한다.
+- 내부참조·단일 primitive/지원 조합·boolean/빈 schema를 지원한다. 제약끼리 타입이 충돌하거나 중첩/모호한 타입이면 unsupported_header_serialization으로 거부한다. false 패턴은 값이 있으면 원래 schema에서 실패한다.
+- 정규식은 현재 schema validator와 같은 Python re 의미를 사용한다. 유효하지 않은 정규식은 실패 처리한다. container composition 간 patternProperties 합성과3.0 지원은 추가하지 않았다. UI/API/DB 변경 없음.
+
+검증: 계약137개·저장케이스/결과9개·runner49개·이력10개 합계205개 및 실HTTP·생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.

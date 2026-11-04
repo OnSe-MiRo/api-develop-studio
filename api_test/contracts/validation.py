@@ -529,14 +529,18 @@ def _header_tuple(document, header, schema, raw):
 
 def _header_object(document, header, schema, raw):
     if header.get('style', 'simple') != 'simple' or any(
-            key in schema for key in ('allOf', 'anyOf', 'oneOf', 'patternProperties', 'dependentSchemas')):
+            key in schema for key in ('allOf', 'anyOf', 'oneOf', 'dependentSchemas')):
         return None, 'unsupported_header_serialization'
     properties = {key: resolve(document, value) for key, value in schema.get('properties', {}).items()}
     additional = schema.get('additionalProperties', True)
     if isinstance(additional, dict):
         additional = resolve(document, additional)
+    try:
+        patterns = [(re.compile(pattern), resolve(document, value)) for pattern, value in schema.get('patternProperties', {}).items()]
+    except re.error:
+        return None, 'unsupported_header_serialization'
     decoders = list(properties.values()) + ([additional] if isinstance(additional, dict) else [])
-    if any(not isinstance(value, bool) and value != {} and
+    if not patterns and any(not isinstance(value, bool) and value != {} and
            (not isinstance(value, dict) or _header_primitive_type(document, value) is None) for value in decoders):
         return None, 'unsupported_header_serialization'
     parts = raw.split(',') if raw else []
@@ -553,7 +557,16 @@ def _header_object(document, header, schema, raw):
         key, value = key.strip(' \t'), value.strip(' \t')
         if not key or key in result:
             return None, 'invalid_header_serialization'
-        decoder = properties.get(key, additional)
+        matches = ([properties[key]] if key in properties else []) + [candidate for pattern, candidate in patterns if pattern.search(key)]
+        if matches:
+            constraints = [candidate for candidate in matches if isinstance(candidate, dict) and candidate]
+            decoder = False if any(candidate is False for candidate in matches) else (
+                {'allOf': constraints} if len(constraints) > 1 else constraints[0] if constraints else True)
+        else:
+            decoder = additional
+        if not isinstance(decoder, bool) and decoder != {} and (
+                not isinstance(decoder, dict) or _header_primitive_type(document, decoder) is None):
+            return None, 'unsupported_header_serialization'
         result[key] = _header_scalar(decoder, value, document)
     return result, None
 

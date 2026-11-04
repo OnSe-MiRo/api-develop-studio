@@ -1,5 +1,22 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## patternProperties 헤더 커밋·푸시·병합 (2026-11-04)
+
+- 프로젝트 한정 사용자 승인으로 기능7365b96을 커밋하고 origin/feature/openapi-pattern-header-fields에 일반 푸시했다. 로컬 develop에 충돌 없이 병합하며 검증한 제품 코드와 동일하다.
+- 병합 커밋을 origin/develop에 일반 푸시하고 원격 SHA를 최종 확인한다. 관련205개·생성 최신성/diff 통과. 원본 worktree·운영 배포·브랜치 삭제·강제 푸시 없음.
+
+## OAS-2 patternProperties 헤더 검증 완료 (2026-11-04)
+
+- 직접 simple 객체에서 properties와 모든 매칭 패턴을 함께 타입 결정에 사용한다. additionalProperties는 모두 미일치한 필드에만 적용하며 원래 schema로 최종 검증한다. 내부참조·겹치는 패턴·boolean/빈 schema·타입충돌 처리 지원.
+- 검증: 계약137개(신규5개 포함,19.285초), 저장 케이스/결과9개(4.785초), runner49개(0.149초), 이력10개(0.354초), 합계205개 통과. 실HTTP 정상/범위실패·원문 비노출·비anchor 패턴·추가속성·3.0/잘못된 regex 거부 및 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- 전체 Python/프런트엔드/브라우저 재실행 없음. UI/API/DB 변경 없음. fetch 후 원격/로컬 develop3432832 일치, 프로젝트 승인대로 커밋·기능push·develop병합/push한다. 로그 /tmp/pattern-header-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 patternProperties 헤더 필드 시작 (2026-11-04)
+
+- develop3432832에서 feature/openapi-pattern-header-fields 분기. 직접 simple 객체의 patternProperties를 필드명에 search 매칭하고 properties/여러 패턴의 제약을 함께 타입 결정에 사용한다.
+- 추가속성 schema는 properties/패턴 모두에 미일치할 때만 적용한다. 최종 원래 schema로 모든 제약 검사, boolean/빈 패턴 schema 문자열 유지·거부도 지원한다. 충돌/중첩 타입은 미지원.
+-3.1 경계/중첩 매칭·폐쇄 schema·실HTTP 및 기존 회귀/생성 검증 후 프로젝트 승인대로 커밋/푸시/병합한다. UI/API/DB 변경 없음.
+
 ## boolean 객체 필드 커밋·푸시·병합 (2026-11-04)
 
 - 프로젝트 한정 사용자 승인으로 기능aaf642c를 커밋하고 origin/feature/openapi-boolean-object-fields에 일반 푸시했다. 로컬 develop에 충돌 없이 병합하며 검증한 제품 코드와 동일하다.
