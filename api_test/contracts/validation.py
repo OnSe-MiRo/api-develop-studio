@@ -218,6 +218,21 @@ def match_operation(document, method, url, base_url=None, server_variables=None,
     return matches[0][1:]
 
 
+def _header_scalar(schema, value):
+    schema_type = schema.get('type') if isinstance(schema, dict) else None
+    try:
+        if schema_type == 'integer':
+            return int(value)
+        if schema_type == 'number':
+            number = float(value)
+            return number if math.isfinite(number) else value
+        if schema_type == 'boolean' and value in ('true', 'false'):
+            return value == 'true'
+    except ValueError:
+        pass
+    return value
+
+
 def validate_response(document, method, url, status, headers, body, *, raw_body=None, base_url=None, server_variables=None, document_url=None):
     errors = [item for item in lint(document) if item['severity'] == 'error']
     if errors:
@@ -244,20 +259,17 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                 continue
             schema = resolve(document, header['schema'])
             value = normalized[name.lower()]
-            schema_type = schema.get('type') if isinstance(schema, dict) else None
-            try:
-                if schema_type == 'integer':
-                    value = int(value)
-                elif schema_type == 'number':
-                    number = float(value)
-                    value = number if math.isfinite(number) else value
-                elif schema_type == 'boolean' and value in ('true', 'false'):
-                    value = value == 'true'
-                elif schema_type == 'array':
+            if isinstance(schema, dict) and schema.get('type') == 'array':
+                items = resolve(document, schema.get('items', {}))
+                # Only homogeneous primitive arrays have an unambiguous decoder here.
+                if (header.get('style', 'simple') != 'simple' or 'prefixItems' in schema or
+                        not isinstance(items, dict) or
+                        items.get('type') not in ('string', 'integer', 'number', 'boolean')):
                     errors.append(issue('unsupported_header_serialization', location))
                     continue
-            except ValueError:
-                pass
+                value = [_header_scalar(items, part.strip(' \t')) for part in value.split(',')]
+            else:
+                value = _header_scalar(schema, value)
             errors.extend(schema_errors(document, header['schema'], value, location))
         if method.upper() == 'HEAD' or status in (204, 304):
             if raw_body not in (None, ''):
