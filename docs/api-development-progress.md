@@ -1,5 +1,18 @@
 # API 개발 기능 진행 기록
 
+## OAS-2 배열 container allOf 완료 (2026-11-04)
+
+- allOf/내부참조로 분산된 명시적 array 타입과 items 제약을 디코딩용으로 결합했다. 최종 원래 schema 검사로 minItems/maxItems/uniqueItems와 모든 항목 제약 보존. 두 버전·중첩·nullable·explode 및 기존 직접 array 경로 유지.
+- 검증: 계약87개(신규5개 포함,11.500초), 저장 케이스/결과9개(3.312초), runner49개(0.093초), 이력10개(0.355초), 합계155개 통과. 실HTTP 정상/중복항목 실패, 참조/제약 교집합·충돌/순환/방문한도 확인. 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- 이번 전체 Python/프런트엔드/브라우저 재실행 없음. API/UI/DB 구조 변경 없음. 객체 container 조합·배열 union/prefixItems·고급참조 등은 별도다.
+- Git: oneOf/anyOf 기능057de52·로컬 develop병합c1d0610 완료. 새 feature/openapi-allof-header-arrays는c1d0610 기준 미커밋. 원격 푸시·원본 worktree 변경 없음. 로그 /tmp/composed-array-{contracts,saved,runner,history,generated}.log.
+
+## OAS-2 배열 container allOf 시작 (2026-11-04)
+
+- developc1d0610에서 feature/openapi-allof-header-arrays 분기. 최상위 allOf·내부참조에 분산된 명시적 array 타입과 items 제약을 읽어 디코딩용 items allOf를 만든다. 최종 검증은 원래 schema로 수행한다.
+- minItems/maxItems/uniqueItems/enum 등 제약 보존. 직접 array 경로는 기존 동작 유지. container oneOf/anyOf/prefixItems/모호한 타입·순환·32단계/128방문 초과는 조합 추론하지 않는다.
+- 두 버전·참조·제약·충돌·실HTTP 및 관련 회귀/생성 최신성 검증. API/UI/DB 변경 없음. 새 변경 미커밋, 원격 푸시 없음.
+
 ## oneOf·anyOf 헤더 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로057de52를 로컬 develop에 충돌 없이 병합했다. 커밋 전 계약82개(10.330초)/diff 통과. 직전 관련150개·실HTTP·생성 최신성 증거 유지. 제품 코드는 기능 커밋과 동일하며 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음. 다음은 배열 container allOf 지원이다.

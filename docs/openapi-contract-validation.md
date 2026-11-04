@@ -228,3 +228,15 @@ OpenAPI3.0/3.1에서 `schema.type: object`와 생략/명시된 simple style을 �
 - feature/openapi-union-header-types, develope21ba24 기준 미커밋. 커밋·병합·원격 푸시 없음.
 
 검증: 계약82개·저장 케이스/결과9개·runner49개·이력10개 합계150개, 실HTTP 정상/실패 및 생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
+
+## 배열 헤더의 최상위 allOf (2026-11-04)
+
+최상위 allOf·내부참조에서 명시적인 array 타입과 items 제약을 모아 simple 헤더를 배열로 디코딩한다. 여러 items 제약은 디코딩용 allOf로만 결합하며 최종 검증에는 원래 schema를 사용한다. [JSON Schema items](https://json-schema.org/understanding-json-schema/reference/array)와 allOf의 교집합 의미를 유지한다.
+
+- OpenAPI3.0/3.1, 중첩 allOf/참조,3.1 nullable array/items 및 explode true/false를 지원한다. 단일 primitive 항목 타입을 결정할 수 있어야 한다.
+- minItems/maxItems/uniqueItems·각 items의 타입/범위/enum 등 원래 제약을 모두 검사한다. 타입없는 제약 분기는 삭제하지 않는다. integer/number 항목 교집합은 기존 정수 해석을 따른다.
+- container oneOf/anyOf/not/if/prefixItems·혼합 타입·순환·32단계/128방문 초과는 조합 추론하지 않는다. 기존 직접 array/items 디코딩 경로는 유지하며, 추론하지 못한 원래 schema를 느슨하게 바꾸거나 검증을 생략하지 않는다.
+- 빈 문자열 항목·URI 미디코딩·단순 CSV 비지원 등 기존 simple 배열 정책은 유지한다. 객체 container composition·고급 참조는 별도다.
+- feature/openapi-allof-header-arrays, developc1d0610 기준 미커밋. 원격 푸시 없음.
+
+검증: 계약87개·저장 케이스/결과9개·runner49개·이력10개 합계155개, 실HTTP 정상/중복실패 및 생성 최신성/diff 통과. 전체 Python/React/브라우저 재실행 없음.
