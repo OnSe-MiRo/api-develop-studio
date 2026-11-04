@@ -299,6 +299,44 @@ def _header_primitive_type(document, schema):
         return None
 
 
+def _header_allof_array_items(document, schema):
+    # This is a decoding view only; validate against the original schema below.
+    if not isinstance(schema, dict) or 'allOf' not in schema:
+        return None
+    active, types, items = set(), set(), []
+    remaining = 128
+
+    def collect(value, depth=0):
+        nonlocal remaining
+        remaining -= 1
+        if remaining < 0 or depth > 32 or id(value) in active:
+            raise ValueError('Header array traversal limit')
+        if value is True:
+            return
+        if not isinstance(value, dict) or any(key in value for key in ('anyOf', 'oneOf', 'not', 'if', 'prefixItems')):
+            raise ValueError('Unsupported array composition')
+        active.add(id(value))
+        try:
+            if '$ref' in value:
+                collect(pointer(document, value['$ref']), depth + 1)
+            if 'type' in value:
+                types.add(_header_type(value))
+            if 'items' in value:
+                items.append(value['items'])
+            for child in value.get('allOf', []):
+                collect(child, depth + 1)
+        finally:
+            active.remove(id(value))
+
+    try:
+        collect(schema)
+    except (ValueError, ContractError):
+        return None
+    if types != {'array'} or not items:
+        return None
+    return {'allOf': items}
+
+
 def _header_scalar(schema, value, document):
     schema_type = _header_primitive_type(document, schema)
     try:
@@ -389,8 +427,9 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                 continue
             schema = resolve(document, header['schema'])
             value = normalized[name.lower()]
-            if isinstance(schema, dict) and _header_type(schema) == 'array':
-                items = resolve(document, schema.get('items', {}))
+            composed_items = _header_allof_array_items(document, schema)
+            if isinstance(schema, dict) and (_header_type(schema) == 'array' or composed_items is not None):
+                items = composed_items if composed_items is not None else resolve(document, schema.get('items', {}))
                 # Only homogeneous primitive arrays have an unambiguous decoder here.
                 if (header.get('style', 'simple') != 'simple' or 'prefixItems' in schema or
                         not isinstance(items, dict) or
