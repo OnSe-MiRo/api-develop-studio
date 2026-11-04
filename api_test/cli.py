@@ -50,7 +50,7 @@ def _redact(value: Any, key: str = "", sensitive_values: set[str] | None = None)
     if isinstance(value, list):
         return [_redact(item, sensitive_values=sensitive_values) for item in value]
     if isinstance(value, str):
-        for secret in sensitive_values or ():
+        for secret in sorted(sensitive_values or (), key=len, reverse=True):
             if secret:
                 value = value.replace(secret, "***REDACTED***")
     return value
@@ -165,7 +165,15 @@ def _result_lines(result: CaseResult) -> list[str]:
             f"expected={_json_log_value(difference.expected, result.sensitive_values)}, "
             f"actual={_json_log_value(difference.actual, result.sensitive_values)}"
         )
-    if result.response:
+    if result.request_snapshot is not None:
+        call = {"caseId": result.case_id, "status": result.status, "attempts": result.attempts,
+                "mode": "call_only" if (result.expected_definition or {}).get("validation_modes", {}).get("call_only") else "validate",
+                "request": result.request_snapshot, "elapsedMs": result.response_time_ms,
+                "response": {"status": result.response.status, "headers": result.response.headers,
+                             "body": result.response.body} if result.response else None,
+                "error": result.error}
+        lines.append(f"  call_details={_json_log_value(call, result.sensitive_values)}")
+    elif result.response:
         lines.append(f"  actual_response={_json_log_value({'status': result.response.status, 'body': result.response.body}, result.sensitive_values)}")
     if result.status != "passed":
         request_value = result.request_definition or {}

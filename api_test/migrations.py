@@ -196,6 +196,17 @@ def _oauth_token_state(connection):
         connection.execute(statement)
 
 
+def _saved_run_results(connection):
+    connection.execute("""CREATE TABLE saved_run_results (
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+        user_id TEXT NOT NULL REFERENCES users(id), run_id TEXT NOT NULL,
+        project_reference TEXT NOT NULL, case_reference TEXT NOT NULL,
+        saved_at TEXT NOT NULL, status TEXT NOT NULL, snapshot TEXT NOT NULL,
+        PRIMARY KEY(workspace_id, user_id, run_id))""")
+    connection.execute("""CREATE INDEX saved_run_results_case ON saved_run_results
+        (workspace_id, user_id, project_reference, case_reference, saved_at)""")
+
+
 STUDIO_MIGRATIONS = (
     Migration(1, "collaboration schema", _create_collaboration_schema),
     Migration(2, "execution history schema", _create_execution_schema),
@@ -203,6 +214,7 @@ STUDIO_MIGRATIONS = (
     Migration(4, "load test results", _create_load_test_schema),
     Migration(5, "functional execution details", _execution_details),
     Migration(6, "encrypted OAuth token and one-time state", _oauth_token_state),
+    Migration(7, "explicitly saved case run results", _saved_run_results),
 )
 
 

@@ -23,6 +23,9 @@ from api_test.generated.models.sdk_generation_metadata import SdkGenerationMetad
 class RunJob(BaseModel):
     """Generated contract DTO. Additional document fields and explicit nulls are retained."""
     model_config = ConfigDict(extra='allow', populate_by_name=True, protected_namespaces=())
+    project: Optional[StrictStr] = None
+    case_reference: Optional[StrictStr] = Field(default=None, alias="caseReference")
+    saved_at: Optional[StrictStr] = Field(default=None, alias="savedAt")
     kind: Optional[StrictStr] = Field(default=None, description="SDK generation jobs use sdk_generation; existing functional run fields remain unchanged.")
     generation: Optional[SdkGenerationMetadata] = None
     run_id: StrictStr = Field(alias="runId")

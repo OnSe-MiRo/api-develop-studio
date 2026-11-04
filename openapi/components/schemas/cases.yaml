@@ -54,6 +54,7 @@ ExpectedResponse:
         type: object
         additionalProperties: true
     validation_modes:
+      description: call_only=true skips status, body, condition, time and contract checks. Missing call_only preserves legacy validation.
       type: object
       additionalProperties:
         type: boolean

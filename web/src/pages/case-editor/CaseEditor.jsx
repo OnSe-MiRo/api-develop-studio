@@ -7,6 +7,7 @@ import { OAuthProfileStatus } from '../../components/OAuthProfileStatus.jsx'
 import { JsonArea } from '../../components/JsonArea.jsx'
 import { CaseContractSettings, caseContractPayload } from './CaseContractSettings.jsx'
 import { AssertionEditor } from './AssertionEditor.jsx'
+import { SavedCaseResults } from './SavedCaseResults.jsx'
 import { RunResult } from '../../components/RunResult.jsx'
 import { TestSidebar } from '../../components/ProjectSidebar.jsx'
 import { asText, docValue, emptyFormDataRow, emptyAssertionRow, stringFormats, assertionFormRow, newCaseForm, responseVariablesFromJson, jsonFileName, caseName, groupDocOperationsByTag, api, uploadAttachment, parseJson, parseHeaders, caseSignature, splitRequestUrl, appendParams } from '../../utils/studio.js'
@@ -185,6 +186,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
         headers: Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n'),
         body: request.text ?? (request.body === undefined ? '' : JSON.stringify(request.body, null, 2)), bodyMode: Array.isArray(request.form_data) ? 'form-data' : request.text !== undefined ? 'text' : 'json', formData, expectedStatus: String(expected.status ?? 200),
         strict: expected.strict ?? true, expectedBody: data._expectedBodyRaw ?? (expected.body === undefined ? '' : JSON.stringify(expected.body, null, 2)),
+        callOnly: validationModes.call_only === true,
         validateExact: typeof validationModes.exact_body === 'boolean' ? validationModes.exact_body : expected.body !== undefined,
         validateConditions: typeof validationModes.conditions === 'boolean' ? validationModes.conditions : Array.isArray(expected.assertions) && expected.assertions.length > 0,
         assertions: Array.isArray(expected.assertions) ? expected.assertions.map(assertionFormRow) : [], secretVariables,
@@ -230,7 +232,7 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       validation_modes: { exact_body: form.validateExact, conditions: form.validateConditions },
     }
     const timeoutText = asText(form.timeout).trim()
-    const responseTimeText = asText(form.maxResponseTimeMs).trim()
+    const responseTimeText = form.callOnly ? '' : asText(form.maxResponseTimeMs).trim()
     if (responseTimeText) {
       const limit = Number(responseTimeText)
       if (!Number.isFinite(limit) || limit <= 0) throw new Error('최대 응답 시간은 0보다 큰 숫자여야 합니다.')
@@ -238,54 +240,59 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
     }
     const timeout = timeoutText ? Number(timeoutText) : undefined
     if (timeout !== undefined && (!Number.isFinite(timeout) || timeout <= 0)) throw new Error('API timeout은 0보다 큰 초 단위 숫자여야 합니다.')
-    if (!Number.isInteger(expected.status)) throw new Error('Expected status는 정수여야 합니다.')
-    const expectedBody = parseJson(form.expectedBody, 'Expected body')
-    if (form.validateExact && expectedBody === undefined) throw new Error('기대 응답 일치 검증을 사용하려면 Expected body를 입력하세요.')
-    if (expectedBody !== undefined) expected.body = expectedBody
-    if (form.validateConditions && !form.assertions.length) throw new Error('변수별 조건 검증을 사용하려면 조건을 하나 이상 추가하세요.')
-    if (form.assertions.length) expected.assertions = form.assertions.map((assertion, index) => {
-      const row = index + 1
-      const path = asText(assertion.path).trim()
-      if (!/^(?:\$\.)?(?:body(?:\.(?:[A-Za-z_][\w-]*|\d+))*|status)$/.test(path)) throw new Error(`조건 ${row}의 응답 경로는 body.age, body.items.0 또는 status 형식이어야 합니다.`)
-      const result = { path, operator: assertion.operator }
-      const numberValue = (value, label, integer = false) => {
-        if (asText(value).trim() === '') throw new Error(`조건 ${row}의 ${label}을(를) 입력하세요.`)
-        const parsed = Number(value)
-        if (!Number.isFinite(parsed) || (integer && (!Number.isInteger(parsed) || parsed < 0))) throw new Error(`조건 ${row}의 ${label}은(는) ${integer ? '0 이상의 정수' : '숫자'}여야 합니다.`)
-        return parsed
-      }
-      if (['gt', 'gte', 'lt', 'lte'].includes(assertion.operator)) result.value = numberValue(assertion.value, '기준값')
-      if (assertion.operator === 'between' || assertion.operator === 'length_between') {
-        const integer = assertion.operator === 'length_between'
-        result.min = numberValue(assertion.min, '최솟값', integer)
-        result.max = numberValue(assertion.max, '최댓값', integer)
-        if (result.min > result.max) throw new Error(`조건 ${row}의 최솟값은 최댓값보다 클 수 없습니다.`)
-        if (assertion.operator === 'between') {
-          result.include_min = assertion.includeMin
-          result.include_max = assertion.includeMax
+    if (!form.callOnly) {
+      if (!Number.isInteger(expected.status)) throw new Error('Expected status는 정수여야 합니다.')
+      const expectedBody = parseJson(form.expectedBody, 'Expected body')
+      if (form.validateExact && expectedBody === undefined) throw new Error('기대 응답 일치 검증을 사용하려면 Expected body를 입력하세요.')
+      if (expectedBody !== undefined) expected.body = expectedBody
+      if (form.validateConditions && !form.assertions.length) throw new Error('변수별 조건 검증을 사용하려면 조건을 하나 이상 추가하세요.')
+      if (form.assertions.length) expected.assertions = form.assertions.map((assertion, index) => {
+        const row = index + 1
+        const path = asText(assertion.path).trim()
+        if (!/^(?:\$\.)?(?:body(?:\.(?:[A-Za-z_][\w-]*|\d+))*|status)$/.test(path)) throw new Error(`조건 ${row}의 응답 경로는 body.age, body.items.0 또는 status 형식이어야 합니다.`)
+        const result = { path, operator: assertion.operator }
+        const numberValue = (value, label, integer = false) => {
+          if (asText(value).trim() === '') throw new Error(`조건 ${row}의 ${label}을(를) 입력하세요.`)
+          const parsed = Number(value)
+          if (!Number.isFinite(parsed) || (integer && (!Number.isInteger(parsed) || parsed < 0))) throw new Error(`조건 ${row}의 ${label}은(는) ${integer ? '0 이상의 정수' : '숫자'}여야 합니다.`)
+          return parsed
         }
-      }
-      if (assertion.operator === 'type') {
-        result.value = assertion.value || 'number'
-        if (result.value === 'string') {
-          result.format = assertion.format || 'none'
-          if (!stringFormats.some(([value]) => value === result.format)) throw new Error(`조건 ${row}의 문자열 format을 선택하세요.`)
-          if (result.format === 'custom') {
+        if (['gt', 'gte', 'lt', 'lte'].includes(assertion.operator)) result.value = numberValue(assertion.value, '기준값')
+        if (assertion.operator === 'between' || assertion.operator === 'length_between') {
+          const integer = assertion.operator === 'length_between'
+          result.min = numberValue(assertion.min, '최솟값', integer)
+          result.max = numberValue(assertion.max, '최댓값', integer)
+          if (result.min > result.max) throw new Error(`조건 ${row}의 최솟값은 최댓값보다 클 수 없습니다.`)
+          if (assertion.operator === 'between') {
+            result.include_min = assertion.includeMin
+            result.include_max = assertion.includeMax
+          }
+        }
+        if (assertion.operator === 'type') {
+          result.value = assertion.value || 'number'
+          if (result.value === 'string') {
+            result.format = assertion.format || 'none'
+            if (!stringFormats.some(([value]) => value === result.format)) throw new Error(`조건 ${row}의 문자열 format을 선택하세요.`)
+            if (result.format === 'custom') {
+              result.pattern = asText(assertion.pattern).trim()
+              if (!result.pattern) throw new Error(`조건 ${row}의 정규식을 입력하세요.`)
+            }
+          }
+        }
+        if (assertion.operator === 'format') {
+          result.value = assertion.value || 'none'
+          if (!stringFormats.some(([value]) => value === result.value)) throw new Error(`조건 ${row}의 형식을 선택하세요.`)
+          if (result.value === 'custom') {
             result.pattern = asText(assertion.pattern).trim()
             if (!result.pattern) throw new Error(`조건 ${row}의 정규식을 입력하세요.`)
           }
         }
-      }
-      if (assertion.operator === 'format') {
-        result.value = assertion.value || 'none'
-        if (!stringFormats.some(([value]) => value === result.value)) throw new Error(`조건 ${row}의 형식을 선택하세요.`)
-        if (result.value === 'custom') {
-          result.pattern = asText(assertion.pattern).trim()
-          if (!result.pattern) throw new Error(`조건 ${row}의 정규식을 입력하세요.`)
-        }
-      }
-      return result
-    })
+        return result
+      })
+    } else {
+      delete expected.status
+      expected.validation_modes = { call_only: true, exact_body: false, conditions: false }
+    }
     const secret = {}
     const names = new Set()
     form.secretVariables.forEach((item, index) => {
@@ -298,10 +305,10 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
       else if (item.configured) secret[name] = { preserve: true }
       else throw new Error(`케이스 보안 변수 ${name}의 값을 입력하세요.`)
     })
-    return { ...caseContractPayload(form), project: projectRef, ...(form.specSource ? { spec_source: form.specSource } : {}), ...(form.baseUrlName ? { base_url_name: form.baseUrlName } : {}), ...(timeout === undefined ? {} : { timeout }), request, expected, variables: { plain: form.plainVariables || {}, secret } }
+    return { ...(form.callOnly ? {} : caseContractPayload(form)), project: projectRef, ...(form.specSource ? { spec_source: form.specSource } : {}), ...(form.baseUrlName ? { base_url_name: form.baseUrlName } : {}), ...(timeout === undefined ? {} : { timeout }), request, expected, variables: { plain: form.plainVariables || {}, secret } }
   }
 
-  const casePayload = async () => ({ ...(await document()), _expectedBodyRaw: form.expectedBody })
+  const casePayload = async () => ({ ...(await document()), _expectedBodyRaw: form.callOnly ? '' : form.expectedBody })
 
   const save = async () => {
     try {
@@ -347,7 +354,15 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
           {requestTab === 'Body' && <div><div className="body-mode"><button className={form.bodyMode === 'text' ? 'active' : ''} onClick={() => set('bodyMode', 'text')}>Text</button><button className={form.bodyMode === 'json' ? 'active' : ''} onClick={() => set('bodyMode', 'json')}>raw JSON</button><button className={form.bodyMode === 'form-data' ? 'active' : ''} onClick={() => set('bodyMode', 'form-data')}>form-data</button></div>{form.bodyMode === 'form-data' ? <><div className="form-data-header"><span>Key</span><span>Type</span><span>Value / File</span><span /></div>{form.formData.map((item, index) => <div className="form-data-row" key={index}><input value={item.key} placeholder="file" onChange={event => updateFormData(index, 'key', event.target.value)} /><select value={item.kind} onChange={event => updateFormData(index, 'kind', event.target.value)}><option value="text">Text</option><option value="file">File</option></select>{item.kind === 'file' ? <label className="file-picker"><input type="file" onChange={event => updateFormData(index, 'file', event.target.files?.[0] || null)} /><span>{item.file?.name || item.filename || '파일 선택'}</span></label> : <input value={item.value} placeholder="value" onChange={event => updateFormData(index, 'value', event.target.value)} />}<button className="icon" onClick={() => removeFormData(index)}>×</button></div>)}<button className="text-button" onClick={() => setForm(current => ({ ...current, formData: [...current.formData, emptyFormDataRow()] }))}>＋ form-data 추가</button><p className="hint">선택한 파일은 저장·재실행할 수 있도록 <code>case/{'{tag}'}/{'{api_name}'}/files/</code>에 보관됩니다. multipart Content-Type은 자동으로 설정됩니다.</p></> : <JsonArea value={form.body} onChange={value => set('body', value)} placeholder={'{\n  "name": "Ada"\n}'} />}</div>}
         </div>
       </section>
-      <CaseContractSettings form={form} set={set} />
+      <section className="card">
+        <h2>실행 방식</h2>
+        <div className="validation-methods">
+          <label className={`validation-method ${form.callOnly ? 'selected' : ''}`}><input type="radio" name="execution-mode" checked={form.callOnly} onChange={() => set('callOnly', true)} /><span><strong>API 호출만</strong><small>상태 코드·본문을 검증하지 않고 요청과 응답을 확인합니다.</small></span></label>
+          <label className={`validation-method ${!form.callOnly ? 'selected' : ''}`}><input type="radio" name="execution-mode" checked={!form.callOnly} onChange={() => set('callOnly', false)} /><span><strong>응답 검증</strong><small>기대 상태 코드와 선택한 응답 조건을 검사합니다.</small></span></label>
+        </div>
+        {form.callOnly && <p className="hint">4xx·5xx도 수신한 응답으로 표시합니다. 연결 실패와 타임아웃은 실행 오류입니다.</p>}
+      </section>
+      {!form.callOnly && <><CaseContractSettings form={form} set={set} />
       <section className="card">
         <div className="section-header"><div><p className="eyebrow">ASSERTION</p><h2>기대 응답</h2></div></div>
         <div className="validation-method-section"><strong>검증 방법</strong><p className="hint">두 방법 중 하나만 선택하거나 둘 다 선택할 수 있습니다. Expected status는 선택과 관계없이 항상 검증합니다.</p><div className="validation-methods"><label className={`validation-method ${form.validateExact ? 'selected' : ''}`}><input type="checkbox" checked={form.validateExact} onChange={event => set('validateExact', event.target.checked)} /><span><strong>기대 응답 일치</strong><small>Expected body와 실제 응답의 값·구조를 비교합니다.</small></span></label><label className={`validation-method ${form.validateConditions ? 'selected' : ''}`}><input type="checkbox" checked={form.validateConditions} onChange={event => set('validateConditions', event.target.checked)} /><span><strong>변수별 조건</strong><small>선택한 변수의 범위·타입·형식·존재·길이를 검사합니다.</small></span></label></div></div>
@@ -356,8 +371,10 @@ function CaseEditor({ refresh, projectRef, project, caseReference, onNavigate, o
         {(form.validateExact || form.validateConditions) && <><div className="expected-body-heading"><strong>{form.validateExact ? form.validateConditions ? 'Expected body / 변수 예시 JSON' : 'Expected body' : '변수 예시 JSON'}</strong><span>{form.validateExact ? form.validateConditions ? '일치 검증과 변수 조건 선택에 사용' : '일치 검증에 사용' : '변수 조건 선택에 사용'}</span></div><JsonArea value={form.expectedBody} onChange={value => set('expectedBody', value)} placeholder={'{\n  "id": 1\n}'} /></>}
         {form.validateConditions && <AssertionEditor assertions={form.assertions} variables={responseVariables} enabled onAdd={addAssertion} onUpdate={updateAssertion} onConfirm={confirmAssertion} onSelectVariable={selectAssertionVariable} onRemove={removeAssertion} />}
       </section>
+      </>}
       <div className="case-run-action"><button className="primary" disabled={busy} onClick={runOnly}>실행</button></div>
       {notice && <p className="notice">{notice}</p>}<RunResult result={result} onCancel={cancelRun} onClose={() => setResult(null)} />
+      <SavedCaseResults projectRef={projectRef} caseReference={selected || caseRef} result={result} />
     </main>
   </div>
 }
