@@ -193,3 +193,15 @@ OpenAPI3.0/3.1에서 `schema.type: object`와 생략/명시된 simple style을 �
 - 기존 text/plain 미커밋 변경 위에서 같은 feature/openapi-text-response-headers에 추가했다. 커밋·병합·푸시 없음.
 
 검증: 계약66개·저장 케이스/결과9개·runner49개·이력10개 합계134개, 실제 HTTP nullable 배열 정상/실패, 생성 최신성/diff 통과. 최초 fixture schema 이름 충돌 수정 후 관련 전체 재검증했다. 이번 전체 Python/React/브라우저 재실행 없음.
+
+## JSON 응답 본문 파싱 보완 (2026-11-04)
+
+선택한 응답 미디어 정의에 schema가 없어도 실제 Content-Type이 application/json 또는 +json이고 raw body가 전달되면 JSON 문법을 검사한다. 헤더와 본문은 같은 strict parser를 사용한다.
+
+- 문법 오류/빈 본문, NaN/Infinity, float 범위 초과, 중복 객체 key, 파서가 처리할 수 없는 과도한 중첩은 값 비노출 invalid_json으로 거부한다. 위치는 #/response/body이며 실제 값/키/예외 메시지를 추가하지 않는다.
+- [RFC8259](https://www.rfc-editor.org/rfc/rfc8259.html)는 NaN/Infinity를 허용하지 않는다. 중복 key 거부 및 float 범위 제한은 명확한 판정을 위한 제품 정책이다. 중복 key 거부가 모든 JSON 구현의 필수 동작이라고 주장하지 않는다.
+- schema가 있으면 파싱 후 기존 validator로 검사한다. JSON null/스칼라/객체/배열과 vendor +json 및 wildcard로 선택된 미디어 정의를 지원한다.
+- HEAD/204/304의 본문 금지 규칙, 비JSON 본문, 계약 opt-out 실행은 유지한다. raw body 없이 이미 파싱된 값만 전달한 내부 호출은 기존 schema 검사만 수행하므로 중복 키나 원래 문법은 복구·검사할 수 없다. 실제 빠른 호출/runner는 원문을 전달한다.
+- fix/openapi-json-response-validation에서 미커밋으로 개발했으며 원격 푸시는 하지 않았다.
+
+검증: 계약72개·저장 케이스/결과9개·runner49개·이력10개 합계140개, 실제 HTTP opt-in/opt-out·빠른 호출 연결·보고서 비노출 및 생성 최신성/diff 통과. 최초 깊이 오류 fixture 가정을 바로잡고 재검증했다. 전체 Python/React/브라우저 재실행 없음.
