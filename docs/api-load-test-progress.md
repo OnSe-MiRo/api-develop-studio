@@ -1,5 +1,11 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## 미병합 브랜치 실제 변경 감사·통합 시작 (2026-11-04)
+
+- 로컬 미병합 기능6개를 commit/range-diff·현재 구현과 비교했다. quick/dashboard/P0는 이미 이식됐고 baseline의 제품 코드는ebf7672와 동일하다. 추가 진행 기록22줄은 일반 병합으로 보존하고 중복 제품 구현은 최신 상태를 유지한 이력 병합으로 연결한다.
+- 실제 미반영 영문 README 개요는 main 전용 설명을 최신 FastAPI/저장소/인증 구성에 맞춰 README.en.md로 반영하고 기존 한국어 README는 링크만 추가한다. 원본 worktree의 미커밋3파일은 별도 SHA 기록 후 보존한다.
+- [브랜치별 근거](legacy-branch-integration-audit.md). main/원격 브랜치는 변경하지 않고 별도 feature/legacy-branch-integration에서 검증 후 develop에 병합한다. 전체 Python/프런트엔드·build·생성/k6모델 및 제품 tree 동일성을 확인한다.
+
 ## 객체 oneOf·anyOf 헤더 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로 기능8e0a277을 로컬 develop에 충돌 없이 병합했다. 커밋 직전 계약103개(15.399초)/diff 검사 통과. 기존 관련171개·실HTTP·생성 최신성 증거는 해당 단계 기록대로 유지한다.
