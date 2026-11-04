@@ -81,10 +81,25 @@ def walk(value, path='#', depth=0):
 
 
 def local_path(parent, reference):
-    parsed = urlsplit(reference)
-    if parsed.scheme or parsed.netloc or parsed.query or '\\' in reference:
+    if (not isinstance(parent, str) or not isinstance(reference, str) or
+            any(ord(char) < 32 or ord(char) == 127 for char in parent + reference)):
+        raise ContractError('Invalid local reference path')
+    try:
+        parsed = urlsplit(reference)
+    except ValueError:
+        raise ContractError('Invalid local reference path') from None
+    if parsed.scheme or parsed.netloc or parsed.query or '\\' in reference or reference.startswith(' '):
         raise ContractError('External references are disabled')
-    path = posixpath.normpath(posixpath.join(posixpath.dirname(parent), unquote(parsed.path))) if parsed.path else parent
+    if re.search(r'%(?![0-9A-Fa-f]{2})', parsed.path):
+        raise ContractError('Invalid local reference encoding')
+    try:
+        decoded = unquote(parsed.path, encoding='utf-8', errors='strict')
+    except UnicodeError:
+        raise ContractError('Invalid local reference encoding') from None
+    if any(char in decoded + parent for char in ('\\', ':')) or any(
+            ord(char) < 32 or ord(char) == 127 for char in decoded):
+        raise ContractError('Invalid local reference path')
+    path = posixpath.normpath(posixpath.join(posixpath.dirname(parent), decoded)) if decoded else parent
     if path.startswith('/') or path == '..' or path.startswith('../') or PurePosixPath(path).suffix.lower() not in {'.json', '.yaml', '.yml'}:
         raise ContractError('Reference must stay inside the document directory')
     fragment = _pointer_fragment('#' + parsed.fragment)

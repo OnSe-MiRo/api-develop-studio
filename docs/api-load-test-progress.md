@@ -1,5 +1,18 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## OAS-2 로컬 참조 파일 경로 보완 완료 (2026-11-04)
+
+- 잘못된 percent/UTF-8·encoded backslash·drive colon·NUL이 허용되는5경로를 재현 후 엄격한 단일 디코딩/경로 검사로 수정했다. raw 제어문자 제거에 따른 다른 경로 선택도 차단한다. 정상 한글/공백/percent 파일명과 루트 내부 상대참조는 유지한다.
+- 검증: 계약114개(신규5개 포함,16.094초), release/portal30개(8.214초), 편집20개(0.604초), SDK18개(0.583초), 저장 케이스/결과9개(3.644초), 합계191개 통과. 두 버전 bundle/local loader 동일성, root/external 경계·오류 원문 비노출·잘못된 참조의 대상 파일 read 전 차단 확인. 생성 최신성/diff 통과. 구현 테스트 실패 없음.
+- UI/API/DB 구조 변경 없음. 이번 전체 Python/프런트엔드/브라우저/Windows native 실행 재검증 없음. 직전 전체669개는 이번 수정 전 결과다.
+- Git: fix/openapi-local-reference-paths·HEADb02e6d8 기준 미커밋. 커밋·병합·푸시·원본 worktree 변경 없음. 로그 /tmp/local-path-{contracts,release,editor,sdk,saved,generated}.log.
+
+## OAS-2 로컬 참조 파일 경로 보완 시작 (2026-11-04)
+
+- developb02e6d8에서 fix/openapi-local-reference-paths 분기. 기존 local_path가 잘못된%/UTF-8·encoded backslash·drive colon·NUL을 허용하는5경로를 재현했다.
+- URI 파일 경로를 엄격한 UTF-8로1회 디코딩하고 raw/decoded 제어문자·역슬래시·colon을 거부한다. 루트탈출/절대경로·외부 URL/쿼리 제한 유지. 정상 한글/공백/percent 파일명과 루트 내부 상대참조는 보존한다.
+- 경로/unit·bundle/로컬 CLI 파일·편집기/SDK/릴리스 및 기존 계약 회귀 검증. 사용자 파일 수정·외부 파일 읽기 없이 격리 fixture 사용. 새 변경 미커밋·미병합·미푸시.
+
 ## JSON Pointer 수정 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로 기능276bbb0을 로컬 develop에 충돌 없이 병합했다. 커밋 직전 계약109개(15.703초)/diff 통과. 기존 관련186개 및 생성 최신성 검증은 해당 단계 기록대로 유지한다.
