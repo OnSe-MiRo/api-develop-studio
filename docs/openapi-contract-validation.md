@@ -286,3 +286,15 @@ allOf/내부참조로 분산된 명시적 object 타입과 primitive 필드 제�
 - 외부 URL fetch·루트 탈출·anchor/dynamic reference 지원을 허용한 것은 아니다. fix/openapi-json-pointer, develop939f00f 기준 미커밋, 커밋·병합·푸시 없음.
 
 검증: 계약109개·release/portal30개·편집20개·SDK18개·저장케이스/결과9개 합계186개와 생성 최신성/diff 통과. 최초 회귀 후 편집기의 단일 디코딩 호환성을 보완해 관련186개를 최종 재실행했다. 전체 Python/React/브라우저 재실행 없음.
+
+## 로컬 $ref 파일 경로 검증 (2026-11-04)
+
+파일 경로도 fragment와 마찬가지로 올바른 percent escape와 UTF-8을 확인하고1회만 디코딩한다. [RFC3986 percent encoding](https://www.rfc-editor.org/rfc/rfc3986.html#section-2.1)의 %HH 형식에 맞지 않는 경로를 허용하지 않는다.
+
+- 잘못된 percent·UTF-8, raw/decoded 제어문자·DEL·역슬래시, colon을 거부한다. 드라이브/플랫폼별 경로 해석과 urlsplit의 제어문자 제거로 다른 파일이 선택되는 것을 방지하는 제품 정책이다. raw 선행 공백은 거부하며 의도한 파일명의 공백은 %20으로 표현한다.
+- 한글·중간 공백·literal percent 파일명을 지원한다. `%252e%252e`는 한 번 디코딩된 literal `%2e%2e` 이름이며 다시 ..로 바꾸지 않는다.
+- 루트 내부 상대 ../참조는 지원하지만 디코딩/정규화 후 루트 밖·절대경로·외부 URL/쿼리는 기존대로 거부한다. load_file의 실제 경로/심볼릭 링크 root 검사도 유지한다.
+- bundle·편집기·SDK·릴리스가 사용하는 local_path 경로에 공통 적용한다. 사용자 원본 파일은 수정하지 않는다. Windows 실제 실행 검증을 수행한 것은 아니며 플랫폼별 위험 표기를 공통 함수 회귀로 확인했다.
+- fix/openapi-local-reference-paths, developb02e6d8 기준 미커밋. 커밋·병합·푸시 없음.
+
+검증: 계약114개·release/portal30개·편집20개·SDK18개·저장케이스/결과9개 합계191개 및 생성 최신성/diff 통과. 두 버전의 정상 로더 경로와 잘못된 참조의 파일 읽기 전 차단 확인. 전체 Python/React/브라우저/Windows native 재실행 없음.
