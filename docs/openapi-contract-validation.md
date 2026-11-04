@@ -15,7 +15,7 @@
 - 응답 schema: `openapi-schema-validator` 0.6.3, version별 nullable/JSON Schema 처리, format 및 read-context required 검사.
 - 구조 오류, 중복 operationId, 잘못된 참조는 오류로 차단한다. operationId/summary 누락은 조직 lint 경고다.
 - 응답은 정확한 status → `2XX` 등 범위 → `default` 순서로 선택한다. content type은 parameter를 제거하고 정확한 media type → `type/*` → `*/*` 순서로 선택한다.
-- 헤더 이름은 대소문자를 구별하지 않는다. required header 누락 및 scalar schema를 검사한다. header content/array 직렬화는 지원하지 않는다는 실패를 반환한다.
+- 헤더 이름은 대소문자를 구별하지 않는다. required header 누락, scalar schema 및 simple 형식의 primitive 배열을 검사한다. header content와 복합/중첩 배열 직렬화는 미지원으로 실패한다.
 - HEAD·204·304는 본문이 없어야 한다. JSON media type의 잘못된 JSON은 schema 검증 전에 실패한다.
 - operation은 method·path template으로 연결하고 구체적인 path가 template보다 우선한다. server는 operation → path item → root 순으로 선택하고 각 operation 안에서만 prefix를 제거한다. 빈 override 배열은 상위 설정을 상속하지 않고 루트 경로로 해석한다. 모호하거나 매칭되지 않으면 실패한다.
 - 선언된 server 변수의 문자열 default를 치환한다. enum이 있으면 default가 enum에 속해야 한다. 빠른 호출의 serverVariables 문자열 map으로 명시값을 지정할 수 있다. 아래2026-10-24 계약을 따른다. 명세 위치가 없으면 치환 후 절대 HTTP(S) URL 및 `/`로 시작하는 URL을 지원한다. 선택적 `contractDocumentUrl`이 있으면 일반 상대 server도 이 문서 위치에 대해 해석한다. 문서 위치 정보가 없는 일반 상대 URL(`api/v2`)·query/fragment·미정의 변수는 실패 처리한다.
@@ -133,3 +133,15 @@ API 예:
 실제 브라우저: 격리 로컬 fixture에서 기준 없음은 계약 실패, 올바른 기준과 default v1/명시값 v2는 통과했다. 대상 호출3회 후 잘못된 기준 및 file URL을 입력해도 카운터가 늘지 않았고 `/service/spec/openapi.json` 요청은0건이었다. 프로젝트 전환 초기화·콘솔 오류/경고0 확인. [통과 화면](openapi-relative-server-browser.jpg). 첫 공식 명세 조회 도구의 연결 실패는 재조회로 해소했다.
 
 로그: /tmp/relative-server-focused-python.log, /tmp/relative-server-python-all.log, /tmp/relative-server-web-all.log, /tmp/relative-server-build.log, /tmp/relative-server-generated-check.log. 직전 serverVariables 작업과 같은 feature/openapi-server-variables에서 계속 작업했으며 이번에도 커밋·병합·푸시는 하지 않았다.
+
+## 응답 헤더 배열 (2026-11-04)
+
+OpenAPI 3.0/3.1 Header Object의 `schema.type: array`를 지원한다. `style` 생략 또는 `simple`에서 쉼표로 나누며 `explode` true/false 모두 동일한 배열 표현이다. 근거: [OpenAPI Header Object](https://spec.openapis.org/oas/v3.1.0.html#header-object), [style 예시](https://spec.openapis.org/oas/v3.1.0.html#style-examples).
+
+- items의 명시적 단일 타입 string/integer/number/boolean을 지원한다. Header/schema/items의 내부 참조도 해석한다. 기존 공통 검사기이므로 빠른 호출과 opt-in 저장 케이스/파이프라인에 적용된다.
+- 각 항목 양끝의 HTTP 공백(space/tab)을 제거한 뒤 타입 변환하고, 항목 enum/format/범위와 배열 minItems/maxItems/uniqueItems 등을 기존 validator로 검사한다. 잘못된 숫자·불리언 및 NaN/Infinity는 문자열로 남겨 타입 검증에 실패한다.
+- 빈 항목을 버리지 않는다. 현재 빈 헤더 문자열은 빈 문자열 항목1개로 해석한다. `a,,b`는3개이며 `%2C`는 디코딩하지 않는다. 일반 CSV의 따옴표 escape는 지원하지 않는다. 중복 wire header의 병합은 기존 HTTP client가 전달한 값에 따른다. Set-Cookie 특수 파싱은 추가하지 않는다.
+- 중첩 배열·객체 items·타입 미지정/union items·prefixItems는 `unsupported_header_serialization`이다. content 기반 헤더, `$id`/anchor/dynamic reference 등 기존 제한도 유지한다.
+- 진단은 코드/위치만 제공하며 실제 헤더 값이나 enum 원문을 추가하지 않는다. 계약 실패는 기존 contract_failed 및 요약/명세digest 보고 규칙을 따른다.
+
+검증: 신규5개(두 버전·primitive4종·explode·참조·제약·비노출·실HTTP runner), 최종 전체 Python603개(skip0,217.717초), 생성 최신성 및 diff 검사 통과. 초기 fixture의 project 누락과 전용 DB 서비스 중지 오류를 보완한 후 전체를 재실행했다. UI/브라우저 재검증은 이번 backend 변경 범위에 포함하지 않는다.

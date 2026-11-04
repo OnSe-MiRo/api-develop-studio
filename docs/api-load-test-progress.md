@@ -1,5 +1,28 @@
 # API 부하테스트 및 대시보드 개발 진행 기록
 
+## 응답 헤더 배열 로컬 병합 완료 (2026-11-04)
+
+- 사용자 승인으로 f763896을 로컬 develop에 충돌 없이 병합했다. 관련 계약45개(4.570초)·diff 재검증 통과. 직전 전체603개 결과는 해당 단계 기록대로 유지한다. 제품 코드는 기능 커밋과 동일하고 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음.
+
+## OAS-2 응답 헤더 배열 지원 완료 (2026-11-04)
+
+- OpenAPI3.0/3.1 simple 응답 헤더의 primitive 배열을 공통 검사기에 연결했다. 문자열/정수/유한숫자/불리언 변환과 items/배열 제약, 내부 Header/schema/items 참조, explode true/false를 지원한다. 빈 항목은 보존하고 %2C는 디코딩하지 않는다.
+- 최종 검증: 전체 Python603개(skip0,217.717초) 통과, 신규 집중5개 및 생성 코드 최신성·diff 검사 통과. 실제 loopback HTTP runner에서 정수배열 통과/잘못된 항목 contract_failed 및 보고서 값 비노출 확인. 최초 fixture1오류·서비스 중지55오류는 이전 기록대로 보존하며 환경 보완 후 전체를 재실행했다.
+- 경계: UI 변경이 없어 이번 헤더 단계에서 frontend/브라우저를 재실행하지 않았다. 직전 검색 커밋 전 관련28개/build를 확인했다. content 기반 헤더·객체/중첩/모호한 항목 타입·prefixItems 및 고급 참조 지원은 여전히 남아 있다. 전체 로드맵 완료가 아니다.
+- 반영: 검색 커밋ef79d2c·로컬 develop병합1603e68 완료. 새 feature/openapi-response-header-arrays는1603e68 기준 미커밋. 원격 푸시·원본 worktree 변경 없음. 전용 테스트 서비스는 검증 후 기존 중지 상태로 복원한다.
+- 자료: [지원 범위](openapi-contract-validation.md), tests/test_contract_header_arrays.py. 로그 /tmp/header-arrays-{focus,all,all-final,generated}.log.
+
+## OAS-2 응답 헤더 배열 검증 환경 보완 (2026-11-04)
+
+- 신규 집중5개(두 버전/타입/참조/제약/비노출 및 실제 HTTP runner) 통과. 최초 HTTP fixture는 필수 project 누락으로 configuration_error가 나서 fixture에 demo.json을 지정했다. 제품 설정 검증은 유지했다. 생성 최신성 통과.
+- 최초 전체603개는55오류: 전용 PostgreSQL/Redis 서비스가 중지된 상태였고 connection refused가 발생했다. 격리 docker-compose.test.yml의 tmpfs 서비스들을 healthy까지 기동하여 전체 회귀 재실행 중이다. 사용자 DB/운영 서비스는 사용하지 않는다.
+
+## OAS-2 응답 헤더 배열 지원 시작 (2026-11-04)
+
+- develop1603e68에서 feature/openapi-response-header-arrays 분기. OpenAPI3.0/3.1 simple 헤더의 쉼표 구분 단일 primitive 타입 배열을 지원한다. explode true/false 배열 표현은 동일하며 기본 simple을 적용한다.
+- 항목 타입/format/enum 및 배열 minItems/maxItems/uniqueItems 제약은 기존 schema validator로 검사한다. 중첩/객체/타입 모호 배열·prefixItems·content 기반 헤더는 미지원으로 남긴다. 진단에 실제 헤더 값은 포함하지 않는다.
+- 검증: 두 버전/참조/직렬화·값 비노출 회귀, 실제 HTTP 저장 케이스 runner, 전체 Python 및 생성 최신성. UI/API schema 변경은 없다. 새 변경은 미커밋이며 원격 푸시 없음.
+
 ## 실행 상세 검색 로컬 병합 완료 (2026-11-04)
 
 - 사용자 승인으로 ef79d2c를 로컬 develop에 충돌 없이 병합했다. 관련28개/build/diff 재검증 통과, 이전 전체158개 및 브라우저 근거 유지. 제품 코드는 기능 커밋과 동일하고 이 기록만 추가한다. 원격 푸시·원본 worktree 변경 없음.
