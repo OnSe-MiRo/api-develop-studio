@@ -1,3 +1,4 @@
+import { ReferencePicker } from '../../components/ReferencePicker.jsx'
 import { normalizeDashboardFilters, normalizeOutcomeFilter, normalizeOutcomeSearch } from '../../router.js'
 import { useEffect, useState } from 'react'
 import { api } from '../../utils/studio.js'
@@ -8,7 +9,8 @@ const statusLabels = { passed: '성공', failed: '실패', error: '오류', time
 const duration = value => value == null ? '—' : value < 1000 ? `${Math.round(value).toLocaleString('ko-KR')} ms` : `${(value / 1000).toLocaleString('ko-KR', { maximumFractionDigits: 2 })} 초`
 const count = value => value.toLocaleString('ko-KR')
 
-function ExecutionDashboard({ projects, projectDetails, projectRef, onOpenCases, refreshKey, route = {}, onNavigate }) {
+function ExecutionDashboard({ projectRef, onOpenCases, refreshKey, route = {}, onNavigate }) {
+  const [projectDetails, setProjectDetails] = useState({})
   const filters = normalizeDashboardFilters(route.dashboardFilters)
   const { days, status, page, search } = filters
   const selectedRun = route.runId || ''
@@ -55,7 +57,8 @@ function ExecutionDashboard({ projects, projectDetails, projectRef, onOpenCases,
       <div className="actions"><button className="ghost" onClick={() => setRevision(value => value + 1)}>↻ 이력 새로고침</button>{projectRef && <button className="primary" onClick={onOpenCases}>API 케이스 열기 →</button>}</div>
     </div>
     <div className="dashboard-filters card">
-      <label className="field"><span>프로젝트</span><select aria-label="프로젝트" value={projectRef} onChange={event => navigate({ ...filters, page: 1 }, '', event.target.value)}><option value="">전체 프로젝트</option>{projects.map(reference => <option key={reference} value={reference}>{projectDetails[reference]?.name || reference}</option>)}</select></label>
+      <ReferencePicker resource="projects" label="프로젝트" placeholder="전체 프로젝트" value={projectRef} onPage={setProjectDetails}
+        onChange={ref => navigate({ ...filters, page: 1 }, '', ref)} refreshKey={refreshKey} />
       <label className="field"><span>조회 기간</span><select aria-label="조회 기간" value={days} onChange={event => changeFilters({ days: Number(event.target.value) })}>{[7, 30, 90].map(value => <option key={value} value={value}>최근 {value}일</option>)}</select></label>
       <p className="hint">{updatedAt ? `${updatedAt.toLocaleTimeString('ko-KR')} 갱신` : '실행 이력 조회 중'}<br />기간과 일별 집계는 UTC 기준입니다.</p>
     </div>

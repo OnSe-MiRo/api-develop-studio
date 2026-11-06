@@ -1,7 +1,8 @@
+import { ReferencePicker } from '../../components/ReferencePicker.jsx'
 import { useRef, useState } from 'react'
 import { api } from '../../utils/studio.js'
 
-export function ImportExportPanel({ projectRef, caseItems, refresh }) {
+export function ImportExportPanel({ projectRef, refreshKey, refresh }) {
   const [format, setFormat] = useState('curl')
   const [source, setSource] = useState('')
   const [tag, setTag] = useState('imported')
@@ -70,8 +71,8 @@ export function ImportExportPanel({ projectRef, caseItems, refresh }) {
       <p className="hint">저장 후 나머지 항목은 미리보기를 다시 확인하세요. 기존 케이스를 덮어쓰면 요청과 검증 설정이 교체됩니다.</p>
     </div>}
     <h3>cURL 내보내기</h3>
-    <label>내보낼 케이스<select value={reference} disabled={busy} onChange={e => { setReference(e.target.value); setExported(null) }}><option value="">케이스 선택</option>{caseItems.map(item => <option key={item} value={item}>{item}</option>)}</select></label>
-    <button className="ghost" disabled={busy || !caseItems.includes(reference)} onClick={exportCase}>cURL 생성</button>
+    <ReferencePicker resource="cases" project={projectRef} label="내보낼 케이스" placeholder="케이스 선택" value={reference} refreshKey={refreshKey} disabled={busy} onChange={ref => { setReference(ref); setExported(null) }} />
+    <button className="ghost" disabled={busy || !reference} onClick={exportCase}>cURL 생성</button>
     {exported && <>{exported.warnings.map(message => <p className="notice" key={message}>{message}</p>)}<label>내보낸 cURL<textarea readOnly rows={5} value={exported.curl} /></label></>}
     {notice && <p className="notice" role="status">{notice}</p>}
   </section>

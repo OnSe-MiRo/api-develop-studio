@@ -32,7 +32,7 @@ beforeEach(() => {
   vi.resetAllMocks()
   sessionStorage.clear()
   window.history.replaceState(null, '', '/dashboard')
-  api.mockImplementation(async path => path.startsWith('/api/dashboard?')
+  api.mockImplementation(async path => path.startsWith('/api/projects?') ? { items: ['demo.json', 'other.json'] } : path.startsWith('/api/dashboard?')
     ? listing(Number(new URL(path, 'http://localhost').searchParams.get('page')) || 1)
     : detail(decodeURIComponent(path.split('/').pop())))
 })
@@ -106,6 +106,7 @@ it('does not let a late previous list response overwrite the current URL query',
   let resolveOld
   let oldSignal
   api.mockImplementation((path, options) => {
+    if (path.startsWith('/api/projects?')) return Promise.resolve({ items: ['demo.json', 'other.json'] })
     if (path.startsWith('/api/dashboard?')) {
       const filters = new URL(path, 'http://localhost').searchParams
       if (filters.get('search') === 'slow') {
@@ -130,6 +131,7 @@ it('does not let a late previous list response overwrite the current URL query',
 
 it('keeps list filters when a missing detail is closed', async () => {
   api.mockImplementation(async path => {
+    if (path.startsWith('/api/projects?')) return { items: ['demo.json', 'other.json'] }
     if (path === '/api/executions/missing') throw new Error('실행을 찾을 수 없습니다.')
     return listing(2)
   })
@@ -143,7 +145,7 @@ it('keeps list filters when a missing detail is closed', async () => {
 })
 
 it('restores detail filters without fetching or submitting again on filter changes', async () => {
-  api.mockImplementation(async path => path.startsWith('/api/dashboard?') ? listing(2) : {
+  api.mockImplementation(async path => path.startsWith('/api/projects?') ? { items: ['demo.json', 'other.json'] } : path.startsWith('/api/dashboard?') ? listing(2) : {
     ...detail('old'), detail: { reportAvailable: true, outcomes: [
       { caseId: 'passed-item', status: 'passed' },
       { caseId: 'assertion-item', status: 'failed' },
@@ -189,7 +191,7 @@ it('restores detail filters without fetching or submitting again on filter chang
 })
 
 it('restores case search with filters and preserves it until the selected detail changes', async () => {
-  api.mockImplementation(async path => path.startsWith('/api/dashboard?') ? listing(2) : {
+  api.mockImplementation(async path => path.startsWith('/api/projects?') ? { items: ['demo.json', 'other.json'] } : path.startsWith('/api/dashboard?') ? listing(2) : {
     ...detail('old'), detail: { reportAvailable: true, outcomes: [
       { caseId: '한글/ORDER+1', status: 'failed' }, { caseId: 'other', status: 'failed' },
     ] },

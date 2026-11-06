@@ -14,9 +14,6 @@ function CaseList({ projectRef, project, onNavigate, onProjectList, onCreate, on
   const [reload, setReload] = useState(0)
   const [deleting, setDeleting] = useState(false)
   const [showImport, setShowImport] = useState(false)
-  const [exportItems, setExportItems] = useState([])
-  const [exportLoading, setExportLoading] = useState(false)
-  const [exportError, setExportError] = useState('')
   const readOnly = projectRef === 'example-api.json'
   const change = values => onFiltersChange({ q, tag, sort, page_size, cursor: '', ...values })
   useEffect(() => { setDraft(q); setDraftTag(tag) }, [q, tag])
@@ -33,19 +30,6 @@ function CaseList({ projectRef, project, onNavigate, onProjectList, onCreate, on
     }).catch(issue => { if (live) setError(issue.message) }).finally(() => { if (live) setLoading(false) })
     return () => { live = false; controller.abort() }
   }, [projectRef, q, tag, sort, page_size, cursor, refreshKey, reload])
-  // Export selection must still include all cases, not just the displayed page.
-  // Load it only when the user opens the import/export panel.
-  useEffect(() => {
-    let live = true
-    const controller = new AbortController()
-    setExportItems([]); setExportError(''); setExportLoading(Boolean(showImport && projectRef && !readOnly))
-    if (showImport && projectRef && !readOnly) {
-      api(`/api/cases?project=${encodeURIComponent(projectRef)}`, { signal: controller.signal }).then(result => {
-        if (live) setExportItems(result.items)
-      }).catch(issue => { if (live) setExportError(issue.message) }).finally(() => { if (live) setExportLoading(false) })
-    }
-    return () => { live = false; controller.abort() }
-  }, [showImport, projectRef, readOnly, reload, refreshKey])
   const removeCase = async reference => {
     if (!window.confirm(`${reference} 케이스를 삭제할까요?\n목록과 실행 파일에서는 제거되지만 변경 이력은 보관됩니다.`)) return
     setDeleting(true)
@@ -78,7 +62,7 @@ function CaseList({ projectRef, project, onNavigate, onProjectList, onCreate, on
       })}</div> : <div className="empty">{!projectRef ? '프로젝트를 선택하세요.' : q || tag ? '검색 결과가 없습니다.' : '저장된 API 케이스가 없습니다. 새 케이스를 만들어 시작하세요.'}</div>}
       <nav aria-label="케이스 페이지" className="actions case-pagination"><button disabled={loading || deleting || !!error || !page.previousCursor} onClick={() => change({ cursor: page.previousCursor })}>이전 페이지</button><span aria-live="polite">{!loading && !error ? `${page.items.length}개 표시` : ''}</span><button disabled={loading || deleting || !!error || !page.nextCursor} onClick={() => change({ cursor: page.nextCursor })}>다음 페이지</button></nav>
     </section>
-    {showImport && !readOnly && <>{exportLoading && <p role="status">내보내기 케이스 목록을 불러오는 중…</p>}{exportError && <p role="alert">{exportError}<button onClick={() => setReload(value => value + 1)}>내보내기 목록 다시 시도</button></p>}<ImportExportPanel key={projectRef} projectRef={projectRef} caseItems={exportItems} refresh={afterImport} /></>}
+    {showImport && !readOnly && <ImportExportPanel key={projectRef} projectRef={projectRef} refreshKey={reload + refreshKey} refresh={afterImport} />}
     {notice && <p className="notice" role="status">{notice}</p>}
   </main></div>
 }

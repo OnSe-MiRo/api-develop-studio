@@ -9,15 +9,18 @@ const first = { run: { id: 'run-1', project: 'demo', scenario: 'target', status:
 const second = { run: { ...first.run, id: 'run-0', startedAt: '2026-09-26T00:00:00Z' }, summary: { ...first.summary, errorRate: .01, latencyMs: { p95: 90 } } }
 const listRoute = { tab: 'load-tests', loadFilters: { project: 'demo', scenario: '', status: '', from: '', to: '', cursor: '' } }
 
+const runs = vi.fn()
 describe('load-test dashboard', () => {
   beforeEach(() => {
+    runs.mockReset()
     window.history.replaceState(null, '', '/load-tests')
     api.mockReset()
-    api.mockResolvedValue({ items: [first], nextCursor: null })
+    api.mockImplementation((path, options) => path.startsWith('/api/projects?') ? Promise.resolve({ items: [] }) : runs(path, options))
+    runs.mockResolvedValue({ items: [first], nextCursor: null })
   })
 
   it('queries with raw project reference, displays metrics, and navigates with filters', async () => {
-    api.mockImplementation(path => Promise.resolve(path.includes('scenario=target') ? { items: [first, second], nextCursor: null } : { items: [first], nextCursor: 'next-page' }))
+    runs.mockImplementation(path => Promise.resolve(path.includes('scenario=target') ? { items: [first, second], nextCursor: null } : { items: [first], nextCursor: 'next-page' }))
     render(<LoadTestDashboard route={listRoute} projects={[]} projectDetails={{}} refreshKey={0} />)
     expect(await screen.findByText('최근 같은 시나리오 변화')).toBeInTheDocument()
     expect(screen.getByText('+5 ms')).toBeInTheDocument()
@@ -30,7 +33,7 @@ describe('load-test dashboard', () => {
   })
 
   it('puts applied filters and the keyset cursor in the URL', async () => {
-    api.mockResolvedValue({ items: [first], nextCursor: 'cursor+1' })
+    runs.mockResolvedValue({ items: [first], nextCursor: 'cursor+1' })
     render(<LoadTestDashboard route={listRoute} projects={[]} projectDetails={{}} refreshKey={0} />)
     await screen.findByText('실행 목록')
     fireEvent.change(screen.getByLabelText('시나리오'), { target: { value: 'smoke' } })
@@ -41,18 +44,18 @@ describe('load-test dashboard', () => {
   })
 
   it('shows empty and request-error states without hiding the filters', async () => {
-    api.mockResolvedValueOnce({ items: [], nextCursor: null })
+    runs.mockResolvedValueOnce({ items: [], nextCursor: null })
     const view = render(<LoadTestDashboard route={listRoute} projects={[]} projectDetails={{}} refreshKey={0} />)
     expect(await screen.findByText('조회 조건에 맞는 결과가 없습니다.')).toBeInTheDocument()
     view.unmount()
-    api.mockRejectedValueOnce(new Error('목록 조회 실패'))
+    runs.mockRejectedValueOnce(new Error('목록 조회 실패'))
     render(<LoadTestDashboard route={listRoute} projects={[]} projectDetails={{}} refreshKey={0} />)
     expect(await screen.findByRole('alert')).toHaveTextContent('목록 조회 실패')
     expect(screen.getByLabelText('프로젝트')).toBeInTheDocument()
   })
 
   it('shows a partial detail when the series request fails', async () => {
-    api.mockImplementation(path => path.endsWith('/series?maxPoints=240') ? Promise.reject(new Error('추이 조회 실패')) : Promise.resolve({ ...first, run: { ...first.run, environment: { os: 'linux', cpu: '4 vCPU', memoryMb: 8192 } }, thresholds: [{ metric: 'http_req_duration', condition: 'p(95)<90', actualValue: 95, passed: false }], endpointMetrics: [{ method: 'GET', endpoint: '/users/{id}', requestCount: 100, latencyMs: { p95: 95, p99: 110 }, errorRate: .02 }], warnings: ['가져오기 경고'] }))
+    runs.mockImplementation(path => path.endsWith('/series?maxPoints=240') ? Promise.reject(new Error('추이 조회 실패')) : Promise.resolve({ ...first, run: { ...first.run, environment: { os: 'linux', cpu: '4 vCPU', memoryMb: 8192 } }, thresholds: [{ metric: 'http_req_duration', condition: 'p(95)<90', actualValue: 95, passed: false }], endpointMetrics: [{ method: 'GET', endpoint: '/users/{id}', requestCount: 100, latencyMs: { p95: 95, p99: 110 }, errorRate: .02 }], warnings: ['가져오기 경고'] }))
     render(<LoadTestDashboard route={{ tab: 'load-test-result', runId: 'run-1', loadFilters: listRoute.loadFilters }} refreshKey={0} />)
     expect(await screen.findByText('실행 환경')).toBeInTheDocument()
     expect(screen.getByText('가져오기 경고', { selector: 'li' })).toBeInTheDocument()
@@ -62,7 +65,7 @@ describe('load-test dashboard', () => {
   })
 
   it('provides a data table equivalent for reduced time-series charts', async () => {
-    api.mockImplementation(path => path.endsWith('/series?maxPoints=240') ? Promise.resolve({ aggregation: 'mean-values-peak-p95', sourcePoints: 500, items: [{ bucketAt: '2026-09-27T00:00:00Z', rps: 20, p95Ms: 95, errorRate: .02, activeVus: 5, cpuPercent: null, memoryMb: null }] }) : Promise.resolve({ ...first, run: { ...first.run, environment: {} }, thresholds: [], endpointMetrics: [], warnings: [] }))
+    runs.mockImplementation(path => path.endsWith('/series?maxPoints=240') ? Promise.resolve({ aggregation: 'mean-values-peak-p95', sourcePoints: 500, items: [{ bucketAt: '2026-09-27T00:00:00Z', rps: 20, p95Ms: 95, errorRate: .02, activeVus: 5, cpuPercent: null, memoryMb: null }] }) : Promise.resolve({ ...first, run: { ...first.run, environment: {} }, thresholds: [], endpointMetrics: [], warnings: [] }))
     render(<LoadTestDashboard route={{ tab: 'load-test-result', runId: 'run-1', loadFilters: {} }} refreshKey={0} />)
     expect(await screen.findByText(/차트는 500개 구간을 축소했습니다/)).toBeInTheDocument()
     expect(screen.getByRole('table', { name: /시간 추이 데이터 표/ })).toBeInTheDocument()
@@ -70,7 +73,7 @@ describe('load-test dashboard', () => {
   })
 
   it('makes detail table scroll regions reachable by keyboard focus', async () => {
-    api.mockImplementation(path => path.endsWith('/series?maxPoints=240') ? Promise.resolve({ aggregation: 'none', sourcePoints: 1, items: [{ bucketAt: '2026-09-27T00:00:00Z', rps: 20, p95Ms: 95, errorRate: .02, activeVus: 5, cpuPercent: null, memoryMb: null }] }) : Promise.resolve({ ...first, thresholds: [{ metric: 'http_req_duration', condition: 'p(95)<90', actualValue: 95, passed: false }], endpointMetrics: [{ method: 'GET', endpoint: '/users/{id}', requestCount: 100, latencyMs: { p95: 95, p99: 110 }, errorRate: .02 }], warnings: [] }))
+    runs.mockImplementation(path => path.endsWith('/series?maxPoints=240') ? Promise.resolve({ aggregation: 'none', sourcePoints: 1, items: [{ bucketAt: '2026-09-27T00:00:00Z', rps: 20, p95Ms: 95, errorRate: .02, activeVus: 5, cpuPercent: null, memoryMb: null }] }) : Promise.resolve({ ...first, thresholds: [{ metric: 'http_req_duration', condition: 'p(95)<90', actualValue: 95, passed: false }], endpointMetrics: [{ method: 'GET', endpoint: '/users/{id}', requestCount: 100, latencyMs: { p95: 95, p99: 110 }, errorRate: .02 }], warnings: [] }))
     render(<LoadTestDashboard route={{ tab: 'load-test-result', runId: 'run-1', loadFilters: {} }} refreshKey={0} />)
     const trend = await screen.findByRole('region', { name: '시간 추이 데이터 표 가로 스크롤' })
     const regions = [trend, screen.getByRole('region', { name: 'Threshold 표 가로 스크롤' }), screen.getByRole('region', { name: 'Endpoint 집계 표 가로 스크롤' })]

@@ -1,0 +1,555 @@
+{
+  "fixture": "ec6d43e22beddea5033a148ec480c05999aecda7bf630699464fae4af50308b6",
+  "counts": {
+    "projects": 100,
+    "cases": 20000,
+    "pipelines": 0
+  },
+  "seed": 20260929,
+  "browser": "156.0.8078.81",
+  "samples": [
+    {
+      "trial": 0,
+      "phase": "before",
+      "screen": "dashboard",
+      "options": 100,
+      "readyMs": 411.59999999403954,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 48.479
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 5.508
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 231.185
+        }
+      ]
+    },
+    {
+      "trial": 0,
+      "phase": "after",
+      "screen": "dashboard",
+      "options": 20,
+      "readyMs": 98.19999998807907,
+      "http": [
+        {
+          "query": "/api/projects?page_size=20",
+          "refs": 20,
+          "bytes": 2934,
+          "ms": 9.507
+        }
+      ]
+    },
+    {
+      "trial": 0,
+      "phase": "before",
+      "screen": "pipeline",
+      "options": 200,
+      "readyMs": 152.80000001192093,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 14.72
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 7.699
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 44.419
+        }
+      ]
+    },
+    {
+      "trial": 0,
+      "phase": "after",
+      "screen": "pipeline",
+      "options": 20,
+      "readyMs": 94.7000000178814,
+      "http": [
+        {
+          "query": "/api/cases?page_size=20&project=load-test%2Fproject-000.json",
+          "refs": 20,
+          "bytes": 2838,
+          "ms": 21.52
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "phase": "after",
+      "screen": "dashboard",
+      "options": 20,
+      "readyMs": 67,
+      "http": [
+        {
+          "query": "/api/projects?page_size=20",
+          "refs": 20,
+          "bytes": 2934,
+          "ms": 6.331
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "phase": "before",
+      "screen": "dashboard",
+      "options": 100,
+      "readyMs": 133,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 19.545
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 5.549
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 36.074
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "phase": "after",
+      "screen": "pipeline",
+      "options": 20,
+      "readyMs": 82.7999999821186,
+      "http": [
+        {
+          "query": "/api/cases?page_size=20&project=load-test%2Fproject-000.json",
+          "refs": 20,
+          "bytes": 2838,
+          "ms": 8.949
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "phase": "before",
+      "screen": "pipeline",
+      "options": 200,
+      "readyMs": 135.80000001192093,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 17.079
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 6.062
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 38.195
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "phase": "before",
+      "screen": "dashboard",
+      "options": 100,
+      "readyMs": 114.5,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 15.239
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 10.739
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 42.695
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "phase": "after",
+      "screen": "dashboard",
+      "options": 20,
+      "readyMs": 80.69999998807907,
+      "http": [
+        {
+          "query": "/api/projects?page_size=20",
+          "refs": 20,
+          "bytes": 2934,
+          "ms": 4.473
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "phase": "before",
+      "screen": "pipeline",
+      "options": 200,
+      "readyMs": 126.59999999403954,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 11.27
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 6.871
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 37.723
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "phase": "after",
+      "screen": "pipeline",
+      "options": 20,
+      "readyMs": 79.7000000178814,
+      "http": [
+        {
+          "query": "/api/cases?page_size=20&project=load-test%2Fproject-000.json",
+          "refs": 20,
+          "bytes": 2838,
+          "ms": 8.466
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "phase": "after",
+      "screen": "dashboard",
+      "options": 20,
+      "readyMs": 68.40000000596046,
+      "http": [
+        {
+          "query": "/api/projects?page_size=20",
+          "refs": 20,
+          "bytes": 2934,
+          "ms": 5.01
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "phase": "before",
+      "screen": "dashboard",
+      "options": 100,
+      "readyMs": 125.2000000178814,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 17.904
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 7.772
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 38.873
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "phase": "after",
+      "screen": "pipeline",
+      "options": 20,
+      "readyMs": 91,
+      "http": [
+        {
+          "query": "/api/cases?page_size=20&project=load-test%2Fproject-000.json",
+          "refs": 20,
+          "bytes": 2838,
+          "ms": 8.87
+        }
+      ]
+    },
+    {
+      "trial": 3,
+      "phase": "before",
+      "screen": "pipeline",
+      "options": 200,
+      "readyMs": 128,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 12.816
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 5.746
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 35.36
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "phase": "before",
+      "screen": "dashboard",
+      "options": 100,
+      "readyMs": 137,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 15.077
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 7.211
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 36.808
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "phase": "after",
+      "screen": "dashboard",
+      "options": 20,
+      "readyMs": 85,
+      "http": [
+        {
+          "query": "/api/projects?page_size=20",
+          "refs": 20,
+          "bytes": 2934,
+          "ms": 5.478
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "phase": "before",
+      "screen": "pipeline",
+      "options": 200,
+      "readyMs": 112.5,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 10.787
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 5.634
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 36.92
+        }
+      ]
+    },
+    {
+      "trial": 4,
+      "phase": "after",
+      "screen": "pipeline",
+      "options": 20,
+      "readyMs": 79.40000000596046,
+      "http": [
+        {
+          "query": "/api/cases?page_size=20&project=load-test%2Fproject-000.json",
+          "refs": 20,
+          "bytes": 2838,
+          "ms": 8.219
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "phase": "after",
+      "screen": "dashboard",
+      "options": 20,
+      "readyMs": 79.7999999821186,
+      "http": [
+        {
+          "query": "/api/projects?page_size=20",
+          "refs": 20,
+          "bytes": 2934,
+          "ms": 6.839
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "phase": "before",
+      "screen": "dashboard",
+      "options": 100,
+      "readyMs": 140.09999999403954,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 18.234
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 8.295
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 45.092
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "phase": "after",
+      "screen": "pipeline",
+      "options": 20,
+      "readyMs": 80.7000000178814,
+      "http": [
+        {
+          "query": "/api/cases?page_size=20&project=load-test%2Fproject-000.json",
+          "refs": 20,
+          "bytes": 2838,
+          "ms": 9.254
+        }
+      ]
+    },
+    {
+      "trial": 5,
+      "phase": "before",
+      "screen": "pipeline",
+      "options": 200,
+      "readyMs": 130.19999998807907,
+      "http": [
+        {
+          "query": "/api/projects",
+          "refs": 100,
+          "bytes": 13224,
+          "ms": 15.735
+        },
+        {
+          "query": "/api/pipelines?project=load-test%2Fproject-000.json",
+          "refs": 0,
+          "bytes": 13,
+          "ms": 7.878
+        },
+        {
+          "query": "/api/cases?project=load-test%2Fproject-000.json",
+          "refs": 200,
+          "bytes": 25224,
+          "ms": 39.91
+        }
+      ]
+    }
+  ],
+  "bundleIndexSha256": {
+    "before": "a6037ab4eb48ba0d8ef8ef5e0a1828f80256d0700d0ce20bb534a42af27f2cd6",
+    "after": "950fafe7e2f23789847c897c5ebe3dbe5c7e1ac27b55a2cddd66016766103c74"
+  },
+  "beforeFrontendCommit": "48459f7",
+  "summary": {
+    "dashboard": {
+      "before": {
+        "listRequests": 3,
+        "returnedRefs": 300,
+        "listResponseBytes": 38461,
+        "selectorEndpointMedianMs": 17.9,
+        "selectUsableMedianMs": 133
+      },
+      "after": {
+        "listRequests": 1,
+        "returnedRefs": 20,
+        "listResponseBytes": 2934,
+        "selectorEndpointMedianMs": 5.5,
+        "selectUsableMedianMs": 79.8
+      }
+    },
+    "pipeline": {
+      "before": {
+        "listRequests": 3,
+        "returnedRefs": 300,
+        "listResponseBytes": 38461,
+        "selectorEndpointMedianMs": 37.7,
+        "selectUsableMedianMs": 128
+      },
+      "after": {
+        "listRequests": 1,
+        "returnedRefs": 20,
+        "listResponseBytes": 2838,
+        "selectorEndpointMedianMs": 8.9,
+        "selectUsableMedianMs": 80.7
+      }
+    }
+  }
+}

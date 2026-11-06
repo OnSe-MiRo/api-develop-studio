@@ -30,11 +30,12 @@ describe('ExecutionDashboard states', () => {
   })
 
   it('shows an error and retries from the action', async () => {
-    api.mockRejectedValueOnce(new Error('연결 실패')).mockResolvedValueOnce(emptyData)
+    const runs = vi.fn().mockRejectedValueOnce(new Error('연결 실패')).mockResolvedValueOnce(emptyData)
+    api.mockImplementation(path => path.startsWith('/api/projects?') ? Promise.resolve({ items: [] }) : runs())
     render(<ExecutionDashboard {...props} />)
     expect(await screen.findByRole('alert')).toHaveTextContent('연결 실패')
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
-    await waitFor(() => expect(api).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(runs).toHaveBeenCalledTimes(2))
     expect(await screen.findByText('선택한 기간에 완료된 실행이 없습니다.')).toBeInTheDocument()
   })
 })
