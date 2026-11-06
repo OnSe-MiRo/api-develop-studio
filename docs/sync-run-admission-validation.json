@@ -27,7 +27,15 @@
     "build": "passed (existing chunk-size warning)",
     "generatedServer": "up to date",
     "loadReport": "up to date",
-    "k6ModelFiles": 5
+    "k6ModelFiles": 5,
+    "emptyWorkspaceFixtureReplay": {
+      "pythonTests": 724,
+      "seconds": 101.135,
+      "result": "passed",
+      "logFile": "admission-test-fixture.txt",
+      "sha256": "f0ca2c9a1dc75a365f0e9de16e6b7855e626dd0de7b7d0ba48ade5ad931101c2",
+      "scope": "test-only fixture isolation after performance measurements"
+    }
   },
   "sourceFixtureAfterAllRuns": {
     "dataset": "medium",
