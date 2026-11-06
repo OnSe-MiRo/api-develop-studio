@@ -1,5 +1,17 @@
 # API 개발 기능 진행 기록
 
+## OpenAPI 3.1 튜플 헤더 allOf 검증 완료 (2026-11-06)
+
+- 공통 튜플을 참조하고 minItems를 추가한 기존 재현 사례에서 ready,2,true가 통과했다. 유효 범위를 벗어난 두 번째 값은 위치 1에서 실패했다. 실제 HTTP runner에서도 직접 선언과 조합 선언의 결과가 일치했다.
+- 길이가 다른 분기마다 해당 위치의 prefixItems/items를 골라 타입을 결정한다. 닫힌 tail, 중복 금지, 수치 범위, 필수 길이는 원래 명세로 검증했다. 내부 참조, 참조에 붙은 타입 제약, nullable, 두 explode 표현, 모호한 타입도 회귀에 포함했다.
+- 최초 전체 712개 통과 후 설명용 title이 붙은 기존 참조의 호환 문제를 별도 재현했다. 이를 보완한 최종 전체 Python 713개가 135.635초에 모두 통과했다. 생성 최신성과 diff 검사도 통과했고 테스트용 PostgreSQL·Redis는 중지 상태로 복원했다.
+- feature/openapi-allof-header-tuples의 기능 커밋과 검증 기록을 원격에 게시하고 develop에 병합한다. [현재 지원 범위](openapi-support-status.md).
+
+## OpenAPI 3.1 튜플 응답 헤더의 allOf 지원 시작 (2026-11-06)
+
+- develop 48459f7에서 기존 X-Tuple fixture로 재현했다. ready,2,true는 직접 선언에서 통과하고, 같은 schema를 참조하는 allOf에 minItems 3을 더하면 schema_type으로 실패한다.
+- 각 allOf 분기에서 해당 위치의 prefixItems 또는 items를 선택해 공통 디코더를 정하고, 최종 판정은 원래 명세로 수행한다.
+
 ## 전체 검증 기록 커밋·푸시·병합 (2026-11-04)
 
 - 프로젝트 승인으로1ee70a2를 커밋·기능 브랜치 푸시하고 develop에 충돌 없이 병합했다. 제품 코드 변경 없음. 전체 Python707·frontend167·build·생성·k6모델5 통과 기록을 보존한다. 병합 커밋을 origin/develop에 일반 푸시하고 원격 SHA를 확인한다. 원본 worktree·운영 배포·브랜치 삭제·강제 푸시 없음.
