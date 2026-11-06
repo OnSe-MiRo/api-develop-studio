@@ -48,3 +48,16 @@ Compose는 API 포트를 host에 게시하지 않고 Nginx gateway만 기본 `12
 실제 운영 공급자 연동, 브라우저 SSO 화면, 외부 HTTPS 배포와 다른 기능 worktree 통합은 미완료다. 실제 HTTPS API 검증을 브라우저 검증으로 취급하지 않는다. 사용자 허용 후 브라우저 도구가 사이트 접근을 다시 거절하여 GOV-1 화면 검증도 대기 중이다. 상세 결과는 [검증 JSON](oidc-login-validation.json)에 기록한다.
 
 후속 통신 검증: TLS handshake에도 남은 deadline을 적용하고 연결을 중단 타이머에 등록한다. CA 준비 실패 시 소켓을 닫으며 중단된 연결의 자동 재접속을 금지한다. DNS 조회 자체의 시간은 native resolver를 따르므로 요청 전체의 절대 8초 제한을 보장하는 것은 아니다. 관련16개 테스트와 실제 HTTPS 로그인 fixture를 최종 코드에서 재실행해 통과했다.
+
+## 2026-11-06 로컬 HTTPS 브라우저 검증
+
+릴리스 검증 범위를 사용자 요청에 따라 루프백 환경으로 정했다. Uvicorn이 Studio의 배포용 React 빌드를 HTTPS로 제공하고, 별도 HTTPS origin에서 임시 OIDC 공급자가 discovery·JWKS·서명된 ID token 발급을 수행했다. 인증 코드는 한 번만 사용할 수 있고 공급자가 S256 challenge를 확인했다. 브라우저는 폐기 가능한 전용 Chrome 프로필에서 테스트 서버 인증서만 신뢰했다. Studio는 임시 CA로 공급자의 TLS를 검증했다.
+
+| Chrome 156에서 확인한 항목 | 결과 |
+| --- | --- |
+| 로그인과 세션 | SSO 버튼에서 공급자 화면과 callback을 거쳐 프로젝트 목록 표시. Secure·HttpOnly 세션 쿠키 확인 |
+| 팀 A 소유자 → 팀 B 조회자 | 실제 Workspace 선택기로 전환. 각 목록과 상세에서 자기 팀 프로젝트만 조회 가능 |
+| 문서 격리 | 양쪽 모두 자기 문서 200, 상대 문서와 존재하지 않는 문서는 같은 400. 이전 Workspace 헤더 403 |
+| 역할 제한과 로그아웃 | 조회자의 문서 저장 403, UI 로그아웃 후 세션 쿠키 제거 및 비공개 목록 401 |
+
+최초 테스트 인증서의 Authority Key Identifier 누락을 고쳐 Python의 엄격한 TLS 검증을 통과했다. Firefox 기동 문제 이후 별도 Chrome 프로필로 확인했다. 검증 범위는 합성 계정·격리 DB를 사용한 로컬 배포다.
