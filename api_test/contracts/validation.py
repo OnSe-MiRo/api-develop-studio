@@ -358,49 +358,96 @@ def _header_allof_array_layers(document, schema):
     return layers
 
 
-def _header_union_array_items(document, schema):
+def _tuple_decoder_at(document, layers, index, composed):
+    constraints = []
+    for layer in layers:
+        prefix = layer.get('prefixItems', ())
+        slot = prefix[index] if index < len(prefix) else layer.get('items', True)
+        slot = resolve(document, slot, preserve_siblings=composed)
+        # A forbidden position will fail the original schema regardless of its value.
+        if slot is False:
+            return 'string'
+        if slot is True or slot == {}:
+            continue
+        constraints.append(slot)
+    if not constraints:
+        return 'string'
+    combined = constraints[0] if len(constraints) == 1 else {'allOf': constraints}
+    return _header_primitive_type(document, combined)
+
+
+def _header_union_array_schema(document, schema, raw):
     if not isinstance(schema, dict) or not any(key in schema for key in ('oneOf', 'anyOf')):
         return None
     active = set()
     remaining = 128
+    count = raw.count(',') + 1
 
-    def item_type(value, depth=0):
+    def layout(value, depth=0):
         nonlocal remaining
         remaining -= 1
         if remaining < 0 or depth > 32 or id(value) in active or not isinstance(value, dict):
             raise ValueError('Header array union traversal limit')
-        if any(key in value for key in ('not', 'if', 'prefixItems')):
+        if any(key in value for key in ('not', 'if')):
             raise ValueError('Unsupported array union')
         active.add(id(value))
         try:
             if '$ref' in value:
-                return item_type(pointer(document, value['$ref']), depth + 1)
+                return layout(pointer(document, value['$ref']), depth + 1)
             keywords = [key for key in ('oneOf', 'anyOf') if key in value]
             if keywords:
                 if 'allOf' in value or ('type' in value and _header_type(value) != 'array'):
                     raise ValueError('Ambiguous array union')
-                kinds = {item_type(child, depth + 1) for key in keywords for child in value[key]}
-                if len(kinds) != 1 or None in kinds:
-                    raise ValueError('Mixed array item types')
-                return next(iter(kinds))
+                layouts = {layout(child, depth + 1) for key in keywords for child in value[key]}
+                layouts.discard(None)
+                if not layouts:
+                    return None
+                if len(layouts) != 1:
+                    raise ValueError('Different array decoding layouts')
+                return layouts.pop()
             layers = _header_allof_array_layers(document, value)
-            if layers:
-                if any('prefixItems' in layer for layer in layers):
-                    raise ValueError('Tuple in array union')
-                items = {'allOf': [layer['items'] for layer in layers]}
-            else:
+            if not layers:
                 if _header_type(value) != 'array':
                     raise ValueError('Non-array union branch')
-                items = value.get('items', {})
-            return _header_primitive_type(document, items)
+                layers = [value]
+            # Length alone can exclude a branch before any wire value is converted.
+            if count < value.get('minItems', 0) or count > value.get('maxItems', count):
+                return None
+            for layer in layers:
+                prefix = layer.get('prefixItems', ())
+                if layer.get('items') is False and count > len(prefix):
+                    return None
+                if any(slot is False for slot in prefix[:count]):
+                    return None
+            width = max(len(layer.get('prefixItems', ())) for layer in layers)
+            if not width:
+                items = {'allOf': [layer.get('items', {}) for layer in layers]}
+                kind = _header_primitive_type(document, items)
+                if kind is None:
+                    raise ValueError('Unknown array item type')
+                return (), kind
+            prefix = [_tuple_decoder_at(document, layers, i, True) for i in range(min(width, count))]
+            tail = _tuple_decoder_at(document, layers, width, True) if count > width else prefix[-1]
+            if tail is None or None in prefix:
+                raise ValueError('Unknown tuple item type')
+            # Compare the positions present in this response, independent of schema length.
+            while prefix and prefix[-1] == tail:
+                prefix.pop()
+            return tuple(prefix), tail
         finally:
             active.remove(id(value))
 
     try:
-        kind = item_type(schema)
+        common = layout(schema)
+        if common is None:
+            return None
+        prefix, tail = common
     except (ValueError, ContractError):
         return None
-    return {'type': kind} if kind is not None else None
+    decoder = {'type': 'array', 'items': {'type': tail}}
+    if prefix:
+        decoder['prefixItems'] = [{'type': kind} for kind in prefix]
+    return decoder
 
 
 def _header_allof_object_schema(document, schema):
@@ -523,29 +570,12 @@ def _header_tuple(document, header, layers, raw, *, composed):
     if header.get('style', 'simple') != 'simple':
         return None, 'unsupported_header_serialization'
 
-    def decoder_at(index):
-        constraints = []
-        for layer in layers:
-            prefix = layer.get('prefixItems', ())
-            slot = prefix[index] if index < len(prefix) else layer.get('items', True)
-            slot = resolve(document, slot, preserve_siblings=composed)
-            # A forbidden position will fail the original schema regardless of its value.
-            if slot is False:
-                return 'string'
-            if slot is True or slot == {}:
-                continue
-            constraints.append(slot)
-        if not constraints:
-            return 'string'
-        combined = constraints[0] if len(constraints) == 1 else {'allOf': constraints}
-        return _header_primitive_type(document, combined)
-
     parts = raw.split(',')
     width = max(len(layer.get('prefixItems', ())) for layer in layers)
     # Preserve direct tuple preflight. For a composition, compute only used slots.
     count = min(width, len(parts)) if composed else width
-    kinds = [decoder_at(i) for i in range(count)]
-    tail = decoder_at(width) if not composed or len(parts) > width else 'string'
+    kinds = [_tuple_decoder_at(document, layers, i, composed) for i in range(count)]
+    tail = _tuple_decoder_at(document, layers, width, composed) if not composed or len(parts) > width else 'string'
     if tail is None or None in kinds:
         return None, 'unsupported_header_serialization'
     result = []
@@ -651,7 +681,10 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
             elif layers:
                 composed_items = {'allOf': [layer['items'] for layer in layers]}
             else:
-                composed_items = _header_union_array_items(document, schema)
+                union = _header_union_array_schema(document, schema, value)
+                composed_items = union['items'] if union else None
+                if union and 'prefixItems' in union:
+                    tuple_layers = [union]
                 if _header_type(schema) == 'array' and 'prefixItems' in schema:
                     tuple_layers = [schema]
             composed_object = _header_allof_object_schema(document, schema)

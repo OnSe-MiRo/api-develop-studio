@@ -372,3 +372,7 @@ OpenAPI3.1 직접 simple 객체의 patternProperties를 지원한다. [JSON Sche
 한 분기의 `items`는 **그 분기에 선언된** `prefixItems` 다음 위치부터 적용된다. 길이 2인 분기의 `items: false`는 다른 분기에 세 번째 위치가 선언되어 있어도 그 값을 거부한다. 항목별 변환 뒤 원래 명세를 검사하므로 전체 배열의 길이, 중복, enum 제약도 함께 적용된다. [JSON Schema 2020-12 배열 검증 규칙](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.2)
 
 내부 참조와 중첩 allOf에 걸쳐 배열 타입이 명시되고, 각 위치의 기본 타입을 결정할 수 있어야 한다. `true`·빈 schema만 적용되는 위치는 기존 simple 헤더 규칙에 따라 양끝 HTTP 공백을 제거한 문자열을 사용한다. 위치 타입 충돌은 `unsupported_header_serialization`으로 반환한다. 튜플 분기의 oneOf/anyOf와 중첩 객체 직렬화는 남은 범위다.
+
+## 튜플 헤더의 oneOf와 anyOf (2026-11-06)
+
+각 분기에서 실제로 들어온 위치의 디코딩 타입을 비교한다. 내부 참조와 allOf를 해석하며, 길이 범위 또는 닫힌 tail로 배제되는 배열 분기를 먼저 제외한다. 공통 타입을 결정하면 원래 명세로 튜플 전체의 일치를 판정한다. 예를 들어 두 분기가 각각 A·2와 B·5를 허용하면 A·5는 실패한다. 두 분기가 모두 일치할 때 oneOf는 실패하고 anyOf는 통과한다. 같은 위치를 서로 다른 타입으로 읽어야 하는 분기의 자동 추론은 잔여 범위다.
