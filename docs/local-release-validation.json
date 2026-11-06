@@ -1,0 +1,4118 @@
+{
+  "candidate": "858f0e990e1712d3f6142e14e3a551492c8f0793",
+  "k6BinarySha256": "efb8282e24ffe18f54ce3679eaa71d72e0645bbb97b14e2a05cc8b192abf48e3",
+  "fixtures": {
+    "small": {
+      "seed": 20260929,
+      "counts": {
+        "projects": 1,
+        "cases": 10,
+        "pipelines": 2
+      },
+      "caseRevisions": 1,
+      "fixtureSha256": "6c11f5f30f9729567e8411504daa02ebd7cbf15cea7d621273e042575b2254a5",
+      "integrity": "passed"
+    },
+    "medium": {
+      "seed": 20260929,
+      "counts": {
+        "projects": 20,
+        "cases": 2000,
+        "pipelines": 100
+      },
+      "caseRevisions": 1,
+      "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "integrity": "passed"
+    },
+    "large": {
+      "seed": 20260929,
+      "counts": {
+        "projects": 100,
+        "cases": 20000,
+        "pipelines": 0
+      },
+      "caseRevisions": 1,
+      "fixtureSha256": "ec6d43e22beddea5033a148ec480c05999aecda7bf630699464fae4af50308b6",
+      "integrity": "passed"
+    }
+  },
+  "workloads": {
+    "baseline-large": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "dataset": "large",
+      "fixture": "ec6d43e22beddea5033a148ec480c05999aecda7bf630699464fae4af50308b6",
+      "planned": {
+        "mode": "baseline",
+        "durationSeconds": 300,
+        "configuredVus": 5,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset"
+      },
+      "startedAt": "2026-11-06T06:35:06.837054+00:00",
+      "endedAt": "2026-11-06T06:40:17.713Z",
+      "summary": {
+        "requests": 754,
+        "rps": 2.425405,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 5.256,
+          "p90": 68.6306,
+          "p95": 79.7327,
+          "p99": 104.50926,
+          "max": 149.569
+        },
+        "vusMax": 5,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 754
+      },
+      "run429": 0,
+      "sampledPeakVus": 5,
+      "peakVuSamples": 303,
+      "firstToLastPeakVuSampleSeconds": 301.999,
+      "studioGet": {
+        "requests": 646,
+        "p95Ms": 91.329,
+        "p99Ms": 104.9784
+      },
+      "endpoints": [
+        {
+          "method": "GET",
+          "endpoint": "/api/cases",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 74.2185,
+            "p90": 102.5674,
+            "p95": 105.2642,
+            "p99": 146.8986,
+            "max": 149.569
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.662,
+            "p90": 7.1853,
+            "p95": 7.82385,
+            "p99": 10.37761,
+            "max": 10.742
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}/revisions",
+          "requestCount": 106,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.008,
+            "p90": 7.862,
+            "p95": 8.32425,
+            "p99": 49.9147,
+            "max": 52.16
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/pipelines",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 3.9815,
+            "p90": 6.2854,
+            "p95": 7.451,
+            "p99": 8.05062,
+            "max": 8.384
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 17.236,
+            "p90": 31.9443,
+            "p95": 39.4959,
+            "p99": 62.58594,
+            "max": 63.121
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects/{id}",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.43,
+            "p90": 6.6609,
+            "p95": 7.04255,
+            "p99": 7.46309,
+            "max": 8.763
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/example-api/health",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 2.431,
+            "p90": 3.7349,
+            "p95": 4.053,
+            "p99": 6.75196,
+            "max": 7.153
+          }
+        }
+      ],
+      "failedThresholds": []
+    },
+    "baseline-small": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "dataset": "small",
+      "fixture": "6c11f5f30f9729567e8411504daa02ebd7cbf15cea7d621273e042575b2254a5",
+      "planned": {
+        "mode": "baseline",
+        "durationSeconds": 300,
+        "configuredVus": 5,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset"
+      },
+      "startedAt": "2026-11-06T06:29:37.380944+00:00",
+      "endedAt": "2026-11-06T06:34:47.408Z",
+      "summary": {
+        "requests": 756,
+        "rps": 2.438497,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 5.514,
+          "p90": 9.7705,
+          "p95": 11.7165,
+          "p99": 16.24785,
+          "max": 47.312
+        },
+        "vusMax": 5,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 756
+      },
+      "run429": 0,
+      "sampledPeakVus": 5,
+      "peakVuSamples": 301,
+      "firstToLastPeakVuSampleSeconds": 300.0,
+      "studioGet": {
+        "requests": 648,
+        "p95Ms": 12.1089,
+        "p99Ms": 17.40003
+      },
+      "endpoints": [
+        {
+          "method": "GET",
+          "endpoint": "/api/cases",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 8.558,
+            "p90": 13.0251,
+            "p95": 15.7888,
+            "p99": 42.8345,
+            "max": 47.312
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.7885,
+            "p90": 9.0515,
+            "p95": 10.54265,
+            "p99": 12.08001,
+            "max": 12.111
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}/revisions",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.2355,
+            "p90": 8.2095,
+            "p95": 10.27605,
+            "p99": 12.59201,
+            "max": 12.91
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/pipelines",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.5625,
+            "p90": 9.0187,
+            "p95": 10.3698,
+            "p99": 14.1213,
+            "max": 16.684
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.6305,
+            "p90": 8.7361,
+            "p95": 9.49875,
+            "p99": 14.26599,
+            "max": 15.006
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects/{id}",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.7215,
+            "p90": 10.1016,
+            "p95": 11.63765,
+            "p99": 17.77075,
+            "max": 18.607
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/example-api/health",
+          "requestCount": 108,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 2.5555,
+            "p90": 4.9639,
+            "p95": 6.0016,
+            "p99": 6.68815,
+            "max": 8.133
+          }
+        }
+      ],
+      "failedThresholds": []
+    },
+    "contention-20": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 1,
+        "unique": 0,
+        "contention": 1
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "contention",
+        "durationSeconds": 30,
+        "configuredVus": 1,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 1,
+        "contentionRequests": 20
+      },
+      "startedAt": "2026-11-06T06:41:32.071605+00:00",
+      "endedAt": "2026-11-06T06:41:33.328Z",
+      "summary": {
+        "requests": 21,
+        "rps": 16.714489,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 45.236,
+          "p90": 54.109,
+          "p95": 54.241,
+          "p99": 63.677,
+          "max": 66.036
+        },
+        "vusMax": 1,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 2,
+        "409": 19
+      },
+      "run429": 0,
+      "sampledPeakVus": 1,
+      "peakVuSamples": 1,
+      "firstToLastPeakVuSampleSeconds": 0.0,
+      "studioGet": {
+        "requests": 0,
+        "p95Ms": null,
+        "p99Ms": null
+      },
+      "endpoints": [
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 21,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 45.236,
+            "p90": 54.109,
+            "p95": 54.241,
+            "p99": 63.677,
+            "max": 66.036
+          }
+        }
+      ],
+      "failedThresholds": [],
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 0,
+          "contention": 20,
+          "run": 0,
+          "support": 1
+        },
+        "expected409": 19,
+        "activePeakVus": 1,
+        "allocatedMaxVus": 1,
+        "workloadRequests": 20
+      }
+    },
+    "contention-5": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 1,
+        "unique": 0,
+        "contention": 1
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "contention",
+        "durationSeconds": 30,
+        "configuredVus": 1,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 1,
+        "contentionRequests": 5
+      },
+      "startedAt": "2026-11-06T06:41:25.836655+00:00",
+      "endedAt": "2026-11-06T06:41:27.045Z",
+      "summary": {
+        "requests": 6,
+        "rps": 4.965469,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 14.761,
+          "p90": 20.5005,
+          "p95": 21.29975,
+          "p99": 21.93915,
+          "max": 22.099
+        },
+        "vusMax": 1,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 2,
+        "409": 4
+      },
+      "run429": 0,
+      "sampledPeakVus": 1,
+      "peakVuSamples": 1,
+      "firstToLastPeakVuSampleSeconds": 0.0,
+      "studioGet": {
+        "requests": 0,
+        "p95Ms": null,
+        "p99Ms": null
+      },
+      "endpoints": [
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 6,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 14.761,
+            "p90": 20.5005,
+            "p95": 21.29975,
+            "p99": 21.93915,
+            "max": 22.099
+          }
+        }
+      ],
+      "failedThresholds": [],
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 0,
+          "contention": 5,
+          "run": 0,
+          "support": 1
+        },
+        "expected409": 4,
+        "activePeakVus": 1,
+        "allocatedMaxVus": 1,
+        "workloadRequests": 5
+      }
+    },
+    "contention-50": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 1,
+        "unique": 0,
+        "contention": 1
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "contention",
+        "durationSeconds": 30,
+        "configuredVus": 1,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 1,
+        "contentionRequests": 50
+      },
+      "startedAt": "2026-11-06T06:41:38.529198+00:00",
+      "endedAt": "2026-11-06T06:41:39.906Z",
+      "summary": {
+        "requests": 51,
+        "rps": 37.042363,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 81.206,
+          "p90": 128.354,
+          "p95": 151.4905,
+          "p99": 182.5525,
+          "max": 182.816
+        },
+        "vusMax": 1,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 2,
+        "409": 49
+      },
+      "run429": 0,
+      "sampledPeakVus": 1,
+      "peakVuSamples": 1,
+      "firstToLastPeakVuSampleSeconds": 0.0,
+      "studioGet": {
+        "requests": 0,
+        "p95Ms": null,
+        "p99Ms": null
+      },
+      "endpoints": [
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 51,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 81.206,
+            "p90": 128.354,
+            "p95": 151.4905,
+            "p99": 182.5525,
+            "max": 182.816
+          }
+        }
+      ],
+      "failedThresholds": [],
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 0,
+          "contention": 50,
+          "run": 0,
+          "support": 1
+        },
+        "expected409": 49,
+        "activePeakVus": 1,
+        "allocatedMaxVus": 1,
+        "workloadRequests": 50
+      }
+    },
+    "smoke": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "dataset": "small",
+      "fixture": "6c11f5f30f9729567e8411504daa02ebd7cbf15cea7d621273e042575b2254a5",
+      "planned": {
+        "mode": "smoke",
+        "durationSeconds": 60,
+        "configuredVus": 7,
+        "vusPerEndpoint": 1,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset"
+      },
+      "startedAt": "2026-11-06T06:12:18.295067+00:00",
+      "endedAt": "2026-11-06T06:13:20.562Z",
+      "summary": {
+        "requests": 216,
+        "rps": 3.468936,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 4.148,
+          "p90": 9.968,
+          "p95": 11.6875,
+          "p99": 15.4089,
+          "max": 17.243
+        },
+        "vusMax": 7,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 216
+      },
+      "run429": 0,
+      "sampledPeakVus": 7,
+      "peakVuSamples": 60,
+      "firstToLastPeakVuSampleSeconds": 59.0,
+      "studioGet": {
+        "requests": 185,
+        "p95Ms": 11.7104,
+        "p99Ms": 15.60352
+      },
+      "endpoints": [
+        {
+          "method": "GET",
+          "endpoint": "/api/cases",
+          "requestCount": 30,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.513,
+            "p90": 12.3029,
+            "p95": 15.75655,
+            "p99": 16.97388,
+            "max": 17.243
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 28,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.6495,
+            "p90": 10.7756,
+            "p95": 11.6078,
+            "p99": 14.44578,
+            "max": 15.468
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}/revisions",
+          "requestCount": 31,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.863,
+            "p90": 10.944,
+            "p95": 12.47,
+            "p99": 13.4347,
+            "max": 13.447
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/pipelines",
+          "requestCount": 35,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.065,
+            "p90": 9.2424,
+            "p95": 9.9349,
+            "p99": 12.28986,
+            "max": 12.824
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects",
+          "requestCount": 32,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.7165,
+            "p90": 9.6936,
+            "p95": 10.60455,
+            "p99": 11.62557,
+            "max": 11.704
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects/{id}",
+          "requestCount": 29,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.822,
+            "p90": 9.831,
+            "p95": 11.2156,
+            "p99": 12.48168,
+            "max": 12.781
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/example-api/health",
+          "requestCount": 31,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 2.71,
+            "p90": 3.553,
+            "p95": 3.846,
+            "p99": 6.7285,
+            "max": 7.906
+          }
+        }
+      ],
+      "failedThresholds": []
+    },
+    "target-1": {
+      "status": "failed",
+      "k6ExitCode": 99,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 20,
+        "unique": 10,
+        "contention": 8
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "target",
+        "durationSeconds": 1200,
+        "configuredVus": 50,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 50,
+        "contentionRequests": 5,
+        "stageSeconds": 600,
+        "stageVus": [
+          20,
+          50
+        ],
+        "nominalWorkloadHttpRatios": {
+          "list": 0.35,
+          "single": 0.35,
+          "revision": 0.1,
+          "unique": 0.1,
+          "contention": 0.05,
+          "run": 0.05
+        }
+      },
+      "startedAt": "2026-11-06T06:40:30.794350+00:00",
+      "endedAt": "2026-11-06T06:40:36.876Z",
+      "summary": {
+        "requests": 129,
+        "rps": 21.211349,
+        "errorRate": 0.015504,
+        "latencyMs": {
+          "p50": 14.543,
+          "p90": 95.0898,
+          "p95": 216.2848,
+          "p99": 252.38208,
+          "max": 258.609
+        },
+        "vusMax": 20,
+        "thresholdsPassed": false
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 95,
+        "409": 32,
+        "429": 2
+      },
+      "run429": 2,
+      "sampledPeakVus": 20,
+      "peakVuSamples": 6,
+      "firstToLastPeakVuSampleSeconds": 5.0,
+      "studioGet": {
+        "requests": 31,
+        "p95Ms": 76.4105,
+        "p99Ms": 78.2944
+      },
+      "endpoints": [
+        {
+          "method": "GET",
+          "endpoint": "/api/cases",
+          "requestCount": 2,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 21.418,
+            "p90": 23.6436,
+            "p95": 23.9218,
+            "p99": 24.14436,
+            "max": 24.2
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 4,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 3.5925,
+            "p90": 5.5004,
+            "p95": 5.9087,
+            "p99": 6.23534,
+            "max": 6.317
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}/revisions",
+          "requestCount": 13,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 3.323,
+            "p90": 34.3338,
+            "p95": 39.4292,
+            "p99": 45.45944,
+            "max": 46.967
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/pipelines",
+          "requestCount": 2,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 2.252,
+            "p90": 2.6096,
+            "p95": 2.6543,
+            "p99": 2.69006,
+            "max": 2.699
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects",
+          "requestCount": 5,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 74.759,
+            "p90": 78.2612,
+            "p95": 78.3276,
+            "p99": 78.38072,
+            "max": 78.394
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects/{id}",
+          "requestCount": 5,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 36.69,
+            "p90": 46.5018,
+            "p95": 49.4134,
+            "p99": 51.74268,
+            "max": 52.325
+          }
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/run",
+          "requestCount": 10,
+          "errorRate": 0.2,
+          "latencyMs": {
+            "p50": 223.7725,
+            "p90": 258.0042,
+            "p95": 258.3066,
+            "p99": 258.54852,
+            "max": 258.609
+          }
+        },
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 88,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 14.4345,
+            "p90": 78.1382,
+            "p95": 97.83885,
+            "p99": 174.40622,
+            "max": 177.011
+          }
+        }
+      ],
+      "failedThresholds": [
+        {
+          "metric": "http_req_failed",
+          "condition": "rate<0.01",
+          "actualValue": 0.015504,
+          "passed": false
+        },
+        {
+          "metric": "checks",
+          "condition": "rate==1",
+          "actualValue": 0.988764,
+          "passed": false
+        }
+      ],
+      "traffic": {
+        "requests": {
+          "list": 9,
+          "single": 9,
+          "revision": 13,
+          "unique": 40,
+          "contention": 40,
+          "run": 10,
+          "support": 8
+        },
+        "expected409": 32,
+        "activePeakVus": 20,
+        "allocatedMaxVus": 50,
+        "workloadRequests": 121
+      }
+    },
+    "target-2": {
+      "status": "failed",
+      "k6ExitCode": 99,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 22,
+        "unique": 11,
+        "contention": 9
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "target",
+        "durationSeconds": 1200,
+        "configuredVus": 50,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 50,
+        "contentionRequests": 5,
+        "stageSeconds": 600,
+        "stageVus": [
+          20,
+          50
+        ],
+        "nominalWorkloadHttpRatios": {
+          "list": 0.35,
+          "single": 0.35,
+          "revision": 0.1,
+          "unique": 0.1,
+          "contention": 0.05,
+          "run": 0.05
+        }
+      },
+      "startedAt": "2026-11-06T06:40:42.192888+00:00",
+      "endedAt": "2026-11-06T06:40:48.254Z",
+      "summary": {
+        "requests": 138,
+        "rps": 22.768099,
+        "errorRate": 0.007246,
+        "latencyMs": {
+          "p50": 17.844,
+          "p90": 99.3618,
+          "p95": 198.4459,
+          "p99": 244.19031,
+          "max": 253.004
+        },
+        "vusMax": 20,
+        "thresholdsPassed": false
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 101,
+        "409": 36,
+        "429": 1
+      },
+      "run429": 1,
+      "sampledPeakVus": 20,
+      "peakVuSamples": 6,
+      "firstToLastPeakVuSampleSeconds": 5.0,
+      "studioGet": {
+        "requests": 30,
+        "p95Ms": 58.27825,
+        "p99Ms": 58.68264
+      },
+      "endpoints": [
+        {
+          "method": "GET",
+          "endpoint": "/api/cases",
+          "requestCount": 2,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 19.1995,
+            "p90": 19.5591,
+            "p95": 19.60405,
+            "p99": 19.64001,
+            "max": 19.649
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 4,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 3.671,
+            "p90": 10.361,
+            "p95": 11.783,
+            "p99": 12.9206,
+            "max": 13.205
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}/revisions",
+          "requestCount": 13,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.153,
+            "p90": 26.8168,
+            "p95": 27.406,
+            "p99": 28.0852,
+            "max": 28.255
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/pipelines",
+          "requestCount": 1,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 2.386,
+            "p90": 2.386,
+            "p95": 2.386,
+            "p99": 2.386,
+            "max": 2.386
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects",
+          "requestCount": 5,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 58.204,
+            "p90": 58.6294,
+            "p95": 58.7262,
+            "p99": 58.80364,
+            "max": 58.823
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects/{id}",
+          "requestCount": 5,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 14.783,
+            "p90": 24.1196,
+            "p95": 25.1518,
+            "p99": 25.97756,
+            "max": 26.184
+          }
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/run",
+          "requestCount": 10,
+          "errorRate": 0.1,
+          "latencyMs": {
+            "p50": 207.5215,
+            "p90": 251.7773,
+            "p95": 252.39065,
+            "p99": 252.88133,
+            "max": 253.004
+          }
+        },
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 98,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 17.844,
+            "p90": 67.8664,
+            "p95": 99.0624,
+            "p99": 115.34219,
+            "max": 124.919
+          }
+        }
+      ],
+      "failedThresholds": [
+        {
+          "metric": "checks",
+          "condition": "rate==1",
+          "actualValue": 0.994681,
+          "passed": false
+        }
+      ],
+      "traffic": {
+        "requests": {
+          "list": 8,
+          "single": 9,
+          "revision": 13,
+          "unique": 44,
+          "contention": 45,
+          "run": 10,
+          "support": 9
+        },
+        "expected409": 36,
+        "activePeakVus": 20,
+        "allocatedMaxVus": 50,
+        "workloadRequests": 129
+      }
+    },
+    "target-3": {
+      "status": "failed",
+      "k6ExitCode": 99,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 20,
+        "unique": 10,
+        "contention": 8
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "target",
+        "durationSeconds": 1200,
+        "configuredVus": 50,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 50,
+        "contentionRequests": 5,
+        "stageSeconds": 600,
+        "stageVus": [
+          20,
+          50
+        ],
+        "nominalWorkloadHttpRatios": {
+          "list": 0.35,
+          "single": 0.35,
+          "revision": 0.1,
+          "unique": 0.1,
+          "contention": 0.05,
+          "run": 0.05
+        }
+      },
+      "startedAt": "2026-11-06T06:40:53.452202+00:00",
+      "endedAt": "2026-11-06T06:40:59.509Z",
+      "summary": {
+        "requests": 130,
+        "rps": 21.463486,
+        "errorRate": 0.015385,
+        "latencyMs": {
+          "p50": 16.4685,
+          "p90": 66.7867,
+          "p95": 208.34615,
+          "p99": 267.27504,
+          "max": 270.241
+        },
+        "vusMax": 20,
+        "thresholdsPassed": false
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 96,
+        "409": 32,
+        "429": 2
+      },
+      "run429": 2,
+      "sampledPeakVus": 20,
+      "peakVuSamples": 6,
+      "firstToLastPeakVuSampleSeconds": 5.0,
+      "studioGet": {
+        "requests": 32,
+        "p95Ms": 52.3536,
+        "p99Ms": 54.85965
+      },
+      "endpoints": [
+        {
+          "method": "GET",
+          "endpoint": "/api/cases",
+          "requestCount": 2,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 27.11,
+            "p90": 30.3676,
+            "p95": 30.7748,
+            "p99": 31.10056,
+            "max": 31.182
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 4,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 2.6015,
+            "p90": 3.4464,
+            "p95": 3.5022,
+            "p99": 3.54684,
+            "max": 3.558
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/cases/{id}/revisions",
+          "requestCount": 14,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.679,
+            "p90": 33.7534,
+            "p95": 37.95815,
+            "p99": 39.19003,
+            "max": 39.498
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/pipelines",
+          "requestCount": 2,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 12.085,
+            "p90": 15.2818,
+            "p95": 15.6814,
+            "p99": 16.00108,
+            "max": 16.081
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects",
+          "requestCount": 5,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 50.577,
+            "p90": 54.816,
+            "p95": 54.913,
+            "p99": 54.9906,
+            "max": 55.01
+          }
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/projects/{id}",
+          "requestCount": 5,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 16.342,
+            "p90": 20.9546,
+            "p95": 22.4078,
+            "p99": 23.57036,
+            "max": 23.861
+          }
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/run",
+          "requestCount": 10,
+          "errorRate": 0.2,
+          "latencyMs": {
+            "p50": 222.483,
+            "p90": 268.7785,
+            "p95": 269.50975,
+            "p99": 270.09475,
+            "max": 270.241
+          }
+        },
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 88,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 17.6305,
+            "p90": 48.0901,
+            "p95": 68.76505,
+            "p99": 110.3587,
+            "max": 122.791
+          }
+        }
+      ],
+      "failedThresholds": [
+        {
+          "metric": "http_req_failed",
+          "condition": "rate<0.01",
+          "actualValue": 0.015385,
+          "passed": false
+        },
+        {
+          "metric": "checks",
+          "condition": "rate==1",
+          "actualValue": 0.988889,
+          "passed": false
+        }
+      ],
+      "traffic": {
+        "requests": {
+          "list": 9,
+          "single": 9,
+          "revision": 14,
+          "unique": 40,
+          "contention": 40,
+          "run": 10,
+          "support": 8
+        },
+        "expected409": 32,
+        "activePeakVus": 20,
+        "allocatedMaxVus": 50,
+        "workloadRequests": 122
+      }
+    },
+    "unique-20": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 20,
+        "unique": 20,
+        "contention": 0
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "unique",
+        "durationSeconds": 60,
+        "configuredVus": 20,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 20,
+        "contentionRequests": 20
+      },
+      "startedAt": "2026-11-06T06:41:11.150331+00:00",
+      "endedAt": "2026-11-06T06:41:12.822Z",
+      "summary": {
+        "requests": 80,
+        "rps": 47.856364,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 26.2865,
+          "p90": 191.7894,
+          "p95": 288.91575,
+          "p99": 327.84778,
+          "max": 406.072
+        },
+        "vusMax": 20,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 80
+      },
+      "run429": 0,
+      "sampledPeakVus": 20,
+      "peakVuSamples": 1,
+      "firstToLastPeakVuSampleSeconds": 0.0,
+      "studioGet": {
+        "requests": 0,
+        "p95Ms": null,
+        "p99Ms": null
+      },
+      "endpoints": [
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 80,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 26.2865,
+            "p90": 191.7894,
+            "p95": 288.91575,
+            "p99": 327.84778,
+            "max": 406.072
+          }
+        }
+      ],
+      "failedThresholds": [],
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 80,
+          "contention": 0,
+          "run": 0,
+          "support": 0
+        },
+        "expected409": 0,
+        "activePeakVus": 20,
+        "allocatedMaxVus": 20,
+        "workloadRequests": 80
+      }
+    },
+    "unique-5": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 5,
+        "unique": 5,
+        "contention": 0
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "unique",
+        "durationSeconds": 60,
+        "configuredVus": 5,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 5,
+        "contentionRequests": 5
+      },
+      "startedAt": "2026-11-06T06:41:04.756962+00:00",
+      "endedAt": "2026-11-06T06:41:06.077Z",
+      "summary": {
+        "requests": 20,
+        "rps": 15.151079,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 15.535,
+          "p90": 39.4744,
+          "p95": 43.8061,
+          "p99": 52.13722,
+          "max": 54.22
+        },
+        "vusMax": 5,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 20
+      },
+      "run429": 0,
+      "sampledPeakVus": 5,
+      "peakVuSamples": 1,
+      "firstToLastPeakVuSampleSeconds": 0.0,
+      "studioGet": {
+        "requests": 0,
+        "p95Ms": null,
+        "p99Ms": null
+      },
+      "endpoints": [
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 20,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 15.535,
+            "p90": 39.4744,
+            "p95": 43.8061,
+            "p99": 52.13722,
+            "max": 54.22
+          }
+        }
+      ],
+      "failedThresholds": [],
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 20,
+          "contention": 0,
+          "run": 0,
+          "support": 0
+        },
+        "expected409": 0,
+        "activePeakVus": 5,
+        "allocatedMaxVus": 5,
+        "workloadRequests": 20
+      }
+    },
+    "unique-50": {
+      "status": "passed",
+      "k6ExitCode": 0,
+      "serverStopped": true,
+      "mutations": {
+        "documents": 50,
+        "unique": 50,
+        "contention": 0
+      },
+      "dataset": "medium",
+      "fixture": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "planned": {
+        "mode": "unique",
+        "durationSeconds": 60,
+        "configuredVus": 50,
+        "vusPerEndpoint": null,
+        "gracefulStopSeconds": 10,
+        "validationMode": false,
+        "scope": "whole-dataset",
+        "selectionStride": 50,
+        "contentionRequests": 50
+      },
+      "startedAt": "2026-11-06T06:41:18.061213+00:00",
+      "endedAt": "2026-11-06T06:41:20.781Z",
+      "summary": {
+        "requests": 200,
+        "rps": 73.53517,
+        "errorRate": 0.0,
+        "latencyMs": {
+          "p50": 67.4035,
+          "p90": 550.4403,
+          "p95": 745.8624,
+          "p99": 1027.78112,
+          "max": 1172.67
+        },
+        "vusMax": 50,
+        "thresholdsPassed": true
+      },
+      "integrity": "passed",
+      "httpStatuses": {
+        "200": 200
+      },
+      "run429": 0,
+      "sampledPeakVus": 50,
+      "peakVuSamples": 1,
+      "firstToLastPeakVuSampleSeconds": 0.0,
+      "studioGet": {
+        "requests": 0,
+        "p95Ms": null,
+        "p99Ms": null
+      },
+      "endpoints": [
+        {
+          "method": "PUT",
+          "endpoint": "/api/cases/{id}",
+          "requestCount": 200,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 67.4035,
+            "p90": 550.4403,
+            "p95": 745.8624,
+            "p99": 1027.78112,
+            "max": 1172.67
+          }
+        }
+      ],
+      "failedThresholds": [],
+      "traffic": {
+        "requests": {
+          "list": 0,
+          "single": 0,
+          "revision": 0,
+          "unique": 200,
+          "contention": 0,
+          "run": 0,
+          "support": 0
+        },
+        "expected409": 0,
+        "activePeakVus": 50,
+        "allocatedMaxVus": 50,
+        "workloadRequests": 200
+      }
+    }
+  },
+  "campaigns": {
+    "fault": {
+      "status": "failed",
+      "fullDurationConfigured": true,
+      "fullDurationCompleted": false,
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 51.31825,
+            "after": 38.23925,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.2047437924409106,
+            "after": 0.19215142399239166,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 75.2390625,
+            "after": 53.19570974576271,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3.433333333333333,
+            "after": 3.1864406779661016,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.933333333333334,
+            "after": 16.983050847457626,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "executionRecovery": {
+        "status": "passed",
+        "complete": true,
+        "client": {
+          "sustainedSuccessWindowsByVu": {},
+          "sustainedRunsByVu": {},
+          "asyncJobs": {
+            "accepted": 0,
+            "queued": 0,
+            "running": 0,
+            "passed": 0
+          },
+          "windowRequests": 1,
+          "networkOr5xxRate": 0.0,
+          "runExitFailures": 0,
+          "capacity429": 0,
+          "httpStatuses": {
+            "200": 1
+          },
+          "faultObservations": 0,
+          "correctnessFailures": 0
+        },
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        }
+      },
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "stressCapacityStatus": "not established; full stable stage/SLO evidence required",
+      "resourceUnknown": [
+        "diskIops",
+        "diskLatencyMs"
+      ],
+      "phases": [
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "fault",
+            "durationSeconds": 300,
+            "configuredVus": 1
+          },
+          "elapsedSeconds": 311.086,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437774,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.7405,
+              "p90": 34.0805,
+              "p95": 51.31825,
+              "p99": 63.5503,
+              "max": 104.118
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.2047437924409106,
+            "memoryMb": 75.2390625,
+            "threads": 3.433333333333333,
+            "handles": 16.933333333333334,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 66.796875,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "aborted",
+          "complete": false,
+          "k6ExitCode": 105,
+          "stopReason": "network_or_5xx_rate_above_5_percent_in_full_window",
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "fault",
+            "mode": "fault",
+            "durationSeconds": 90,
+            "configuredVus": 1,
+            "fault": "error"
+          },
+          "elapsedSeconds": 60.689,
+          "summary": {},
+          "client": {
+            "httpStatuses": {
+              "500": 50,
+              "200": 50
+            },
+            "capacity429": 0,
+            "runExitFailures": 50,
+            "correctnessFailures": 0,
+            "faultObservations": 50,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.3718926540843788,
+            "memoryMb": 73.66588541666667,
+            "threads": 2.1666666666666665,
+            "handles": 13.316666666666666,
+            "childProcesses": 0.16666666666666666
+          },
+          "post": {
+            "threads": 2,
+            "memoryMb": 63.09375,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": null
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "fault",
+            "mode": "fault",
+            "durationSeconds": 90,
+            "configuredVus": 1,
+            "fault": "delay"
+          },
+          "elapsedSeconds": 94.571,
+          "summary": {
+            "requests": 30,
+            "rps": 0.320249,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 2631.1055,
+              "p90": 3003.9731,
+              "p95": 3004.3889,
+              "p99": 3004.84152,
+              "max": 3004.99
+            },
+            "vusMax": 1,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 30
+            },
+            "capacity429": 0,
+            "runExitFailures": 15,
+            "correctnessFailures": 0,
+            "faultObservations": 15,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.42906280630045823,
+            "memoryMb": 74.76189630681819,
+            "threads": 2.0,
+            "handles": 14.056818181818182,
+            "childProcesses": 0.3522727272727273
+          },
+          "post": {
+            "threads": 2,
+            "memoryMb": 57.3125,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "run",
+            "mode": "fault",
+            "durationSeconds": 30,
+            "vus": 1,
+            "configuredVus": 1
+          },
+          "elapsedSeconds": 2.024,
+          "summary": {
+            "requests": 1,
+            "rps": 0.708738,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 200.867,
+              "p90": 200.867,
+              "p95": 200.867,
+              "p99": 200.867,
+              "max": 200.867
+            },
+            "vusMax": 1,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 1
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.05989445638544692,
+            "memoryMb": 56.0,
+            "threads": 2.0,
+            "handles": 12.5,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 2,
+            "memoryMb": 56.125,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "fault",
+            "durationSeconds": 300,
+            "configuredVus": 1
+          },
+          "elapsedSeconds": 311.077,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437949,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.902,
+              "p90": 32.364,
+              "p95": 38.23925,
+              "p99": 70.091,
+              "max": 82.405
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.19215142399239166,
+            "memoryMb": 53.19570974576271,
+            "threads": 3.1864406779661016,
+            "handles": 16.983050847457626,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 53.296875,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        }
+      ]
+    },
+    "run-capacity": {
+      "status": "failed",
+      "fullDurationConfigured": true,
+      "fullDurationCompleted": false,
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 48.27285,
+            "after": 39.37675,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.20975944143639813,
+            "after": 0.22122061755710054,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 89.3760593220339,
+            "after": 52.342955508474574,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 4.254237288135593,
+            "after": 2.440677966101695,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.93220338983051,
+            "after": 16.949152542372882,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "maxObservedSuccessfulConcurrency": 2,
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "stressCapacityStatus": "not established; full stable stage/SLO evidence required",
+      "resourceUnknown": [
+        "diskIops",
+        "diskLatencyMs"
+      ],
+      "phases": [
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "run-capacity",
+            "durationSeconds": 300,
+            "configuredVus": 10
+          },
+          "elapsedSeconds": 311.116,
+          "summary": {
+            "requests": 754,
+            "rps": 2.431505,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.9515,
+              "p90": 35.6339,
+              "p95": 48.27285,
+              "p99": 66.27646,
+              "max": 130.195
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 754
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.20975944143639813,
+            "memoryMb": 89.3760593220339,
+            "threads": 4.254237288135593,
+            "handles": 16.93220338983051,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 4,
+            "memoryMb": 88.109375,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "run",
+            "mode": "run-capacity",
+            "durationSeconds": 30,
+            "vus": 1,
+            "configuredVus": 10
+          },
+          "elapsedSeconds": 2.126,
+          "summary": {
+            "requests": 1,
+            "rps": 0.683248,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 268.715,
+              "p90": 268.715,
+              "p95": 268.715,
+              "p99": 268.715,
+              "max": 268.715
+            },
+            "vusMax": 1,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 1
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.06069598878297394,
+            "memoryMb": 88.3984375,
+            "threads": 4.0,
+            "handles": 12.5,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 4,
+            "memoryMb": 88.6875,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "run",
+            "mode": "run-capacity",
+            "durationSeconds": 30,
+            "vus": 2,
+            "configuredVus": 10
+          },
+          "elapsedSeconds": 2.1,
+          "summary": {
+            "requests": 2,
+            "rps": 1.415577,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 227.674,
+              "p90": 228.0412,
+              "p95": 228.0871,
+              "p99": 228.12382,
+              "max": 228.133
+            },
+            "vusMax": 2,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 2
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.12477004356907723,
+            "memoryMb": 88.6796875,
+            "threads": 3.5,
+            "handles": 13.0,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 88.671875,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "failed",
+          "complete": true,
+          "k6ExitCode": 99,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "run",
+            "mode": "run-capacity",
+            "durationSeconds": 30,
+            "vus": 5,
+            "configuredVus": 10
+          },
+          "elapsedSeconds": 2.149,
+          "summary": {
+            "requests": 5,
+            "rps": 3.467503,
+            "errorRate": 0.6,
+            "latencyMs": {
+              "p50": 7.063,
+              "p90": 238.3722,
+              "p95": 238.5566,
+              "p99": 238.70412,
+              "max": 238.741
+            },
+            "vusMax": 5,
+            "thresholdsPassed": false
+          },
+          "client": {
+            "httpStatuses": {
+              "429": 3,
+              "200": 2
+            },
+            "capacity429": 3,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.18150185519233683,
+            "memoryMb": 88.7734375,
+            "threads": 4.5,
+            "handles": 14.5,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 6,
+            "memoryMb": 88.875,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "failed",
+          "complete": true,
+          "k6ExitCode": 99,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "run",
+            "mode": "run-capacity",
+            "durationSeconds": 30,
+            "vus": 10,
+            "configuredVus": 10
+          },
+          "elapsedSeconds": 2.16,
+          "summary": {
+            "requests": 10,
+            "rps": 6.770604,
+            "errorRate": 0.8,
+            "latencyMs": {
+              "p50": 9.2825,
+              "p90": 247.8034,
+              "p95": 248.3902,
+              "p99": 248.85964,
+              "max": 248.977
+            },
+            "vusMax": 10,
+            "thresholdsPassed": false
+          },
+          "client": {
+            "httpStatuses": {
+              "429": 8,
+              "200": 2
+            },
+            "capacity429": 8,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.1818546409187885,
+            "memoryMb": 89.015625,
+            "threads": 8.0,
+            "handles": 17.0,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 10,
+            "memoryMb": 89.15625,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "run-capacity",
+            "durationSeconds": 300,
+            "configuredVus": 10
+          },
+          "elapsedSeconds": 311.071,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437714,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 5.0075,
+              "p90": 32.2535,
+              "p95": 39.37675,
+              "p99": 60.08075,
+              "max": 149.006
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.22122061755710054,
+            "memoryMb": 52.342955508474574,
+            "threads": 2.440677966101695,
+            "handles": 16.949152542372882,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 52.09375,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        }
+      ]
+    },
+    "run-sustained": {
+      "status": "failed",
+      "fullDurationConfigured": true,
+      "fullDurationCompleted": false,
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 43.2775,
+            "after": 42.932,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.2196525497230931,
+            "after": 0.2268308625317204,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 80.15360169491525,
+            "after": 50.779925847457626,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 2.983050847457627,
+            "after": 4.762711864406779,
+            "verdict": "failed"
+          },
+          "handles": {
+            "before": 16.93220338983051,
+            "after": 16.949152542372882,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "failed",
+        "factor": 1.2
+      },
+      "admissionStatus": "passed",
+      "maximumStableConcurrency": null,
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "stressCapacityStatus": "not established; full stable stage/SLO evidence required",
+      "resourceUnknown": [
+        "diskIops",
+        "diskLatencyMs"
+      ],
+      "phases": [
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "run-sustained",
+            "durationSeconds": 300,
+            "configuredVus": 2
+          },
+          "elapsedSeconds": 311.058,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437903,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.878,
+              "p90": 34.104,
+              "p95": 43.2775,
+              "p99": 59.46135,
+              "max": 93.403
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.2196525497230931,
+            "memoryMb": 80.15360169491525,
+            "threads": 2.983050847457627,
+            "handles": 16.93220338983051,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 78.734375,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "admissionValidation": {
+            "status": "passed",
+            "reason": null
+          },
+          "profile": {
+            "phase": "sustained",
+            "mode": "run-sustained",
+            "durationSeconds": 60,
+            "vus": 1,
+            "configuredVus": 2
+          },
+          "elapsedSeconds": 61.02,
+          "summary": {
+            "requests": 194,
+            "rps": 3.230017,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 205.199,
+              "p90": 226.4876,
+              "p95": 232.85835,
+              "p99": 258.54538,
+              "max": 282.669
+            },
+            "vusMax": 1,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 194
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {
+              "1": 194
+            }
+          },
+          "resources": {
+            "cpuPercent": 1.1152964378389545,
+            "memoryMb": 96.0895127118644,
+            "threads": 2.0338983050847457,
+            "handles": 14.457627118644067,
+            "childProcesses": 0.6101694915254238
+          },
+          "post": {
+            "threads": 2,
+            "memoryMb": 70.96875,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "admissionValidation": {
+            "status": "passed",
+            "reason": null
+          },
+          "profile": {
+            "phase": "sustained",
+            "mode": "run-sustained",
+            "durationSeconds": 60,
+            "vus": 2,
+            "configuredVus": 2
+          },
+          "elapsedSeconds": 61.198,
+          "summary": {
+            "requests": 364,
+            "rps": 6.041799,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 227.4355,
+              "p90": 251.4321,
+              "p95": 258.38515,
+              "p99": 282.65435,
+              "max": 291.328
+            },
+            "vusMax": 2,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 364
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {
+              "1": 182,
+              "2": 182
+            }
+          },
+          "resources": {
+            "cpuPercent": 2.4406255207079757,
+            "memoryMb": 103.89671610169492,
+            "threads": 3.0,
+            "handles": 16.45762711864407,
+            "childProcesses": 1.1864406779661016
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 50.328125,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "admissionValidation": {
+            "status": "passed",
+            "reason": null
+          },
+          "profile": {
+            "phase": "queue",
+            "mode": "run-sustained",
+            "durationSeconds": 60,
+            "vus": 1,
+            "configuredVus": 2
+          },
+          "elapsedSeconds": 2.949,
+          "summary": {
+            "requests": 73,
+            "rps": 31.802861,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 1.454,
+              "p90": 3.7452,
+              "p95": 8.0902,
+              "p99": 9.44876,
+              "max": 9.731
+            },
+            "vusMax": 1,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "202": 5,
+              "200": 68
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 2.722786718743485,
+            "memoryMb": 98.50520833333333,
+            "threads": 8.0,
+            "handles": 19.666666666666668,
+            "childProcesses": 1.0
+          },
+          "post": {
+            "threads": 8,
+            "memoryMb": 51.578125,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "run-sustained",
+            "durationSeconds": 300,
+            "configuredVus": 2
+          },
+          "elapsedSeconds": 311.1,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437929,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 4.779,
+              "p90": 32.7995,
+              "p95": 42.932,
+              "p99": 66.83825,
+              "max": 86.469
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.2268308625317204,
+            "memoryMb": 50.779925847457626,
+            "threads": 4.762711864406779,
+            "handles": 16.949152542372882,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 4,
+            "memoryMb": 51.328125,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        }
+      ]
+    },
+    "soak": {
+      "status": "failed",
+      "fullDurationConfigured": true,
+      "fullDurationCompleted": false,
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 44.7441,
+            "after": 38.46975,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.22259620719630205,
+            "after": 0.23653209108195186,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 84.82161458333333,
+            "after": 52.143229166666664,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3.75,
+            "after": 3.0,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.916666666666668,
+            "after": 16.916666666666668,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "stressCapacityStatus": "not established; full stable stage/SLO evidence required",
+      "resourceUnknown": [
+        "diskIops",
+        "diskLatencyMs"
+      ],
+      "phases": [
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "soak",
+            "durationSeconds": 300,
+            "vus": 35,
+            "configuredVus": 35
+          },
+          "elapsedSeconds": 311.145,
+          "summary": {
+            "requests": 755,
+            "rps": 2.434435,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 5.039,
+              "p90": 34.2332,
+              "p95": 44.7441,
+              "p99": 60.78224,
+              "max": 99.931
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 755
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.22259620719630205,
+            "memoryMb": 84.82161458333333,
+            "threads": 3.75,
+            "handles": 16.916666666666668,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 4,
+            "memoryMb": 84.03125,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "aborted",
+          "complete": false,
+          "k6ExitCode": 105,
+          "stopReason": "run_capacity_limit_429_before_further_increase",
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "profile",
+            "mode": "soak",
+            "durationSeconds": 7200,
+            "vus": 35,
+            "configuredVus": 35
+          },
+          "elapsedSeconds": 5.327,
+          "summary": {},
+          "client": {
+            "httpStatuses": {
+              "200": 147,
+              "429": 6,
+              "409": 56
+            },
+            "capacity429": 6,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 1.5305232248673406,
+            "memoryMb": 86.5,
+            "threads": 15.0,
+            "handles": 57.5,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 26,
+            "memoryMb": 88.984375,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": null
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "soak",
+            "durationSeconds": 300,
+            "vus": 35,
+            "configuredVus": 35
+          },
+          "elapsedSeconds": 311.176,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437945,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 5.214,
+              "p90": 33.952,
+              "p95": 38.46975,
+              "p99": 61.3092,
+              "max": 101.374
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.23653209108195186,
+            "memoryMb": 52.143229166666664,
+            "threads": 3.0,
+            "handles": 16.916666666666668,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 51.6875,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        }
+      ],
+      "observedProfile": {
+        "httpStatuses": {
+          "200": 147,
+          "409": 56,
+          "429": 6
+        },
+        "run429": 6,
+        "sampledPeakVus": 35,
+        "peakVuSamples": 5,
+        "firstToLastPeakVuSampleSeconds": 4.0,
+        "studioGet": {
+          "requests": 50,
+          "p95Ms": 101.06635,
+          "p99Ms": 107.39113
+        }
+      }
+    },
+    "spike": {
+      "status": "failed",
+      "fullDurationConfigured": true,
+      "fullDurationCompleted": false,
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 40.05975,
+            "after": 43.32625,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.23041058510210935,
+            "after": 0.2554591761131077,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 82.33854166666667,
+            "after": 54.872395833333336,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 2.8333333333333335,
+            "after": 2.6666666666666665,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.916666666666668,
+            "after": 16.916666666666668,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "stressCapacityStatus": "not established; full stable stage/SLO evidence required",
+      "resourceUnknown": [
+        "diskIops",
+        "diskLatencyMs"
+      ],
+      "phases": [
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "spike",
+            "durationSeconds": 300,
+            "configuredVus": 100,
+            "startVus": 5,
+            "stages": [
+              {
+                "duration": "30s",
+                "target": 100
+              },
+              {
+                "duration": "120s",
+                "target": 100
+              },
+              {
+                "duration": "1s",
+                "target": 5
+              }
+            ]
+          },
+          "elapsedSeconds": 311.06,
+          "summary": {
+            "requests": 756,
+            "rps": 2.4379,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 5.2225,
+              "p90": 33.559,
+              "p95": 40.05975,
+              "p99": 62.15345,
+              "max": 102.111
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.23041058510210935,
+            "memoryMb": 82.33854166666667,
+            "threads": 2.8333333333333335,
+            "handles": 16.916666666666668,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 2,
+            "memoryMb": 80.453125,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "aborted",
+          "complete": false,
+          "k6ExitCode": 105,
+          "stopReason": "run_capacity_limit_429_before_further_increase",
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "profile",
+            "mode": "spike",
+            "durationSeconds": 151,
+            "configuredVus": 100,
+            "startVus": 5,
+            "stages": [
+              {
+                "duration": "30s",
+                "target": 100
+              },
+              {
+                "duration": "120s",
+                "target": 100
+              },
+              {
+                "duration": "1s",
+                "target": 5
+              }
+            ]
+          },
+          "elapsedSeconds": 15.459,
+          "summary": {},
+          "client": {
+            "httpStatuses": {
+              "200": 338,
+              "409": 132,
+              "429": 5
+            },
+            "capacity429": 5,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 1.8131978059508362,
+            "memoryMb": 98.296875,
+            "threads": 7.25,
+            "handles": 72.25,
+            "childProcesses": 0.5
+          },
+          "post": {
+            "threads": 11,
+            "memoryMb": 82.46875,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": null
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "spike",
+            "durationSeconds": 300,
+            "configuredVus": 100,
+            "startVus": 5,
+            "stages": [
+              {
+                "duration": "30s",
+                "target": 100
+              },
+              {
+                "duration": "120s",
+                "target": 100
+              },
+              {
+                "duration": "1s",
+                "target": 5
+              }
+            ]
+          },
+          "elapsedSeconds": 311.143,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437932,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 5.457,
+              "p90": 34.428,
+              "p95": 43.32625,
+              "p99": 68.64705,
+              "max": 82.906
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.2554591761131077,
+            "memoryMb": 54.872395833333336,
+            "threads": 2.6666666666666665,
+            "handles": 16.916666666666668,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 2,
+            "memoryMb": 54.28125,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        }
+      ],
+      "observedProfile": {
+        "httpStatuses": {
+          "200": 338,
+          "409": 132,
+          "429": 5
+        },
+        "run429": 5,
+        "sampledPeakVus": 51,
+        "peakVuSamples": 1,
+        "firstToLastPeakVuSampleSeconds": 0.0,
+        "studioGet": {
+          "requests": 115,
+          "p95Ms": 31.7026,
+          "p99Ms": 78.02806
+        }
+      }
+    },
+    "stress": {
+      "status": "failed",
+      "fullDurationConfigured": true,
+      "fullDurationCompleted": false,
+      "recovery": {
+        "comparison": {
+          "p95Ms": {
+            "before": 46.4125,
+            "after": 41.0985,
+            "verdict": "passed"
+          },
+          "errorRate": {
+            "before": 0.0,
+            "after": 0.0,
+            "verdict": "passed"
+          },
+          "cpuPercent": {
+            "before": 0.23862525063299947,
+            "after": 0.24714813618424278,
+            "verdict": "passed"
+          },
+          "memoryMb": {
+            "before": 72.97265625,
+            "after": 53.798177083333336,
+            "verdict": "passed"
+          },
+          "threads": {
+            "before": 3.1666666666666665,
+            "after": 3.0,
+            "verdict": "passed"
+          },
+          "handles": {
+            "before": 16.916666666666668,
+            "after": 16.916666666666668,
+            "verdict": "passed"
+          },
+          "childProcesses": {
+            "before": 0,
+            "after": 0,
+            "verdict": "passed"
+          }
+        },
+        "status": "passed",
+        "factor": 1.2
+      },
+      "soakStability": "unknown",
+      "stableStressRps": null,
+      "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "serverStopped": true,
+      "stressCapacityStatus": "not established; full stable stage/SLO evidence required",
+      "resourceUnknown": [
+        "diskIops",
+        "diskLatencyMs"
+      ],
+      "phases": [
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "stress",
+            "durationSeconds": 300,
+            "configuredVus": 200,
+            "startVus": 50,
+            "stages": [
+              {
+                "duration": "300s",
+                "target": 50
+              },
+              {
+                "duration": "0s",
+                "target": 75
+              },
+              {
+                "duration": "300s",
+                "target": 75
+              },
+              {
+                "duration": "0s",
+                "target": 100
+              },
+              {
+                "duration": "300s",
+                "target": 100
+              },
+              {
+                "duration": "0s",
+                "target": 125
+              },
+              {
+                "duration": "300s",
+                "target": 125
+              },
+              {
+                "duration": "0s",
+                "target": 150
+              },
+              {
+                "duration": "300s",
+                "target": 150
+              },
+              {
+                "duration": "0s",
+                "target": 175
+              },
+              {
+                "duration": "300s",
+                "target": 175
+              },
+              {
+                "duration": "0s",
+                "target": 200
+              },
+              {
+                "duration": "300s",
+                "target": 200
+              }
+            ]
+          },
+          "elapsedSeconds": 311.183,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437742,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 5.3175,
+              "p90": 34.93,
+              "p95": 46.4125,
+              "p99": 61.42455,
+              "max": 102.059
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.23862525063299947,
+            "memoryMb": 72.97265625,
+            "threads": 3.1666666666666665,
+            "handles": 16.916666666666668,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 65.34375,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        },
+        {
+          "status": "aborted",
+          "complete": false,
+          "k6ExitCode": 105,
+          "stopReason": "run_capacity_limit_429_before_further_increase",
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "profile",
+            "mode": "stress",
+            "durationSeconds": 2100,
+            "configuredVus": 200,
+            "startVus": 50,
+            "stages": [
+              {
+                "duration": "300s",
+                "target": 50
+              },
+              {
+                "duration": "0s",
+                "target": 75
+              },
+              {
+                "duration": "300s",
+                "target": 75
+              },
+              {
+                "duration": "0s",
+                "target": 100
+              },
+              {
+                "duration": "300s",
+                "target": 100
+              },
+              {
+                "duration": "0s",
+                "target": 125
+              },
+              {
+                "duration": "300s",
+                "target": 125
+              },
+              {
+                "duration": "0s",
+                "target": 150
+              },
+              {
+                "duration": "300s",
+                "target": 150
+              },
+              {
+                "duration": "0s",
+                "target": 175
+              },
+              {
+                "duration": "300s",
+                "target": 175
+              },
+              {
+                "duration": "0s",
+                "target": 200
+              },
+              {
+                "duration": "300s",
+                "target": 200
+              }
+            ]
+          },
+          "elapsedSeconds": 5.423,
+          "summary": {},
+          "client": {
+            "httpStatuses": {
+              "200": 185,
+              "429": 10,
+              "409": 76
+            },
+            "capacity429": 10,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 1.8941480296671913,
+            "memoryMb": 69.4609375,
+            "threads": 20.5,
+            "handles": 79.0,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 38,
+            "memoryMb": 73.765625,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": null
+        },
+        {
+          "status": "passed",
+          "complete": true,
+          "k6ExitCode": 0,
+          "stopReason": null,
+          "postRequestCleanup": {
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "status": "passed"
+          },
+          "profile": {
+            "phase": "baseline",
+            "mode": "stress",
+            "durationSeconds": 300,
+            "configuredVus": 200,
+            "startVus": 50,
+            "stages": [
+              {
+                "duration": "300s",
+                "target": 50
+              },
+              {
+                "duration": "0s",
+                "target": 75
+              },
+              {
+                "duration": "300s",
+                "target": 75
+              },
+              {
+                "duration": "0s",
+                "target": 100
+              },
+              {
+                "duration": "300s",
+                "target": 100
+              },
+              {
+                "duration": "0s",
+                "target": 125
+              },
+              {
+                "duration": "300s",
+                "target": 125
+              },
+              {
+                "duration": "0s",
+                "target": 150
+              },
+              {
+                "duration": "300s",
+                "target": 150
+              },
+              {
+                "duration": "0s",
+                "target": 175
+              },
+              {
+                "duration": "300s",
+                "target": 175
+              },
+              {
+                "duration": "0s",
+                "target": 200
+              },
+              {
+                "duration": "300s",
+                "target": 200
+              }
+            ]
+          },
+          "elapsedSeconds": 311.121,
+          "summary": {
+            "requests": 756,
+            "rps": 2.437954,
+            "errorRate": 0.0,
+            "latencyMs": {
+              "p50": 5.454,
+              "p90": 33.4195,
+              "p95": 41.0985,
+              "p99": 65.40715,
+              "max": 78.415
+            },
+            "vusMax": 5,
+            "thresholdsPassed": true
+          },
+          "client": {
+            "httpStatuses": {
+              "200": 756
+            },
+            "capacity429": 0,
+            "runExitFailures": 0,
+            "correctnessFailures": 0,
+            "faultObservations": 0,
+            "sustainedRunsByVu": {}
+          },
+          "resources": {
+            "cpuPercent": 0.24714813618424278,
+            "memoryMb": 53.798177083333336,
+            "threads": 3.0,
+            "handles": 16.916666666666668,
+            "childProcesses": 0.0
+          },
+          "post": {
+            "threads": 3,
+            "memoryMb": 53.75,
+            "walBytes": 0,
+            "childProcesses": 0,
+            "tempEntries": 0,
+            "handles": 12
+          },
+          "integrity": "passed"
+        }
+      ],
+      "observedProfile": {
+        "httpStatuses": {
+          "200": 185,
+          "409": 76,
+          "429": 10
+        },
+        "run429": 10,
+        "sampledPeakVus": 50,
+        "peakVuSamples": 5,
+        "firstToLastPeakVuSampleSeconds": 4.0,
+        "studioGet": {
+          "requests": 60,
+          "p95Ms": 130.4621,
+          "p99Ms": 138.98091
+        }
+      }
+    }
+  },
+  "browser": {
+    "releaseId": "6021fdfb-a9e3-4b1b-a6fe-5d51cef3a4ba",
+    "sourceDigest": "e37f94f1db51811a14d3217e893f75413c10efde49619ddea6480dd77b2df859",
+    "archiveSha256": "1882872937d7059b7062e97d529824c592021c04e642f8d27a308810400789c7",
+    "archiveBytes": 32525,
+    "manifest": "release-demo-1-0-0-rc-2-python-client/studio-release.json",
+    "runId": "1a01f817-9852-4b9d-b28c-e11a76e96dc9",
+    "transport": "loopback HTTP with test OIDC",
+    "workspaceA": "owner",
+    "workspaceB": "viewer",
+    "importPreviewAndApply": "passed",
+    "restoredHttpStatus": 200,
+    "restoredSameRunId": true,
+    "releaseRevision": 1,
+    "releaseDraftPublishAndSource": "passed",
+    "sdkDownloadCrcAndDigest": "passed",
+    "reloadAndBackRestoredPortal": true,
+    "foreignCases": 0,
+    "foreignReleases": 0,
+    "logoutAndReload": "login required"
+  },
+  "releaseDecision": {
+    "status": "hold",
+    "criteria": "provisional local release thresholds",
+    "reasons": [
+      "mixed target rejected synchronous runs at 20 VUs",
+      "planned 35-VU two-hour soak stopped early",
+      "native Windows path verification pending"
+    ]
+  },
+  "finalRegression": {
+    "python": {
+      "tests": 718,
+      "skipped": 0,
+      "seconds": 138.491
+    },
+    "frontend": {
+      "tests": 169,
+      "files": 38
+    },
+    "build": "passed with existing chunk-size warning",
+    "generatedServer": "passed",
+    "lt5Report": "passed",
+    "k6ModelFiles": 5,
+    "windows": "pending; physical PC off",
+    "sourceArchiveSha256": "f74d267cb8678726690c20e8dee62c69c79972e32adcf8adc13ad897e978069c"
+  },
+  "baselineMedium": {
+    "status": "passed",
+    "identity": {
+      "appVersion": "1.0.1",
+      "commitSha": "858f0e990e1712d3f6142e14e3a551492c8f0793",
+      "pythonVersion": "3.13.5",
+      "k6Version": "k6 v2.3.0 (commit/e088784614, go1.26.8, darwin/arm64)",
+      "os": "macOS-27.2-arm64-arm-64bit-Mach-O",
+      "machine": "arm64",
+      "logicalCpuCount": 8,
+      "memoryMb": 16384.0,
+      "k6BinarySha256": "efb8282e24ffe18f54ce3679eaa71d72e0645bbb97b14e2a05cc8b192abf48e3"
+    },
+    "comparison": {
+      "status": "comparable",
+      "reasons": [],
+      "runLevelMedianRps": 2.437861,
+      "runLevelMedianP95Ms": 40.23225,
+      "scope": "actual_3x300"
+    },
+    "serverStopped": true,
+    "oneServerPid": 63813,
+    "runs": [
+      {
+        "runId": "run_lt4_ed5430283e5141c3bb456cc6e28fbafe",
+        "summary": {
+          "requests": 756,
+          "rps": 2.437861,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.2615,
+            "p90": 33.8645,
+            "p95": 40.23225,
+            "p99": 62.63915,
+            "max": 96.883
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "integrity": "passed"
+      },
+      {
+        "runId": "run_lt4_8f88e6ff63d74dc8a7d5b9bd78c97967",
+        "summary": {
+          "requests": 756,
+          "rps": 2.437874,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.491,
+            "p90": 32.8055,
+            "p95": 37.18925,
+            "p99": 60.3201,
+            "max": 80.174
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "integrity": "passed"
+      },
+      {
+        "runId": "run_lt4_6fc68732cd9b4cc7817e8392d97b7628",
+        "summary": {
+          "requests": 755,
+          "rps": 2.434679,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.605,
+            "p90": 33.8492,
+            "p95": 40.4732,
+            "p99": 62.8371,
+            "max": 82.78
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "integrity": "passed"
+      }
+    ]
+  },
+  "twoVuLongObservation": {
+    "status": "observed",
+    "fullDurationCompleted": true,
+    "recovery": {
+      "comparison": {
+        "p95Ms": {
+          "before": 39.77575,
+          "after": 44.0742,
+          "verdict": "passed"
+        },
+        "errorRate": {
+          "before": 0.0,
+          "after": 0.0,
+          "verdict": "passed"
+        },
+        "cpuPercent": {
+          "before": 0.2303168045999724,
+          "after": 0.2659957987409061,
+          "verdict": "passed"
+        },
+        "memoryMb": {
+          "before": 80.21484375,
+          "after": 46.634114583333336,
+          "verdict": "passed"
+        },
+        "threads": {
+          "before": 3.1666666666666665,
+          "after": 2.9166666666666665,
+          "verdict": "passed"
+        },
+        "handles": {
+          "before": 16.916666666666668,
+          "after": 16.916666666666668,
+          "verdict": "passed"
+        },
+        "childProcesses": {
+          "before": 0,
+          "after": 0,
+          "verdict": "passed"
+        }
+      },
+      "status": "passed",
+      "factor": 1.2
+    },
+    "postOriginalFingerprint": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "serverStopped": true,
+    "growth": {
+      "metrics": {
+        "memoryMb": {
+          "samples": 1423,
+          "first": 78.5625,
+          "last": 45.015625,
+          "delta": -33.546875,
+          "continuouslyIncreasing": false
+        },
+        "threads": {
+          "samples": 1423,
+          "first": 3,
+          "last": 2,
+          "delta": -1,
+          "continuouslyIncreasing": false
+        },
+        "walBytes": {
+          "samples": 1423,
+          "first": 0,
+          "last": 0,
+          "delta": 0,
+          "continuouslyIncreasing": false
+        },
+        "logFiles": {
+          "samples": 1423,
+          "first": 0,
+          "last": 0,
+          "delta": 0,
+          "continuouslyIncreasing": false
+        }
+      },
+      "interpretation": "observed sample trend only; short validation cannot establish2-hourSoak stability"
+    },
+    "phases": [
+      {
+        "status": "passed",
+        "complete": true,
+        "k6ExitCode": 0,
+        "stopReason": null,
+        "postRequestCleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "profile": {
+          "phase": "baseline",
+          "mode": "soak",
+          "durationSeconds": 300,
+          "vus": 2,
+          "configuredVus": 2
+        },
+        "elapsedSeconds": 311.038,
+        "summary": {
+          "requests": 756,
+          "rps": 2.437793,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.819,
+            "p90": 33.956,
+            "p95": 39.77575,
+            "p99": 63.93255,
+            "max": 104.819
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "client": {
+          "httpStatuses": {
+            "200": 756
+          },
+          "capacity429": 0,
+          "runExitFailures": 0,
+          "correctnessFailures": 0,
+          "faultObservations": 0,
+          "sustainedRunsByVu": {}
+        },
+        "resources": {
+          "cpuPercent": 0.2303168045999724,
+          "memoryMb": 80.21484375,
+          "threads": 3.1666666666666665,
+          "handles": 16.916666666666668,
+          "childProcesses": 0.0
+        },
+        "post": {
+          "threads": 3,
+          "memoryMb": 78.921875,
+          "walBytes": 0,
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "handles": 12
+        },
+        "integrity": "passed"
+      },
+      {
+        "status": "passed",
+        "complete": true,
+        "k6ExitCode": 0,
+        "stopReason": null,
+        "postRequestCleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "profile": {
+          "phase": "profile",
+          "mode": "soak",
+          "durationSeconds": 7200,
+          "vus": 2,
+          "configuredVus": 2
+        },
+        "elapsedSeconds": 7204.052,
+        "summary": {
+          "requests": 7978,
+          "rps": 1.107785,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.848,
+            "p90": 37.5102,
+            "p95": 65.9912,
+            "p99": 275.42691,
+            "max": 723.888
+          },
+          "vusMax": 2,
+          "thresholdsPassed": true
+        },
+        "client": {
+          "httpStatuses": {
+            "200": 7666,
+            "409": 312
+          },
+          "capacity429": 0,
+          "runExitFailures": 0,
+          "correctnessFailures": 0,
+          "faultObservations": 0,
+          "sustainedRunsByVu": {}
+        },
+        "resources": {
+          "cpuPercent": 0.1327672397421827,
+          "memoryMb": 48.353017392832044,
+          "threads": 2.5643007730147573,
+          "handles": 14.242445537596627,
+          "childProcesses": 0.009135628952916374
+        },
+        "post": {
+          "threads": 2,
+          "memoryMb": 44.703125,
+          "walBytes": 0,
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "handles": 12
+        },
+        "integrity": "passed"
+      },
+      {
+        "status": "passed",
+        "complete": true,
+        "k6ExitCode": 0,
+        "stopReason": null,
+        "postRequestCleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "profile": {
+          "phase": "baseline",
+          "mode": "soak",
+          "durationSeconds": 300,
+          "vus": 2,
+          "configuredVus": 2
+        },
+        "elapsedSeconds": 311.327,
+        "summary": {
+          "requests": 754,
+          "rps": 2.430897,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.333,
+            "p90": 37.3672,
+            "p95": 44.0742,
+            "p99": 66.28191,
+            "max": 89.861
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "client": {
+          "httpStatuses": {
+            "200": 754
+          },
+          "capacity429": 0,
+          "runExitFailures": 0,
+          "correctnessFailures": 0,
+          "faultObservations": 0,
+          "sustainedRunsByVu": {}
+        },
+        "resources": {
+          "cpuPercent": 0.2659957987409061,
+          "memoryMb": 46.634114583333336,
+          "threads": 2.9166666666666665,
+          "handles": 16.916666666666668,
+          "childProcesses": 0.0
+        },
+        "post": {
+          "threads": 3,
+          "memoryMb": 46.40625,
+          "walBytes": 0,
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "handles": 12
+        },
+        "integrity": "passed"
+      }
+    ],
+    "observedProfile": {
+      "httpStatuses": {
+        "200": 7666,
+        "409": 312
+      },
+      "run429": 0,
+      "sampledPeakVus": 2,
+      "peakVuSamples": 7201,
+      "firstToLastPeakVuSampleSeconds": 7199.956,
+      "studioGet": {
+        "requests": 6324,
+        "p95Ms": 39.08165,
+        "p99Ms": 58.94763
+      }
+    }
+  },
+  "warmRecoveryDiagnostic": {
+    "status": "passed",
+    "serverStopped": true,
+    "recovery": {
+      "comparison": {
+        "p95Ms": {
+          "before": 39.47625,
+          "after": 38.004,
+          "verdict": "passed"
+        },
+        "errorRate": {
+          "before": 0.0,
+          "after": 0.0,
+          "verdict": "passed"
+        },
+        "cpuPercent": {
+          "before": 0.23933697839638504,
+          "after": 0.22902251061636694,
+          "verdict": "passed"
+        },
+        "memoryMb": {
+          "before": 75.75911458333333,
+          "after": 52.309895833333336,
+          "verdict": "passed"
+        },
+        "threads": {
+          "before": 4.75,
+          "after": 5.0,
+          "verdict": "passed"
+        },
+        "handles": {
+          "before": 16.916666666666668,
+          "after": 16.916666666666668,
+          "verdict": "passed"
+        },
+        "childProcesses": {
+          "before": 0,
+          "after": 0,
+          "verdict": "passed"
+        }
+      },
+      "status": "passed",
+      "factor": 1.2
+    },
+    "batches": [
+      {
+        "accepted": 5,
+        "terminalPassed": 5,
+        "childProcesses": 0,
+        "tempEntries": 0
+      },
+      {
+        "accepted": 5,
+        "terminalPassed": 5,
+        "childProcesses": 0,
+        "tempEntries": 0
+      }
+    ],
+    "threads": {
+      "studioWorkerNativeIdsStable": true,
+      "anyioWorkerCounts": [
+        2,
+        1,
+        1,
+        2
+      ],
+      "psThreadCounts": {
+        "before": 5,
+        "after": 5
+      }
+    }
+  }
+}
