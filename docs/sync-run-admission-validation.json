@@ -1,0 +1,2955 @@
+{
+  "finalCandidate": "b83e3f5ba5e0a79ddfec3e2e52495db10f61b75d",
+  "baseline": "a767652f7e50ac74922124cd0a549bfdc5979d34",
+  "outcome": {
+    "sync429": 0,
+    "uniqueSuccessfulSyncRunIds": 10538,
+    "target20to50FullPassed": 3,
+    "targetHttpRequests": 71057,
+    "targetSyncRuns": 3491,
+    "soak35FullDurationCompleted": true,
+    "soak35HttpRequests": 142344,
+    "soak35SyncRuns": 7047,
+    "soak35Profile": "passed",
+    "soak35Overall": "failed",
+    "soakStability": "unknown",
+    "failedRecoveryMetrics": [
+      "p95Ms",
+      "cpuPercent"
+    ],
+    "windows": "deferred"
+  },
+  "finalRegression": {
+    "pythonTests": 724,
+    "pythonSeconds": 139.21,
+    "frontendTests": 169,
+    "frontendFiles": 38,
+    "build": "passed (existing chunk-size warning)",
+    "generatedServer": "up to date",
+    "loadReport": "up to date",
+    "k6ModelFiles": 5
+  },
+  "sourceFixtureAfterAllRuns": {
+    "dataset": "medium",
+    "seed": 20260929,
+    "counts": {
+      "projects": 20,
+      "cases": 2000,
+      "pipelines": 100
+    },
+    "caseRevisions": 1,
+    "revisionCount": 2120,
+    "bodyCounts": {
+      "1024": 667,
+      "10240": 667,
+      "102400": 666
+    },
+    "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "databaseBytes": 79589376,
+    "projectionBytes": 76199087,
+    "revisionContentBytes": 76196967,
+    "integrity": "passed"
+  },
+  "earlier": {
+    "candidate": "f250a28f7b6797a95ce0f9275530046809c986c5",
+    "k6Sha256": "efb8282e24ffe18f54ce3679eaa71d72e0645bbb97b14e2a05cc8b192abf48e3",
+    "fixture": {
+      "dataset": "medium",
+      "seed": 20260929,
+      "counts": {
+        "projects": 20,
+        "cases": 2000,
+        "pipelines": 100
+      },
+      "caseRevisions": 1,
+      "revisionCount": 2120,
+      "bodyCounts": {
+        "1024": 667,
+        "10240": 667,
+        "102400": 666
+      },
+      "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "databaseBytes": 79589376,
+      "projectionBytes": 76199087,
+      "revisionContentBytes": 76196967,
+      "integrity": "passed"
+    },
+    "runs": {
+      "prior-target": {
+        "commitSha": "a767652f7e50ac74922124cd0a549bfdc5979d34",
+        "dirty": false,
+        "status": "failed",
+        "error": null,
+        "k6ExitCode": 99,
+        "validationMode": false,
+        "configuration": {
+          "mode": "target",
+          "durationSeconds": 1200,
+          "configuredVus": 50,
+          "vusPerEndpoint": null,
+          "gracefulStopSeconds": 10,
+          "validationMode": false,
+          "scope": "whole-dataset",
+          "selectionStride": 50,
+          "contentionRequests": 5,
+          "stageSeconds": 600,
+          "stageVus": [
+            20,
+            50
+          ],
+          "nominalWorkloadHttpRatios": {
+            "list": 0.35,
+            "single": 0.35,
+            "revision": 0.1,
+            "unique": 0.1,
+            "contention": 0.05,
+            "run": 0.05
+          }
+        },
+        "startedAt": "2026-11-06T13:53:20.536973+00:00",
+        "endedAt": "2026-11-06T13:53:26.627Z",
+        "summary": {
+          "requests": 123,
+          "rps": 20.196955,
+          "errorRate": 0.01626,
+          "latencyMs": {
+            "p50": 18.369,
+            "p90": 120.8194,
+            "p95": 303.5991,
+            "p99": 460.93946,
+            "max": 470.993
+          },
+          "vusMax": 20,
+          "thresholdsPassed": false
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 89,
+            "409": 32,
+            "429": 2
+          },
+          "runStatuses": {
+            "200": 7,
+            "429": 2
+          },
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 168,
+            "failed": 2
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 32,
+          "reads": {
+            "count": 30,
+            "p95Ms": 85.2001,
+            "p99Ms": 89.5692,
+            "maxMs": 91.072
+          },
+          "syncRuns": {
+            "count": 9,
+            "p95Ms": 469.7794,
+            "p99Ms": 470.7503,
+            "maxMs": 470.993
+          },
+          "successfulCaseWrites": {
+            "count": 52,
+            "p95Ms": 139.8289,
+            "p99Ms": 272.0018,
+            "maxMs": 308.299
+          },
+          "uniqueWriteRequests": 36,
+          "uniqueWriteP95UpperBoundMs": 179.7755,
+          "vus": {
+            "20": {
+              "samples": 5,
+              "firstToLastSampleSeconds": 4.0
+            }
+          },
+          "rawSha256": "6bf26bfe88a1233628b39668075baf6a38af89174af314cb2d8975b43ea8c607"
+        },
+        "failedThresholds": [
+          {
+            "metric": "http_req_failed",
+            "condition": "rate<0.01",
+            "actualValue": 0.01626,
+            "passed": false
+          },
+          {
+            "metric": "checks",
+            "condition": "rate==1",
+            "actualValue": 0.988235,
+            "passed": false
+          }
+        ],
+        "integrity": "passed",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "mutations": {
+          "documents": 19,
+          "unique": 9,
+          "contention": 8
+        },
+        "stoppedSnapshotCheck": null,
+        "executionHistory": {
+          "rows": 8,
+          "distinctRunIds": 8,
+          "passedExitZero": 8,
+          "proofSha256": "17973fc81c503b6ed410b9b6adf38da2b398322b7df5864044f4a9bafe81a3be"
+        },
+        "externalHostSample": null,
+        "serverStopped": true
+      },
+      "burst-check": {
+        "commitSha": "a767652f7e50ac74922124cd0a549bfdc5979d34",
+        "dirty": true,
+        "status": "passed",
+        "error": null,
+        "k6ExitCode": 0,
+        "validationMode": true,
+        "configuration": {
+          "mode": "target",
+          "durationSeconds": 90,
+          "configuredVus": 50,
+          "vusPerEndpoint": null,
+          "gracefulStopSeconds": 10,
+          "validationMode": true,
+          "scope": "whole-dataset",
+          "selectionStride": 50,
+          "contentionRequests": 5,
+          "stageSeconds": 45,
+          "stageVus": [
+            20,
+            50
+          ],
+          "nominalWorkloadHttpRatios": {
+            "list": 0.35,
+            "single": 0.35,
+            "revision": 0.1,
+            "unique": 0.1,
+            "contention": 0.05,
+            "run": 0.05
+          }
+        },
+        "startedAt": "2026-11-06T13:57:57.944930+00:00",
+        "endedAt": "2026-11-06T13:59:31.487Z",
+        "summary": {
+          "requests": 2003,
+          "rps": 21.412825,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 7.271,
+            "p90": 63.55,
+            "p95": 256.9184,
+            "p99": 408.39936,
+            "max": 937.574
+          },
+          "vusMax": 50,
+          "thresholdsPassed": true
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 1815,
+            "409": 188
+          },
+          "runStatuses": {
+            "200": 117
+          },
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 3459
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 188,
+          "reads": {
+            "count": 1344,
+            "p95Ms": 45.9207,
+            "p99Ms": 127.0257,
+            "maxMs": 178.221
+          },
+          "syncRuns": {
+            "count": 117,
+            "p95Ms": 600.2646,
+            "p99Ms": 735.1078,
+            "maxMs": 937.574
+          },
+          "successfulCaseWrites": {
+            "count": 354,
+            "p95Ms": 82.405,
+            "p99Ms": 249.3982,
+            "maxMs": 337.487
+          },
+          "uniqueWriteRequests": 260,
+          "uniqueWriteP95UpperBoundMs": 117.0531,
+          "vus": {
+            "3": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "14": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "20": {
+              "samples": 45,
+              "firstToLastSampleSeconds": 43.999
+            },
+            "39": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "50": {
+              "samples": 45,
+              "firstToLastSampleSeconds": 43.999
+            }
+          },
+          "rawSha256": "ade9f0054ee9c40f25bbe78722e0e0902cb175053eda3b30e72edd71da1652b0"
+        },
+        "failedThresholds": [],
+        "integrity": "passed",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "mutations": {
+          "documents": 114,
+          "unique": 65,
+          "contention": 47
+        },
+        "stoppedSnapshotCheck": null,
+        "executionHistory": {
+          "rows": 117,
+          "distinctRunIds": 117,
+          "passedExitZero": 117,
+          "proofSha256": "d5d6f54d11cf40e10521f2cde52f12c02c794d3bf45fc90fbc40c5c9ba600c95"
+        },
+        "externalHostSample": null,
+        "serverStopped": true
+      },
+      "target-1": {
+        "commitSha": "f250a28f7b6797a95ce0f9275530046809c986c5",
+        "dirty": false,
+        "status": "error",
+        "error": "ValueError: unique create and three updates did not complete",
+        "k6ExitCode": 99,
+        "validationMode": false,
+        "configuration": {
+          "mode": "target",
+          "durationSeconds": 1200,
+          "configuredVus": 50,
+          "vusPerEndpoint": null,
+          "gracefulStopSeconds": 10,
+          "validationMode": false,
+          "scope": "whole-dataset",
+          "selectionStride": 50,
+          "contentionRequests": 5,
+          "stageSeconds": 600,
+          "stageVus": [
+            20,
+            50
+          ],
+          "nominalWorkloadHttpRatios": {
+            "list": 0.35,
+            "single": 0.35,
+            "revision": 0.1,
+            "unique": 0.1,
+            "contention": 0.05,
+            "run": 0.05
+          }
+        },
+        "startedAt": "2026-11-06T14:06:33.847230+00:00",
+        "endedAt": "2026-11-06T14:12:02.015Z",
+        "summary": {
+          "requests": 3620,
+          "rps": 11.030943,
+          "errorRate": 0.002762,
+          "latencyMs": {
+            "p50": 5.1115,
+            "p90": 46.9792,
+            "p95": 274.705,
+            "p99": 532.24345,
+            "max": 5712.908
+          },
+          "vusMax": 20,
+          "thresholdsPassed": false
+        },
+        "raw": {
+          "httpStatuses": {
+            "0": 10,
+            "200": 3470,
+            "409": 140
+          },
+          "runStatuses": {
+            "200": 184
+          },
+          "networkFailures": {
+            "/api/cases/{id}": 3,
+            "/api/cases/{id}/revisions": 1,
+            "/api/cases": 3,
+            "/api/projects/{id}": 1,
+            "/api/projects": 2
+          },
+          "firstNetworkFailureAt": "2026-11-06T23:12:00.446032+09:00",
+          "checks": {
+            "passed": 6600,
+            "failed": 20
+          },
+          "correctnessFailures": 10,
+          "runExitFailures": 0,
+          "expected409": 140,
+          "reads": {
+            "count": 2877,
+            "p95Ms": 46.621,
+            "p99Ms": 140.8894,
+            "maxMs": 5712.908
+          },
+          "syncRuns": {
+            "count": 184,
+            "p95Ms": 650.199,
+            "p99Ms": 943.4147,
+            "maxMs": 1043.24
+          },
+          "successfulCaseWrites": {
+            "count": 418,
+            "p95Ms": 42.7939,
+            "p99Ms": 158.3653,
+            "maxMs": 309.842
+          },
+          "uniqueWriteRequests": 349,
+          "uniqueWriteP95UpperBoundMs": null,
+          "vus": {
+            "20": {
+              "samples": 327,
+              "firstToLastSampleSeconds": 326.999
+            }
+          },
+          "rawSha256": "924d72234079d98b8d893d884b8153eb1998132e0f0c19e0a4cfe4cfa0e578a8"
+        },
+        "failedThresholds": [
+          {
+            "metric": "checks",
+            "condition": "rate==1",
+            "actualValue": 0.996979,
+            "passed": false
+          }
+        ],
+        "integrity": null,
+        "postFixtureSha256": null,
+        "mutations": null,
+        "stoppedSnapshotCheck": {
+          "dataset": "medium",
+          "seed": 20260929,
+          "counts": {
+            "projects": 21,
+            "cases": 2124,
+            "pipelines": 100
+          },
+          "caseRevisions": 1,
+          "revisionCount": 2541,
+          "bodyCounts": {
+            "1024": 667,
+            "10240": 667,
+            "102400": 666
+          },
+          "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+          "databaseBytes": 80855040,
+          "projectionBytes": 76374409,
+          "revisionContentBytes": 76736262,
+          "integrity": "passed"
+        },
+        "executionHistory": {
+          "rows": 184,
+          "distinctRunIds": 184,
+          "passedExitZero": 184,
+          "proofSha256": "0a2055dc5b9239f5576db1695cf2f3c9c3f193afe35efa084b4fe55eb4f3d70d"
+        },
+        "externalHostSample": null,
+        "serverStopped": true
+      },
+      "target-2": {
+        "commitSha": "f250a28f7b6797a95ce0f9275530046809c986c5",
+        "dirty": false,
+        "status": "passed",
+        "error": null,
+        "k6ExitCode": 0,
+        "validationMode": false,
+        "configuration": {
+          "mode": "target",
+          "durationSeconds": 1200,
+          "configuredVus": 50,
+          "vusPerEndpoint": null,
+          "gracefulStopSeconds": 10,
+          "validationMode": false,
+          "scope": "whole-dataset",
+          "selectionStride": 50,
+          "contentionRequests": 5,
+          "stageSeconds": 600,
+          "stageVus": [
+            20,
+            50
+          ],
+          "nominalWorkloadHttpRatios": {
+            "list": 0.35,
+            "single": 0.35,
+            "revision": 0.1,
+            "unique": 0.1,
+            "contention": 0.05,
+            "run": 0.05
+          }
+        },
+        "startedAt": "2026-11-06T14:19:55.249520+00:00",
+        "endedAt": "2026-11-06T14:39:58.939Z",
+        "summary": {
+          "requests": 23610,
+          "rps": 19.614693,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.86,
+            "p90": 37.2968,
+            "p95": 187.4104,
+            "p99": 299.79577,
+            "max": 1154.27
+          },
+          "vusMax": 50,
+          "thresholdsPassed": true
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 22630,
+            "409": 980
+          },
+          "runStatuses": {
+            "200": 1160
+          },
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 43095
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 980,
+          "reads": {
+            "count": 18660,
+            "p95Ms": 39.2801,
+            "p99Ms": 66.6806,
+            "maxMs": 921.079
+          },
+          "syncRuns": {
+            "count": 1160,
+            "p95Ms": 455.1322,
+            "p99Ms": 711.9488,
+            "maxMs": 1154.27
+          },
+          "successfulCaseWrites": {
+            "count": 2810,
+            "p95Ms": 19.3082,
+            "p99Ms": 70.5709,
+            "maxMs": 316.723
+          },
+          "uniqueWriteRequests": 2320,
+          "uniqueWriteP95UpperBoundMs": 21.157,
+          "vus": {
+            "6": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "20": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 599.0
+            },
+            "23": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "46": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "50": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 599.008
+            }
+          },
+          "rawSha256": "bfeccc6accb608041fb3f5503673193d8084d1a0dfba6d6e4b83a7cc0542cd7c"
+        },
+        "failedThresholds": [],
+        "integrity": "passed",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "mutations": {
+          "documents": 827,
+          "unique": 580,
+          "contention": 245
+        },
+        "stoppedSnapshotCheck": null,
+        "executionHistory": {
+          "rows": 1160,
+          "distinctRunIds": 1160,
+          "passedExitZero": 1160,
+          "proofSha256": "52b58c3f30702bc243316c8c6c5040f88281b027a9f8225f7752b4e198ebd180"
+        },
+        "externalHostSample": {
+          "samples": 1209,
+          "maxIntervalSeconds": 1.188,
+          "maxHostOneMinuteLoad": 15.39697265625,
+          "swapoutPagesDelta": 27768,
+          "sha256": "231775c678d809fa3034b6740018c2b0b1295af5c5d226d4810e16da5bbbd2c2"
+        },
+        "serverStopped": true
+      },
+      "target-3": {
+        "commitSha": "f250a28f7b6797a95ce0f9275530046809c986c5",
+        "dirty": false,
+        "status": "failed",
+        "error": null,
+        "k6ExitCode": 99,
+        "validationMode": false,
+        "configuration": {
+          "mode": "target",
+          "durationSeconds": 1200,
+          "configuredVus": 50,
+          "vusPerEndpoint": null,
+          "gracefulStopSeconds": 10,
+          "validationMode": false,
+          "scope": "whole-dataset",
+          "selectionStride": 50,
+          "contentionRequests": 5,
+          "stageSeconds": 600,
+          "stageVus": [
+            20,
+            50
+          ],
+          "nominalWorkloadHttpRatios": {
+            "list": 0.35,
+            "single": 0.35,
+            "revision": 0.1,
+            "unique": 0.1,
+            "contention": 0.05,
+            "run": 0.05
+          }
+        },
+        "startedAt": "2026-11-06T14:40:06.185785+00:00",
+        "endedAt": "2026-11-06T14:53:38.308Z",
+        "summary": {
+          "requests": 12554,
+          "rps": 15.458264,
+          "errorRate": 0.000239,
+          "latencyMs": {
+            "p50": 5.4,
+            "p90": 40.7255,
+            "p95": 209.899,
+            "p99": 615.23346,
+            "max": 5444.795
+          },
+          "vusMax": 50,
+          "thresholdsPassed": false
+        },
+        "raw": {
+          "httpStatuses": {
+            "0": 3,
+            "200": 11995,
+            "409": 556
+          },
+          "runStatuses": {
+            "200": 626
+          },
+          "networkFailures": {
+            "/api/cases": 3
+          },
+          "firstNetworkFailureAt": "2026-11-06T23:53:36.403148+09:00",
+          "checks": {
+            "passed": 22890,
+            "failed": 6
+          },
+          "correctnessFailures": 3,
+          "runExitFailures": 0,
+          "expected409": 556,
+          "reads": {
+            "count": 9906,
+            "p95Ms": 42.7407,
+            "p99Ms": 784.6412,
+            "maxMs": 5004.12
+          },
+          "syncRuns": {
+            "count": 626,
+            "p95Ms": 425.5152,
+            "p99Ms": 1404.8238,
+            "maxMs": 5444.795
+          },
+          "successfulCaseWrites": {
+            "count": 1466,
+            "p95Ms": 21.9525,
+            "p99Ms": 121.4307,
+            "maxMs": 2125.399
+          },
+          "uniqueWriteRequests": 1188,
+          "uniqueWriteP95UpperBoundMs": null,
+          "vus": {
+            "20": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 599.015
+            },
+            "50": {
+              "samples": 211,
+              "firstToLastSampleSeconds": 211.003
+            }
+          },
+          "rawSha256": "92c489f02353ad8494a003123e62b5b957da9afb27b4846f9bddb92ec49e4d13"
+        },
+        "failedThresholds": [
+          {
+            "metric": "checks",
+            "condition": "rate==1",
+            "actualValue": 0.999738,
+            "passed": false
+          }
+        ],
+        "integrity": "passed",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "mutations": {
+          "documents": 438,
+          "unique": 297,
+          "contention": 139
+        },
+        "stoppedSnapshotCheck": null,
+        "executionHistory": {
+          "rows": 632,
+          "distinctRunIds": 632,
+          "passedExitZero": 632,
+          "proofSha256": "3b5f2dd349d8bf11e6a7abd09797da4d062722394e050de62ca4d638d2488703"
+        },
+        "externalHostSample": {
+          "samples": 816,
+          "maxIntervalSeconds": 2.096,
+          "maxHostOneMinuteLoad": 24.75341796875,
+          "swapoutPagesDelta": 42520,
+          "sha256": "9f6def9a4fad511dff69e09520d0ca8c7b552ce11a050a0c486428c30aee82eb"
+        },
+        "serverStopped": true
+      },
+      "soak-35": {
+        "commitSha": "f250a28f7b6797a95ce0f9275530046809c986c5",
+        "dirty": false,
+        "status": "failed",
+        "error": null,
+        "configuration": {
+          "mode": "soak",
+          "validationMode": false,
+          "baselineSeconds": 300,
+          "sampleIntervalSeconds": 5,
+          "windowSeconds": 60,
+          "resourceSustainSeconds": 120,
+          "scaledStopTimers": false,
+          "configuredVus": 35,
+          "selectionStride": 35,
+          "contentionRequests": 5,
+          "phase": "profile",
+          "vus": 35,
+          "durationSeconds": 7200,
+          "soakTargetBasis": "70% of planned Target50VU; proven stable capacity is not established"
+        },
+        "fullDurationCompleted": false,
+        "phases": [
+          {
+            "name": "before",
+            "status": "passed",
+            "complete": true,
+            "stopReason": null,
+            "configuredSeconds": 300,
+            "elapsedSeconds": 311.44,
+            "summary": {
+              "requests": 754,
+              "rps": 2.43121,
+              "errorRate": 0.0,
+              "latencyMs": {
+                "p50": 5.534,
+                "p90": 37.8851,
+                "p95": 46.6729,
+                "p99": 73.91008,
+                "max": 383.115
+              },
+              "vusMax": 5,
+              "thresholdsPassed": true
+            },
+            "raw": {
+              "httpStatuses": {
+                "200": 754
+              },
+              "runStatuses": {},
+              "networkFailures": {},
+              "firstNetworkFailureAt": null,
+              "checks": {
+                "passed": 1508
+              },
+              "correctnessFailures": 0,
+              "runExitFailures": 0,
+              "expected409": 0,
+              "reads": {
+                "count": 646,
+                "p95Ms": 46.548,
+                "p99Ms": 75.3652,
+                "maxMs": 383.115
+              },
+              "syncRuns": {
+                "count": 0,
+                "p95Ms": null,
+                "p99Ms": null,
+                "maxMs": null
+              },
+              "successfulCaseWrites": {
+                "count": 0,
+                "p95Ms": null,
+                "p99Ms": null,
+                "maxMs": null
+              },
+              "uniqueWriteRequests": 0,
+              "uniqueWriteP95UpperBoundMs": null,
+              "vus": {
+                "3": {
+                  "samples": 1,
+                  "firstToLastSampleSeconds": 0.0
+                },
+                "4": {
+                  "samples": 7,
+                  "firstToLastSampleSeconds": 6.0
+                },
+                "5": {
+                  "samples": 302,
+                  "firstToLastSampleSeconds": 301.004
+                }
+              },
+              "rawSha256": "c771e48fb8aedeced1474e36eb25e65f4cd0215add82975b477c54cc9bfeed36"
+            },
+            "cleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "resources": {
+              "cpuPercent": {
+                "min": 0.09900728856979524,
+                "max": 0.5190213711293279,
+                "first": 0.5190213711293279,
+                "last": 0.09900728856979524,
+                "samples": 61
+              },
+              "memoryPercent": {
+                "min": 0.21600723266601562,
+                "max": 0.5603790283203125,
+                "first": 0.5603790283203125,
+                "last": 0.2330780029296875,
+                "samples": 62
+              },
+              "memoryMb": {
+                "min": 35.390625,
+                "max": 91.8125,
+                "first": 91.8125,
+                "last": 38.1875,
+                "samples": 62
+              },
+              "threads": {
+                "min": 1,
+                "max": 5,
+                "first": 1,
+                "last": 3,
+                "samples": 62
+              },
+              "walBytes": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 62
+              },
+              "handles": {
+                "min": 12,
+                "max": 18,
+                "first": 12,
+                "last": 16,
+                "samples": 62
+              }
+            },
+            "growth": {
+              "memoryMb": {
+                "samples": 62,
+                "first": 91.8125,
+                "last": 38.1875,
+                "delta": -53.625,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 62,
+                "first": 1,
+                "last": 3,
+                "delta": 2,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 62,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 62,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "integrity": "passed"
+          },
+          {
+            "name": "profile",
+            "status": "aborted",
+            "complete": false,
+            "stopReason": "run_capacity_limit_429_before_further_increase",
+            "configuredSeconds": 7200,
+            "elapsedSeconds": 843.286,
+            "summary": null,
+            "raw": {
+              "httpStatuses": {
+                "200": 15725,
+                "409": 708,
+                "429": 2
+              },
+              "runStatuses": {
+                "200": 828,
+                "429": 2
+              },
+              "networkFailures": {},
+              "firstNetworkFailureAt": null,
+              "checks": {
+                "passed": 29944,
+                "failed": 2
+              },
+              "correctnessFailures": 0,
+              "runExitFailures": 0,
+              "expected409": 708,
+              "reads": {
+                "count": 12931,
+                "p95Ms": 48.347,
+                "p99Ms": 104.6787,
+                "maxMs": 625.07
+              },
+              "syncRuns": {
+                "count": 830,
+                "p95Ms": 828.3615,
+                "p99Ms": 1685.0796,
+                "maxMs": 6194.841
+              },
+              "successfulCaseWrites": {
+                "count": 1966,
+                "p95Ms": 41.0745,
+                "p99Ms": 117.3737,
+                "maxMs": 604.104
+              },
+              "uniqueWriteRequests": 1612,
+              "uniqueWriteP95UpperBoundMs": 45.1348,
+              "vus": {
+                "35": {
+                  "samples": 839,
+                  "firstToLastSampleSeconds": 838.008
+                }
+              },
+              "rawSha256": "017c139629816bbe1b7b65622ac20e9525aa310e6ab194392fbe486e530c16ca"
+            },
+            "cleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "resources": {
+              "cpuPercent": {
+                "min": 0.0,
+                "max": 5.488479450521039,
+                "first": 0.0,
+                "last": 4.258137421542036,
+                "samples": 167
+              },
+              "memoryPercent": {
+                "min": 0.22897720336914062,
+                "max": 0.8288383483886719,
+                "first": 0.22897720336914062,
+                "last": 0.8288383483886719,
+                "samples": 167
+              },
+              "memoryMb": {
+                "min": 37.515625,
+                "max": 135.796875,
+                "first": 37.515625,
+                "last": 135.796875,
+                "samples": 167
+              },
+              "threads": {
+                "min": 3,
+                "max": 30,
+                "first": 3,
+                "last": 12,
+                "samples": 167
+              },
+              "walBytes": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 167
+              },
+              "handles": {
+                "min": 12,
+                "max": 119,
+                "first": 12,
+                "last": 55,
+                "samples": 167
+              }
+            },
+            "growth": {
+              "memoryMb": {
+                "samples": 167,
+                "first": 37.515625,
+                "last": 135.796875,
+                "delta": 98.28125,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 167,
+                "first": 3,
+                "last": 12,
+                "delta": 9,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 167,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 167,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "integrity": null
+          },
+          {
+            "name": "after",
+            "status": "passed",
+            "complete": true,
+            "stopReason": null,
+            "configuredSeconds": 300,
+            "elapsedSeconds": 312.598,
+            "summary": {
+              "requests": 734,
+              "rps": 2.364418,
+              "errorRate": 0.0,
+              "latencyMs": {
+                "p50": 12.2905,
+                "p90": 108.0006,
+                "p95": 178.88165,
+                "p99": 343.21577,
+                "max": 872.931
+              },
+              "vusMax": 5,
+              "thresholdsPassed": true
+            },
+            "raw": {
+              "httpStatuses": {
+                "200": 734
+              },
+              "runStatuses": {},
+              "networkFailures": {},
+              "firstNetworkFailureAt": null,
+              "checks": {
+                "passed": 1468
+              },
+              "correctnessFailures": 0,
+              "runExitFailures": 0,
+              "expected409": 0,
+              "reads": {
+                "count": 629,
+                "p95Ms": 196.0062,
+                "p99Ms": 350.927,
+                "maxMs": 872.931
+              },
+              "syncRuns": {
+                "count": 0,
+                "p95Ms": null,
+                "p99Ms": null,
+                "maxMs": null
+              },
+              "successfulCaseWrites": {
+                "count": 0,
+                "p95Ms": null,
+                "p99Ms": null,
+                "maxMs": null
+              },
+              "uniqueWriteRequests": 0,
+              "uniqueWriteP95UpperBoundMs": null,
+              "vus": {
+                "1": {
+                  "samples": 4,
+                  "firstToLastSampleSeconds": 3.0
+                },
+                "2": {
+                  "samples": 3,
+                  "firstToLastSampleSeconds": 1.999
+                },
+                "3": {
+                  "samples": 1,
+                  "firstToLastSampleSeconds": 0.0
+                },
+                "4": {
+                  "samples": 2,
+                  "firstToLastSampleSeconds": 1.001
+                },
+                "5": {
+                  "samples": 300,
+                  "firstToLastSampleSeconds": 299.008
+                }
+              },
+              "rawSha256": "525ff0d781edc1f254e3074c03b78c19a771d4cc7e6a7639a63b83e7f7531744"
+            },
+            "cleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "resources": {
+              "cpuPercent": {
+                "min": 0.0,
+                "max": 0.8681344095461622,
+                "first": 0.0,
+                "last": 0.19976714143171695,
+                "samples": 62
+              },
+              "memoryPercent": {
+                "min": 0.16546249389648438,
+                "max": 0.2429962158203125,
+                "first": 0.23822784423828125,
+                "last": 0.18682479858398438,
+                "samples": 62
+              },
+              "memoryMb": {
+                "min": 27.109375,
+                "max": 39.8125,
+                "first": 39.03125,
+                "last": 30.609375,
+                "samples": 62
+              },
+              "threads": {
+                "min": 2,
+                "max": 12,
+                "first": 12,
+                "last": 2,
+                "samples": 62
+              },
+              "walBytes": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 62
+              },
+              "handles": {
+                "min": 12,
+                "max": 18,
+                "first": 12,
+                "last": 14,
+                "samples": 62
+              }
+            },
+            "growth": {
+              "memoryMb": {
+                "samples": 62,
+                "first": 39.03125,
+                "last": 30.609375,
+                "delta": -8.421875,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 62,
+                "first": 12,
+                "last": 2,
+                "delta": -10,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 62,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 62,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "integrity": "passed"
+          }
+        ],
+        "recovery": {
+          "comparison": {
+            "p95Ms": {
+              "before": 46.6729,
+              "after": 178.88165,
+              "verdict": "failed"
+            },
+            "errorRate": {
+              "before": 0.0,
+              "after": 0.0,
+              "verdict": "passed"
+            },
+            "cpuPercent": {
+              "before": 0.2532314642029918,
+              "after": 0.3310497813603635,
+              "verdict": "failed"
+            },
+            "memoryMb": {
+              "before": 39.16015625,
+              "after": 32.958333333333336,
+              "verdict": "passed"
+            },
+            "threads": {
+              "before": 3.25,
+              "after": 2.75,
+              "verdict": "passed"
+            },
+            "handles": {
+              "before": 16.916666666666668,
+              "after": 16.916666666666668,
+              "verdict": "passed"
+            },
+            "childProcesses": {
+              "before": 0,
+              "after": 0,
+              "verdict": "passed"
+            }
+          },
+          "status": "failed",
+          "factor": 1.2
+        },
+        "soakStability": "unknown",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "executionHistory": {
+          "rows": 832,
+          "distinctRunIds": 832,
+          "passedExitZero": 832,
+          "proofSha256": "eaccb08d0bb2ec12abd2ba81ec8952d9578ba4789f8b9d69cbb4945686390c5b"
+        },
+        "externalHostSample": {
+          "samples": 1467,
+          "maxIntervalSeconds": 1.103,
+          "maxHostOneMinuteLoad": 156.30126953125,
+          "swapoutPagesDelta": 621320,
+          "sha256": "00926e9995e884df8cba7ebf157983cc068506217683784bb617cc97af3672f4"
+        },
+        "serverStopped": true
+      }
+    }
+  },
+  "startupBenchmark": {
+    "samplesMs": {
+      "before": [
+        1769.175,
+        1854.778,
+        2517.969,
+        3645.841,
+        4790.056,
+        5602.209,
+        2099.173,
+        3288.728,
+        4007.018,
+        7492.923,
+        3871.893,
+        1526.217
+      ],
+      "after": [
+        1115.558,
+        1339.377,
+        1963.894,
+        1641.542,
+        5743.718,
+        1550.008,
+        1188.023,
+        1759.249,
+        1928.846,
+        1994.926,
+        1514.804,
+        858.572
+      ]
+    },
+    "mediansMs": {
+      "before": 3467.284,
+      "after": 1595.775
+    },
+    "warmupsPerBuild": 1,
+    "actualCase": "load-test/runtime/health.json"
+  },
+  "fiveSecondOccupancy": {
+    "fourSecondSetting": {
+      "accepted": false,
+      "code": "RUN_WORKERS_BUSY",
+      "elapsed": 4.01
+    },
+    "sixSecondSetting": {
+      "accepted": true,
+      "elapsed": 5.104
+    }
+  },
+  "final": {
+    "candidate": "b83e3f5ba5e0a79ddfec3e2e52495db10f61b75d",
+    "k6Sha256": "efb8282e24ffe18f54ce3679eaa71d72e0645bbb97b14e2a05cc8b192abf48e3",
+    "fixture": {
+      "dataset": "medium",
+      "seed": 20260929,
+      "counts": {
+        "projects": 20,
+        "cases": 2000,
+        "pipelines": 100
+      },
+      "caseRevisions": 1,
+      "revisionCount": 2120,
+      "bodyCounts": {
+        "1024": 667,
+        "10240": 667,
+        "102400": 666
+      },
+      "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+      "databaseBytes": 79589376,
+      "projectionBytes": 76199087,
+      "revisionContentBytes": 76196967,
+      "integrity": "passed"
+    },
+    "runs": {
+      "target-1": {
+        "commitSha": "b83e3f5ba5e0a79ddfec3e2e52495db10f61b75d",
+        "dirty": false,
+        "status": "passed",
+        "error": null,
+        "k6ExitCode": 0,
+        "validationMode": false,
+        "configuration": {
+          "mode": "target",
+          "durationSeconds": 1200,
+          "configuredVus": 50,
+          "vusPerEndpoint": null,
+          "gracefulStopSeconds": 10,
+          "validationMode": false,
+          "scope": "whole-dataset",
+          "selectionStride": 50,
+          "contentionRequests": 5,
+          "stageSeconds": 600,
+          "stageVus": [
+            20,
+            50
+          ],
+          "nominalWorkloadHttpRatios": {
+            "list": 0.35,
+            "single": 0.35,
+            "revision": 0.1,
+            "unique": 0.1,
+            "contention": 0.05,
+            "run": 0.05
+          }
+        },
+        "startedAt": "2026-11-06T16:18:16.818423+00:00",
+        "endedAt": "2026-11-06T16:38:20.196Z",
+        "summary": {
+          "requests": 23685,
+          "rps": 19.682102,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.831,
+            "p90": 36.0616,
+            "p95": 109.8174,
+            "p99": 143.53996,
+            "max": 481.944
+          },
+          "vusMax": 50,
+          "thresholdsPassed": true
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 22701,
+            "409": 984
+          },
+          "runStatuses": {
+            "200": 1166
+          },
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 43246
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 984,
+          "reads": {
+            "count": 18739,
+            "p95Ms": 38.047,
+            "p99Ms": 62.6929,
+            "maxMs": 235.222
+          },
+          "syncRuns": {
+            "count": 1166,
+            "p95Ms": 160.0495,
+            "p99Ms": 232.3455,
+            "maxMs": 481.944
+          },
+          "successfulCaseWrites": {
+            "count": 2796,
+            "p95Ms": 19.334,
+            "p99Ms": 55.6371,
+            "maxMs": 430.696
+          },
+          "uniqueWriteRequests": 2304,
+          "uniqueWriteP95UpperBoundMs": 20.8987,
+          "vus": {
+            "3": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "15": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "20": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 599.006
+            },
+            "40": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "50": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 599.006
+            }
+          },
+          "rawSha256": "5b166aaa8a0d1b24b384cb0ff5d31fd7442d602e7c2a5bda36f898ca1871c55a"
+        },
+        "failedThresholds": [],
+        "integrity": "passed",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "mutations": {
+          "documents": 824,
+          "unique": 576,
+          "contention": 246
+        },
+        "stoppedSnapshotCheck": null,
+        "executionHistory": {
+          "rows": 1166,
+          "distinctRunIds": 1166,
+          "passedExitZero": 1166,
+          "proofSha256": "69dd2020f4ed08c4d247c32de947afddde0454d093f73b3de6d3c8ae7a271c30"
+        },
+        "externalHostSample": {
+          "samples": 1205,
+          "maxIntervalSeconds": 1.01,
+          "maxHostOneMinuteLoad": 4.359375,
+          "swapoutPagesDelta": 65248,
+          "sha256": "a58375a76d5290269ad9a62feb6666c889cc3d118c8c6dd03a4b0a10639e9f9f"
+        },
+        "serverStopped": true
+      },
+      "target-2": {
+        "commitSha": "b83e3f5ba5e0a79ddfec3e2e52495db10f61b75d",
+        "dirty": false,
+        "status": "passed",
+        "error": null,
+        "k6ExitCode": 0,
+        "validationMode": false,
+        "configuration": {
+          "mode": "target",
+          "durationSeconds": 1200,
+          "configuredVus": 50,
+          "vusPerEndpoint": null,
+          "gracefulStopSeconds": 10,
+          "validationMode": false,
+          "scope": "whole-dataset",
+          "selectionStride": 50,
+          "contentionRequests": 5,
+          "stageSeconds": 600,
+          "stageVus": [
+            20,
+            50
+          ],
+          "nominalWorkloadHttpRatios": {
+            "list": 0.35,
+            "single": 0.35,
+            "revision": 0.1,
+            "unique": 0.1,
+            "contention": 0.05,
+            "run": 0.05
+          }
+        },
+        "startedAt": "2026-11-06T16:39:27.302243+00:00",
+        "endedAt": "2026-11-06T16:59:30.618Z",
+        "summary": {
+          "requests": 23713,
+          "rps": 19.706382,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.762,
+            "p90": 37.134,
+            "p95": 109.6398,
+            "p99": 143.67444,
+            "max": 521.382
+          },
+          "vusMax": 50,
+          "thresholdsPassed": true
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 22725,
+            "409": 988
+          },
+          "runStatuses": {
+            "200": 1161
+          },
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 43296
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 988,
+          "reads": {
+            "count": 18758,
+            "p95Ms": 39.6711,
+            "p99Ms": 65.9361,
+            "maxMs": 200.884
+          },
+          "syncRuns": {
+            "count": 1161,
+            "p95Ms": 165.116,
+            "p99Ms": 226.51,
+            "maxMs": 521.382
+          },
+          "successfulCaseWrites": {
+            "count": 2806,
+            "p95Ms": 18.6125,
+            "p99Ms": 51.5818,
+            "maxMs": 348.589
+          },
+          "uniqueWriteRequests": 2312,
+          "uniqueWriteP95UpperBoundMs": 20.876,
+          "vus": {
+            "4": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "14": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "20": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 599.012
+            },
+            "37": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "50": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 599.012
+            }
+          },
+          "rawSha256": "5e25db189cd18007a3f22c2f8a8f6e67462bf4321d47467b852947faac8e8ec9"
+        },
+        "failedThresholds": [],
+        "integrity": "passed",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "mutations": {
+          "documents": 827,
+          "unique": 578,
+          "contention": 247
+        },
+        "stoppedSnapshotCheck": null,
+        "executionHistory": {
+          "rows": 1161,
+          "distinctRunIds": 1161,
+          "passedExitZero": 1161,
+          "proofSha256": "d48b3b2d4615bd35270abf47206012e2071e8e1ec952b277fb92aec2d6e958e8"
+        },
+        "externalHostSample": {
+          "samples": 1205,
+          "maxIntervalSeconds": 1.011,
+          "maxHostOneMinuteLoad": 6.34326171875,
+          "swapoutPagesDelta": 0,
+          "sha256": "fdab7e03e209c5073aa1339e349a3e995c902b0b2ed1d64b94ce4403f363adda"
+        },
+        "serverStopped": true
+      },
+      "target-3": {
+        "commitSha": "b83e3f5ba5e0a79ddfec3e2e52495db10f61b75d",
+        "dirty": false,
+        "status": "passed",
+        "error": null,
+        "k6ExitCode": 0,
+        "validationMode": false,
+        "configuration": {
+          "mode": "target",
+          "durationSeconds": 1200,
+          "configuredVus": 50,
+          "vusPerEndpoint": null,
+          "gracefulStopSeconds": 10,
+          "validationMode": false,
+          "scope": "whole-dataset",
+          "selectionStride": 50,
+          "contentionRequests": 5,
+          "stageSeconds": 600,
+          "stageVus": [
+            20,
+            50
+          ],
+          "nominalWorkloadHttpRatios": {
+            "list": 0.35,
+            "single": 0.35,
+            "revision": 0.1,
+            "unique": 0.1,
+            "contention": 0.05,
+            "run": 0.05
+          }
+        },
+        "startedAt": "2026-11-06T17:00:37.933377+00:00",
+        "endedAt": "2026-11-06T17:20:41.233Z",
+        "summary": {
+          "requests": 23659,
+          "rps": 19.66177,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 4.817,
+            "p90": 37.984,
+            "p95": 110.7783,
+            "p99": 144.65376,
+            "max": 449.231
+          },
+          "vusMax": 50,
+          "thresholdsPassed": true
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 22671,
+            "409": 988
+          },
+          "runStatuses": {
+            "200": 1164
+          },
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 43179
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 988,
+          "reads": {
+            "count": 18693,
+            "p95Ms": 40.0474,
+            "p99Ms": 69.7028,
+            "maxMs": 198.712
+          },
+          "syncRuns": {
+            "count": 1164,
+            "p95Ms": 167.3416,
+            "p99Ms": 230.4559,
+            "maxMs": 449.231
+          },
+          "successfulCaseWrites": {
+            "count": 2814,
+            "p95Ms": 20.1686,
+            "p99Ms": 59.8603,
+            "maxMs": 290.4
+          },
+          "uniqueWriteRequests": 2320,
+          "uniqueWriteP95UpperBoundMs": 22.0388,
+          "vus": {
+            "3": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "13": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "20": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 598.97
+            },
+            "35": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "50": {
+              "samples": 600,
+              "firstToLastSampleSeconds": 599.004
+            }
+          },
+          "rawSha256": "c97af4229b457ae13662d0a11f12c544c4d8183e8c67ddeaf848fa9c20239f46"
+        },
+        "failedThresholds": [],
+        "integrity": "passed",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "mutations": {
+          "documents": 829,
+          "unique": 580,
+          "contention": 247
+        },
+        "stoppedSnapshotCheck": null,
+        "executionHistory": {
+          "rows": 1164,
+          "distinctRunIds": 1164,
+          "passedExitZero": 1164,
+          "proofSha256": "f8467cbbfbe15ec8d8120553d12c506eacea7bc06e0760a3a41c7e4d52cf392e"
+        },
+        "externalHostSample": {
+          "samples": 1205,
+          "maxIntervalSeconds": 1.011,
+          "maxHostOneMinuteLoad": 7.18212890625,
+          "swapoutPagesDelta": 9996,
+          "sha256": "ea877036fcad30ba2f4961b99a7185d3086ed6ab8d137bf85c7f02a75f34e0ad"
+        },
+        "serverStopped": true
+      },
+      "soak-35": {
+        "commitSha": "b83e3f5ba5e0a79ddfec3e2e52495db10f61b75d",
+        "dirty": false,
+        "status": "failed",
+        "error": null,
+        "configuration": {
+          "mode": "soak",
+          "validationMode": false,
+          "baselineSeconds": 300,
+          "sampleIntervalSeconds": 5,
+          "windowSeconds": 60,
+          "resourceSustainSeconds": 120,
+          "scaledStopTimers": false,
+          "configuredVus": 35,
+          "selectionStride": 35,
+          "contentionRequests": 5,
+          "phase": "profile",
+          "vus": 35,
+          "durationSeconds": 7200,
+          "soakTargetBasis": "70% of planned Target50VU; proven stable capacity is not established"
+        },
+        "fullDurationCompleted": true,
+        "phases": [
+          {
+            "name": "before",
+            "status": "passed",
+            "complete": true,
+            "stopReason": null,
+            "configuredSeconds": 300,
+            "elapsedSeconds": 311.148,
+            "summary": {
+              "requests": 754,
+              "rps": 2.43111,
+              "errorRate": 0.0,
+              "latencyMs": {
+                "p50": 5.775,
+                "p90": 34.8316,
+                "p95": 46.8944,
+                "p99": 62.33196,
+                "max": 76.332
+              },
+              "vusMax": 5,
+              "thresholdsPassed": true
+            },
+            "raw": {
+              "httpStatuses": {
+                "200": 754
+              },
+              "runStatuses": {},
+              "networkFailures": {},
+              "firstNetworkFailureAt": null,
+              "checks": {
+                "passed": 1508
+              },
+              "correctnessFailures": 0,
+              "runExitFailures": 0,
+              "expected409": 0,
+              "reads": {
+                "count": 646,
+                "p95Ms": 47.344,
+                "p99Ms": 62.5369,
+                "maxMs": 76.332
+              },
+              "syncRuns": {
+                "count": 0,
+                "p95Ms": null,
+                "p99Ms": null,
+                "maxMs": null
+              },
+              "successfulCaseWrites": {
+                "count": 0,
+                "p95Ms": null,
+                "p99Ms": null,
+                "maxMs": null
+              },
+              "uniqueWriteRequests": 0,
+              "uniqueWriteP95UpperBoundMs": null,
+              "vus": {
+                "3": {
+                  "samples": 1,
+                  "firstToLastSampleSeconds": 0.0
+                },
+                "4": {
+                  "samples": 7,
+                  "firstToLastSampleSeconds": 6.0
+                },
+                "5": {
+                  "samples": 302,
+                  "firstToLastSampleSeconds": 301.001
+                }
+              },
+              "rawSha256": "95c074ca0e65e3f8839f4984acfea391e64fdaf367072af6f34872c24ec56843"
+            },
+            "cleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "resources": {
+              "cpuPercent": {
+                "min": 0.12260262318181685,
+                "max": 0.5420850701021126,
+                "first": 0.5420850701021126,
+                "last": 0.14806403557958522,
+                "samples": 61
+              },
+              "memoryPercent": {
+                "min": 0.2898216247558594,
+                "max": 0.5609512329101562,
+                "first": 0.5609512329101562,
+                "last": 0.2999305725097656,
+                "samples": 62
+              },
+              "memoryMb": {
+                "min": 47.484375,
+                "max": 91.90625,
+                "first": 91.90625,
+                "last": 49.140625,
+                "samples": 62
+              },
+              "threads": {
+                "min": 1,
+                "max": 6,
+                "first": 1,
+                "last": 4,
+                "samples": 62
+              },
+              "walBytes": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 62
+              },
+              "handles": {
+                "min": 12,
+                "max": 18,
+                "first": 12,
+                "last": 16,
+                "samples": 62
+              },
+              "childProcesses": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 62
+              },
+              "tempEntries": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 62
+              }
+            },
+            "growth": {
+              "memoryMb": {
+                "samples": 62,
+                "first": 91.90625,
+                "last": 49.140625,
+                "delta": -42.765625,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 62,
+                "first": 1,
+                "last": 4,
+                "delta": 3,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 62,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 62,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "integrity": "passed"
+          },
+          {
+            "name": "profile",
+            "status": "passed",
+            "complete": true,
+            "stopReason": null,
+            "configuredSeconds": 7200,
+            "elapsedSeconds": 7228.603,
+            "summary": {
+              "requests": 142344,
+              "rps": 19.761166,
+              "errorRate": 0.0,
+              "latencyMs": {
+                "p50": 4.726,
+                "p90": 52.808,
+                "p95": 112.53385,
+                "p99": 143.31198,
+                "max": 597.843
+              },
+              "vusMax": 35,
+              "thresholdsPassed": true
+            },
+            "raw": {
+              "httpStatuses": {
+                "200": 136640,
+                "409": 5704
+              },
+              "runStatuses": {
+                "200": 7047
+              },
+              "networkFailures": {},
+              "firstNetworkFailureAt": null,
+              "checks": {
+                "passed": 259927
+              },
+              "correctnessFailures": 0,
+              "runExitFailures": 0,
+              "expected409": 5704,
+              "reads": {
+                "count": 112629,
+                "p95Ms": 60.5174,
+                "p99Ms": 101.2704,
+                "maxMs": 391.911
+              },
+              "syncRuns": {
+                "count": 7047,
+                "p95Ms": 157.6696,
+                "p99Ms": 188.3151,
+                "maxMs": 597.843
+              },
+              "successfulCaseWrites": {
+                "count": 16964,
+                "p95Ms": 15.1247,
+                "p99Ms": 24.5456,
+                "maxMs": 518.208
+              },
+              "uniqueWriteRequests": 14112,
+              "uniqueWriteP95UpperBoundMs": 16.0083,
+              "vus": {
+                "1": {
+                  "samples": 1,
+                  "firstToLastSampleSeconds": 0.0
+                },
+                "9": {
+                  "samples": 1,
+                  "firstToLastSampleSeconds": 0.0
+                },
+                "24": {
+                  "samples": 1,
+                  "firstToLastSampleSeconds": 0.0
+                },
+                "35": {
+                  "samples": 7200,
+                  "firstToLastSampleSeconds": 7198.984
+                }
+              },
+              "rawSha256": "a0717c9505b8c65984d4ab03823a08f3b3ace01cd8d3f6267b857eaa5dcbc938"
+            },
+            "cleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "resources": {
+              "cpuPercent": {
+                "min": 0.0,
+                "max": 4.757002406669027,
+                "first": 0.0,
+                "last": 3.4123753203416416,
+                "samples": 1425
+              },
+              "memoryPercent": {
+                "min": 0.2959251403808594,
+                "max": 0.7355690002441406,
+                "first": 0.2959251403808594,
+                "last": 0.3733634948730469,
+                "samples": 1425
+              },
+              "memoryMb": {
+                "min": 48.484375,
+                "max": 120.515625,
+                "first": 48.484375,
+                "last": 61.171875,
+                "samples": 1425
+              },
+              "threads": {
+                "min": 4,
+                "max": 30,
+                "first": 4,
+                "last": 7,
+                "samples": 1425
+              },
+              "walBytes": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 1425
+              },
+              "handles": {
+                "min": 12,
+                "max": 115,
+                "first": 12,
+                "last": 55,
+                "samples": 1425
+              },
+              "childProcesses": {
+                "min": 0,
+                "max": 2,
+                "first": 0,
+                "last": 0,
+                "samples": 1425
+              },
+              "tempEntries": {
+                "min": 0,
+                "max": 9,
+                "first": 0,
+                "last": 0,
+                "samples": 1425
+              }
+            },
+            "growth": {
+              "memoryMb": {
+                "samples": 1425,
+                "first": 48.484375,
+                "last": 61.171875,
+                "delta": 12.6875,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 1425,
+                "first": 4,
+                "last": 7,
+                "delta": 3,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 1425,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 1425,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "integrity": "passed"
+          },
+          {
+            "name": "after",
+            "status": "passed",
+            "complete": true,
+            "stopReason": null,
+            "configuredSeconds": 300,
+            "elapsedSeconds": 319.313,
+            "summary": {
+              "requests": 753,
+              "rps": 2.427248,
+              "errorRate": 0.0,
+              "latencyMs": {
+                "p50": 5.652,
+                "p90": 86.6242,
+                "p95": 95.9394,
+                "p99": 131.994,
+                "max": 222.228
+              },
+              "vusMax": 5,
+              "thresholdsPassed": true
+            },
+            "raw": {
+              "httpStatuses": {
+                "200": 753
+              },
+              "runStatuses": {},
+              "networkFailures": {},
+              "firstNetworkFailureAt": null,
+              "checks": {
+                "passed": 1506
+              },
+              "correctnessFailures": 0,
+              "runExitFailures": 0,
+              "expected409": 0,
+              "reads": {
+                "count": 645,
+                "p95Ms": 101.2218,
+                "p99Ms": 133.3553,
+                "maxMs": 222.228
+              },
+              "syncRuns": {
+                "count": 0,
+                "p95Ms": null,
+                "p99Ms": null,
+                "maxMs": null
+              },
+              "successfulCaseWrites": {
+                "count": 0,
+                "p95Ms": null,
+                "p99Ms": null,
+                "maxMs": null
+              },
+              "uniqueWriteRequests": 0,
+              "uniqueWriteP95UpperBoundMs": null,
+              "vus": {
+                "4": {
+                  "samples": 7,
+                  "firstToLastSampleSeconds": 6.0
+                },
+                "5": {
+                  "samples": 303,
+                  "firstToLastSampleSeconds": 302.001
+                }
+              },
+              "rawSha256": "dd96e5d51a10e9fe0c62be7662b40678166fd4f34a514cb96db07ecf2fbb648b"
+            },
+            "cleanup": {
+              "childProcesses": 0,
+              "tempEntries": 0,
+              "status": "passed"
+            },
+            "resources": {
+              "cpuPercent": {
+                "min": 0.00986891394656115,
+                "max": 0.9590515246010481,
+                "first": 0.00986891394656115,
+                "last": 0.12396326012471355,
+                "samples": 62
+              },
+              "memoryPercent": {
+                "min": 0.23298263549804688,
+                "max": 0.41370391845703125,
+                "first": 0.23298263549804688,
+                "last": 0.3619194030761719,
+                "samples": 62
+              },
+              "memoryMb": {
+                "min": 38.171875,
+                "max": 67.78125,
+                "first": 38.171875,
+                "last": 59.296875,
+                "samples": 62
+              },
+              "threads": {
+                "min": 3,
+                "max": 7,
+                "first": 7,
+                "last": 3,
+                "samples": 62
+              },
+              "walBytes": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 62
+              },
+              "handles": {
+                "min": 12,
+                "max": 18,
+                "first": 12,
+                "last": 16,
+                "samples": 62
+              },
+              "childProcesses": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 62
+              },
+              "tempEntries": {
+                "min": 0,
+                "max": 0,
+                "first": 0,
+                "last": 0,
+                "samples": 62
+              }
+            },
+            "growth": {
+              "memoryMb": {
+                "samples": 62,
+                "first": 38.171875,
+                "last": 59.296875,
+                "delta": 21.125,
+                "continuouslyIncreasing": false
+              },
+              "threads": {
+                "samples": 62,
+                "first": 7,
+                "last": 3,
+                "delta": -4,
+                "continuouslyIncreasing": false
+              },
+              "walBytes": {
+                "samples": 62,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              },
+              "logFiles": {
+                "samples": 62,
+                "first": 0,
+                "last": 0,
+                "delta": 0,
+                "continuouslyIncreasing": false
+              }
+            },
+            "integrity": "passed"
+          }
+        ],
+        "recovery": {
+          "comparison": {
+            "p95Ms": {
+              "before": 46.8944,
+              "after": 95.9394,
+              "verdict": "failed"
+            },
+            "errorRate": {
+              "before": 0.0,
+              "after": 0.0,
+              "verdict": "passed"
+            },
+            "cpuPercent": {
+              "before": 0.2315096775920407,
+              "after": 0.3838635346029289,
+              "verdict": "failed"
+            },
+            "memoryMb": {
+              "before": 59.1484375,
+              "after": 56.4140625,
+              "verdict": "passed"
+            },
+            "threads": {
+              "before": 3.8333333333333335,
+              "after": 3.0,
+              "verdict": "passed"
+            },
+            "handles": {
+              "before": 16.916666666666668,
+              "after": 16.916666666666668,
+              "verdict": "passed"
+            },
+            "childProcesses": {
+              "before": 0,
+              "after": 0,
+              "verdict": "passed"
+            }
+          },
+          "status": "failed",
+          "factor": 1.2
+        },
+        "soakStability": "unknown",
+        "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+        "executionHistory": {
+          "rows": 7047,
+          "distinctRunIds": 7047,
+          "passedExitZero": 7047,
+          "proofSha256": "b2138ea14aa34938c5c0773a34b9c9502685e117607dc65277f7ccec92f88291"
+        },
+        "externalHostSample": {
+          "samples": 7834,
+          "maxIntervalSeconds": 1.022,
+          "maxHostOneMinuteLoad": 11.24658203125,
+          "swapoutPagesDelta": 55691,
+          "sha256": "7f400a4cfcb7490e23ed42d02fdac32f1fb16dfdbf044858291294618a78b93b"
+        },
+        "serverStopped": true
+      }
+    }
+  },
+  "recoveryEndpointP95Ms": {
+    "before": {
+      "/api/cases": 62.8349,
+      "/api/cases/{id}": 8.92075,
+      "/api/cases/{id}/revisions": 10.41375,
+      "/api/pipelines": 8.62375,
+      "/api/projects": 19.74995,
+      "/api/projects/{id}": 8.9269,
+      "/example-api/health": 20.10395
+    },
+    "after": {
+      "/api/cases": 138.8323,
+      "/api/cases/{id}": 7.5252,
+      "/api/cases/{id}/revisions": 8.8652,
+      "/api/pipelines": 7.1813,
+      "/api/projects": 14.8029,
+      "/api/projects/{id}": 7.7022,
+      "/example-api/health": 4.64755
+    }
+  },
+  "matchedCaseSummaryDiagnostic": {
+    "scope": "case_summaries only on the final SQLite projection; one warmup and three paired rounds for each of 20 projects; excludes database, HTTP, and serialization",
+    "pairs": 60,
+    "originalCasesInProjects": 2000,
+    "finalCasesInProjects": 6954,
+    "medianMs": {
+      "original": 16.059,
+      "after": 45.969
+    },
+    "samples": [
+      {
+        "project": "load-test/project-000.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 365,
+        "milliseconds": {
+          "after": 47.6463,
+          "original": 15.1463
+        }
+      },
+      {
+        "project": "load-test/project-001.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 366,
+        "milliseconds": {
+          "original": 15.27,
+          "after": 45.4084
+        }
+      },
+      {
+        "project": "load-test/project-002.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 364,
+        "milliseconds": {
+          "after": 45.6247,
+          "original": 15.4543
+        }
+      },
+      {
+        "project": "load-test/project-003.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 331,
+        "milliseconds": {
+          "original": 15.4246,
+          "after": 41.4228
+        }
+      },
+      {
+        "project": "load-test/project-004.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 366,
+        "milliseconds": {
+          "after": 46.1021,
+          "original": 15.3712
+        }
+      },
+      {
+        "project": "load-test/project-005.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 339,
+        "milliseconds": {
+          "original": 16.1245,
+          "after": 42.4671
+        }
+      },
+      {
+        "project": "load-test/project-006.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 361,
+        "milliseconds": {
+          "after": 44.2251,
+          "original": 14.3457
+        }
+      },
+      {
+        "project": "load-test/project-007.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 335,
+        "milliseconds": {
+          "original": 14.8092,
+          "after": 40.7241
+        }
+      },
+      {
+        "project": "load-test/project-008.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 364,
+        "milliseconds": {
+          "after": 44.5966,
+          "original": 15.2093
+        }
+      },
+      {
+        "project": "load-test/project-009.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 336,
+        "milliseconds": {
+          "original": 15.5474,
+          "after": 43.5089
+        }
+      },
+      {
+        "project": "load-test/project-010.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 343,
+        "milliseconds": {
+          "after": 45.0696,
+          "original": 15.5164
+        }
+      },
+      {
+        "project": "load-test/project-011.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 335,
+        "milliseconds": {
+          "original": 15.767,
+          "after": 42.9515
+        }
+      },
+      {
+        "project": "load-test/project-012.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 343,
+        "milliseconds": {
+          "after": 44.0319,
+          "original": 14.9465
+        }
+      },
+      {
+        "project": "load-test/project-013.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 352,
+        "milliseconds": {
+          "original": 15.3,
+          "after": 44.3378
+        }
+      },
+      {
+        "project": "load-test/project-014.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 342,
+        "milliseconds": {
+          "after": 43.6162,
+          "original": 16.3654
+        }
+      },
+      {
+        "project": "load-test/project-015.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 346,
+        "milliseconds": {
+          "original": 21.1378,
+          "after": 54.7608
+        }
+      },
+      {
+        "project": "load-test/project-016.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 329,
+        "milliseconds": {
+          "after": 64.473,
+          "original": 23.7471
+        }
+      },
+      {
+        "project": "load-test/project-017.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 344,
+        "milliseconds": {
+          "original": 20.4965,
+          "after": 48.1659
+        }
+      },
+      {
+        "project": "load-test/project-018.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 347,
+        "milliseconds": {
+          "after": 47.2368,
+          "original": 15.9875
+        }
+      },
+      {
+        "project": "load-test/project-019.json",
+        "repeat": 1,
+        "beforeRows": 100,
+        "afterRows": 346,
+        "milliseconds": {
+          "original": 16.0993,
+          "after": 48.2865
+        }
+      },
+      {
+        "project": "load-test/project-000.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 365,
+        "milliseconds": {
+          "original": 16.7641,
+          "after": 50.5766
+        }
+      },
+      {
+        "project": "load-test/project-001.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 366,
+        "milliseconds": {
+          "after": 51.1088,
+          "original": 16.3701
+        }
+      },
+      {
+        "project": "load-test/project-002.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 364,
+        "milliseconds": {
+          "original": 16.5601,
+          "after": 50.2987
+        }
+      },
+      {
+        "project": "load-test/project-003.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 331,
+        "milliseconds": {
+          "after": 45.6161,
+          "original": 16.168
+        }
+      },
+      {
+        "project": "load-test/project-004.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 366,
+        "milliseconds": {
+          "original": 16.3409,
+          "after": 53.2555
+        }
+      },
+      {
+        "project": "load-test/project-005.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 339,
+        "milliseconds": {
+          "after": 47.1111,
+          "original": 16.5928
+        }
+      },
+      {
+        "project": "load-test/project-006.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 361,
+        "milliseconds": {
+          "original": 16.9439,
+          "after": 50.1227
+        }
+      },
+      {
+        "project": "load-test/project-007.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 335,
+        "milliseconds": {
+          "after": 48.5812,
+          "original": 17.209
+        }
+      },
+      {
+        "project": "load-test/project-008.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 364,
+        "milliseconds": {
+          "original": 17.2795,
+          "after": 51.3594
+        }
+      },
+      {
+        "project": "load-test/project-009.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 336,
+        "milliseconds": {
+          "after": 47.0817,
+          "original": 16.724
+        }
+      },
+      {
+        "project": "load-test/project-010.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 343,
+        "milliseconds": {
+          "original": 16.9515,
+          "after": 51.5408
+        }
+      },
+      {
+        "project": "load-test/project-011.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 335,
+        "milliseconds": {
+          "after": 49.608,
+          "original": 18.4428
+        }
+      },
+      {
+        "project": "load-test/project-012.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 343,
+        "milliseconds": {
+          "original": 19.0556,
+          "after": 56.1307
+        }
+      },
+      {
+        "project": "load-test/project-013.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 352,
+        "milliseconds": {
+          "after": 62.9694,
+          "original": 16.9538
+        }
+      },
+      {
+        "project": "load-test/project-014.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 342,
+        "milliseconds": {
+          "original": 17.4172,
+          "after": 48.4479
+        }
+      },
+      {
+        "project": "load-test/project-015.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 346,
+        "milliseconds": {
+          "after": 48.989,
+          "original": 16.7776
+        }
+      },
+      {
+        "project": "load-test/project-016.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 329,
+        "milliseconds": {
+          "original": 16.8194,
+          "after": 46.2572
+        }
+      },
+      {
+        "project": "load-test/project-017.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 344,
+        "milliseconds": {
+          "after": 47.5007,
+          "original": 16.2572
+        }
+      },
+      {
+        "project": "load-test/project-018.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 347,
+        "milliseconds": {
+          "original": 15.7933,
+          "after": 46.6975
+        }
+      },
+      {
+        "project": "load-test/project-019.json",
+        "repeat": 2,
+        "beforeRows": 100,
+        "afterRows": 346,
+        "milliseconds": {
+          "after": 43.1053,
+          "original": 14.6919
+        }
+      },
+      {
+        "project": "load-test/project-000.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 365,
+        "milliseconds": {
+          "after": 44.9441,
+          "original": 14.9124
+        }
+      },
+      {
+        "project": "load-test/project-001.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 366,
+        "milliseconds": {
+          "original": 14.8082,
+          "after": 44.7277
+        }
+      },
+      {
+        "project": "load-test/project-002.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 364,
+        "milliseconds": {
+          "after": 47.67,
+          "original": 15.6063
+        }
+      },
+      {
+        "project": "load-test/project-003.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 331,
+        "milliseconds": {
+          "original": 15.794,
+          "after": 43.2218
+        }
+      },
+      {
+        "project": "load-test/project-004.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 366,
+        "milliseconds": {
+          "after": 47.173,
+          "original": 14.986
+        }
+      },
+      {
+        "project": "load-test/project-005.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 339,
+        "milliseconds": {
+          "original": 15.9499,
+          "after": 43.0863
+        }
+      },
+      {
+        "project": "load-test/project-006.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 361,
+        "milliseconds": {
+          "after": 45.3282,
+          "original": 14.8126
+        }
+      },
+      {
+        "project": "load-test/project-007.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 335,
+        "milliseconds": {
+          "original": 16.4162,
+          "after": 43.4075
+        }
+      },
+      {
+        "project": "load-test/project-008.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 364,
+        "milliseconds": {
+          "after": 48.8623,
+          "original": 16.1632
+        }
+      },
+      {
+        "project": "load-test/project-009.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 336,
+        "milliseconds": {
+          "original": 16.213,
+          "after": 48.0862
+        }
+      },
+      {
+        "project": "load-test/project-010.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 343,
+        "milliseconds": {
+          "after": 45.2891,
+          "original": 17.1396
+        }
+      },
+      {
+        "project": "load-test/project-011.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 335,
+        "milliseconds": {
+          "original": 15.474,
+          "after": 42.2316
+        }
+      },
+      {
+        "project": "load-test/project-012.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 343,
+        "milliseconds": {
+          "after": 44.2803,
+          "original": 18.274
+        }
+      },
+      {
+        "project": "load-test/project-013.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 352,
+        "milliseconds": {
+          "original": 17.8831,
+          "after": 46.0705
+        }
+      },
+      {
+        "project": "load-test/project-014.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 342,
+        "milliseconds": {
+          "after": 44.119,
+          "original": 14.88
+        }
+      },
+      {
+        "project": "load-test/project-015.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 346,
+        "milliseconds": {
+          "original": 15.2628,
+          "after": 45.4042
+        }
+      },
+      {
+        "project": "load-test/project-016.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 329,
+        "milliseconds": {
+          "after": 41.4255,
+          "original": 14.549
+        }
+      },
+      {
+        "project": "load-test/project-017.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 344,
+        "milliseconds": {
+          "original": 14.7848,
+          "after": 41.6713
+        }
+      },
+      {
+        "project": "load-test/project-018.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 347,
+        "milliseconds": {
+          "after": 45.8671,
+          "original": 15.5944
+        }
+      },
+      {
+        "project": "load-test/project-019.json",
+        "repeat": 3,
+        "beforeRows": 100,
+        "afterRows": 346,
+        "milliseconds": {
+          "original": 16.0186,
+          "after": 45.6065
+        }
+      }
+    ]
+  },
+  "evidenceIndexes": {
+    "f250a28": {
+      "index": "f250a28/sha256.json",
+      "sha256": "34c9d93943bc9e3d9835ed170c8d98f5674826cab2cfe0430d6bcb4cf5464b80",
+      "entries": 33,
+      "rawSourceFiles": 56
+    },
+    "b83e3f5": {
+      "index": "b83e3f5/sha256.json",
+      "sha256": "58f37b91a27bc830e9f625c6d9981dbfa40bb1df06fbab625068c479e17aff78",
+      "entries": 30,
+      "rawSourceFiles": 42
+    }
+  },
+  "localEvidenceIndexSha256": "08b05593c0e4c028ed0e7f4a58fd9ee784654c9cee050e23fb61d9e5c7ec0ef1"
+}
