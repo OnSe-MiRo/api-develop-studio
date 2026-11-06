@@ -75,7 +75,7 @@ class AllOfTupleTests(unittest.TestCase):
         header['schema'] = {'$ref': '#/components/schemas/Base'}
         self.assertTrue(check(doc, '002')['valid'])
 
-    def test_ambiguous_position_fails_and_tuple_union_is_not_inferred(self):
+    def test_ambiguous_position_fails_and_union_uses_common_present_slots(self):
         doc, header = tuple_contract(
             {'type': 'array', 'prefixItems': [{'type': 'integer'}]},
             {'prefixItems': [{'type': 'string'}]})
@@ -84,4 +84,5 @@ class AllOfTupleTests(unittest.TestCase):
         self.assertNotIn('PRIVATE', json.dumps(result))
         header['schema'] = {'anyOf': [{'allOf': [{'$ref': '#/components/schemas/Base'}]},
                                       {'type': 'array', 'items': {'type': 'integer'}}]}
-        self.assertFalse(check(doc, '2')['valid'])
+        self.assertTrue(check(doc, '2')['valid'])
+        self.assertFalse(check(doc, '2,3')['valid'])

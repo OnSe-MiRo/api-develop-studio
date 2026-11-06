@@ -10,7 +10,7 @@
 | content 헤더 | JSON/+json, text/plain | XML/HTML/binary/wildcard 미지원 |
 | 타입 결정 | nullable type 배열, enum/const, 동종 allOf/oneOf/anyOf | 혼합·모호한 타입을 임의로 변환하지 않음 |
 | container 조합 | 배열 allOf/동종 union, 객체 allOf/동일 필드 타입 union | 서로 다른 필드 구조·조건부/패턴과 조합된 container는 제한 |
-| tuple | 직접 및 allOf의 prefixItems, 분기별 items, 내부 참조, primitive·boolean·빈 schema | 튜플 oneOf/anyOf 타입 추론 및 중첩 항목 |
+| tuple | 직접·allOf 튜플 및 실제 위치 타입이 일치하는 oneOf/anyOf, 분기별 items와 내부 참조 | 위치 타입이 모호한 union 및 중첩 항목 |
 | 자유/금지 schema | 직접 배열 items 및 객체 properties의 true/false/빈 schema | boolean schema는3.1,3.0은 빈 schema만 지원 |
 | 패턴 필드 | 직접 객체 patternProperties, properties와 모든 매칭 패턴의 제약 교집합 | container composition 간 패턴 합성 미지원 |
 | 로컬 참조 | 루트/빈키/이스케이프/UTF-8 JSON Pointer, 파일 경로 단일 디코딩·루트 제한 | $id/anchor/dynamic reference/custom dialect 미지원 |
@@ -20,7 +20,7 @@
 
 - 검증하지 못하는 직렬화와 타입을 성공으로 추정하지 않는다. 참조·직렬화·schema 오류를 구분한다.
 - 브라우저 통합, 실제 운영 인증 공급자/배포, 전체 부하 캠페인·SLO·Windows 실환경은 별도 검증이다.
-- 남은 구현 후보는 oneOf/anyOf 튜플과 조건부 객체 디코딩이다. 먼저 실제 사용하는 명세 fixture와 실패 사례로 우선순위를 정하고, 범용 schema flattening으로 제약을 삭제하지 않는다.
+- 남은 구현 후보는 조건부 객체 디코딩과 이종 튜플의 모호한 위치 처리다. 먼저 실제 사용하는 명세 fixture와 실패 사례로 우선순위를 정하고, 범용 schema flattening으로 제약을 삭제하지 않는다.
 
 ## 2026-11-06 튜플 allOf 검증
 

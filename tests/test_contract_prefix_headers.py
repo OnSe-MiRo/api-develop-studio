@@ -79,13 +79,19 @@ class PrefixHeaderTests(unittest.TestCase):
         self.addCleanup(server.server_close); self.addCleanup(thread.join, 2); self.addCleanup(server.shutdown)
         for suffix, expected in [('1', 'passed'), ('2', 'failed')]:
             case = {'project': 'demo.json', 'request': {'method': 'GET', 'url': f'http://127.0.0.1:{server.server_port}/items/{suffix}'}, 'expected': {'status': 200}, 'contract_validation': {'enabled': True}}
-            for composed in [False, True]:
+            for composed in [None, 'allOf', 'oneOf', 'anyOf']:
                 with self.subTest(expected=expected, composed=composed):
                     doc = self.spec(minItems=3)
                     if composed:
                         header = self.header(doc)
                         doc['components']['schemas']['Tuple'] = header['schema']
-                        header['schema'] = {'allOf': [{'$ref': '#/components/schemas/Tuple'}, {'minItems': 3}]}
+                        if composed == 'allOf':
+                            header['schema'] = {'allOf': [{'$ref': '#/components/schemas/Tuple'}, {'minItems': 3}]}
+                        else:
+                            header['schema'] = {composed: [
+                                {'$ref': '#/components/schemas/Tuple'},
+                                {'allOf': [{'$ref': '#/components/schemas/Tuple'}, {'maxItems': 1}]}
+                            ]}
                     result = ApiTestRunner().run_case('tuple-header', case, contract_document=doc)
                     self.assertEqual(result.status, expected)
                     self.assertEqual(result.contract['valid'], expected == 'passed')
