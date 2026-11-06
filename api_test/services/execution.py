@@ -87,7 +87,7 @@ def run_command(body, studio):
 def run_tests(request, studio):
     body = request.read_body()
     manager = request.request.app.state.jobs
-    with manager.legacy_slot(), run_command(body, studio) as command:
+    with manager.legacy_slot(wait_on_busy=True), run_command(body, studio) as command:
         response = studio.execute_studio_run(command, body)
     return request.json_response(200, response)
 

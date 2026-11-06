@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
@@ -183,9 +184,146 @@ class AdmissionPolicyTests(unittest.TestCase):
                 finally:
                     manager.close()
 
+    def test_sync_wait_limit_order_and_slot_release_after_error(self):
+        manager = JobManager(workers=1, sync_waiters=2)
+        self.addCleanup(manager.close)
+        started = []
+
+        def execute(name):
+            with manager.legacy_slot(wait_on_busy=True):
+                started.append(name)
+                if name == 'first':
+                    raise RuntimeError('runner failed')
+
+        with ThreadPoolExecutor(2) as pool:
+            with manager.legacy_slot():
+                first = pool.submit(execute, 'first')
+                eventually(lambda: len(manager._sync_waiters) == 1)
+                second = pool.submit(execute, 'second')
+                eventually(lambda: len(manager._sync_waiters) == 2)
+                for wait_on_busy in (True, False):
+                    with self.assertRaises(JobError) as rejected, manager.legacy_slot(wait_on_busy=wait_on_busy):
+                        self.fail('capacity must be bounded')
+                    self.assertEqual(rejected.exception.code, 'RUN_WORKERS_BUSY')
+            with self.assertRaisesRegex(RuntimeError, 'runner failed'):
+                first.result(timeout=2)
+            second.result(timeout=2)
+        self.assertEqual(started, ['first', 'second'])
+        self.assertFalse(manager._sync_waiters)
+
+    def test_async_completion_wakes_waiting_sync_run(self):
+        manager = JobManager(workers=1)
+        self.addCleanup(manager.close)
+        started, release = threading.Event(), threading.Event()
+
+        def async_task(job):
+            started.set()
+            release.wait(3)
+            return {'status': 'passed'}
+
+        def sync_run():
+            with manager.legacy_slot(wait_on_busy=True):
+                return 'ran once'
+
+        run_id = manager.submit(async_task)['runId']
+        with ThreadPoolExecutor(1) as pool:
+            try:
+                self.assertTrue(started.wait(2))
+                waiting = pool.submit(sync_run)
+                eventually(lambda: bool(manager._sync_waiters))
+            finally:
+                release.set()
+            self.assertEqual(waiting.result(timeout=1), 'ran once')
+        eventually(lambda: manager.get(run_id)['status'] == 'passed')
+
+    def test_shutdown_wakes_sync_waiter_without_dispatch(self):
+        manager = JobManager(workers=1)
+        def wait_for_run():
+            with manager.legacy_slot(wait_on_busy=True):
+                self.fail('shutdown must not admit the waiting run')
+        with ThreadPoolExecutor(1) as pool, manager.legacy_slot():
+            waiting = pool.submit(wait_for_run)
+            eventually(lambda: bool(manager._sync_waiters))
+            manager.close()
+            with self.assertRaises(JobError) as stopped:
+                waiting.result(timeout=1)
+        self.assertEqual(stopped.exception.status_code, 503)
+        self.assertFalse(manager._sync_waiters)
+
+    def test_sync_wait_settings_allow_immediate_rejection_and_reject_unbounded_values(self):
+        for setting, invalid in (('RUN_SYNC_WAITERS', '17'), ('RUN_SYNC_WAIT_SECONDS', '11')):
+            with patch.dict(os.environ, {setting: invalid}), self.assertRaises(ValueError):
+                JobManager.from_environment()
+            with patch.dict(os.environ, {setting: '0'}):
+                manager = JobManager.from_environment()
+                self.addCleanup(manager.close)
+                with patch.object(manager.slots, 'acquire', return_value=False), \
+                        patch.object(manager.condition, 'wait') as wait:
+                    with self.assertRaises(JobError) as rejected, manager.legacy_slot(wait_on_busy=True):
+                        self.fail('disabled wait must reject')
+                    self.assertEqual(rejected.exception.status_code, 429)
+                    wait.assert_not_called()
+
+    def test_sync_http_burst_finishes_once_per_request_with_two_workers(self):
+        app = create_app(studio)
+        app.state.jobs = JobManager(workers=2)
+        both_running = threading.Event()
+        third_arrived = threading.Event()
+        release = threading.Event()
+        lock = threading.Lock()
+        calls = []
+        active = peak = 0
+        read_body = studio.StudioRequest.read_body
+
+        def observe_request(request):
+            body = read_body(request)
+            if body['inlineCase']['name'] == 'third':
+                third_arrived.set()
+            return body
+
+        def execute(command, body):
+            nonlocal active, peak
+            name = body['inlineCase']['name']
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                calls.append(name)
+                if active == 2:
+                    both_running.set()
+            try:
+                if name != 'third':
+                    self.assertTrue(release.wait(3))
+                return {'runId': name, 'exitCode': 0}
+            finally:
+                with lock:
+                    active -= 1
+
+        with TestClient(app, base_url='http://127.0.0.1:8765') as client, \
+                patch.object(studio.StudioRequest, 'read_body', observe_request), \
+                patch.object(studio, 'execute_studio_run', side_effect=execute), ThreadPoolExecutor(3) as pool:
+            def submit(name):
+                return pool.submit(client.post, '/api/run', json={'inlineCase': {'name': name}})
+
+            first, second = submit('first'), submit('second')
+            try:
+                self.assertTrue(both_running.wait(2))
+                third = submit('third')
+                self.assertTrue(third_arrived.wait(2))
+                with self.assertRaises(FutureTimeout):
+                    third.result(timeout=0.1)
+            finally:
+                release.set()
+            for future, name in ((first, 'first'), (second, 'second'), (third, 'third')):
+                response = future.result(timeout=3)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()['runId'], name)
+            self.assertCountEqual(calls, ['first', 'second', 'third'])
+            self.assertEqual(peak, 2)
+            self.assertFalse(app.state.jobs.jobs)
+
     def test_sync_429_guidance_and_async_queue_share_slots_without_fallback(self):
         app = create_app(studio)
-        app.state.jobs = JobManager(workers=1)
+        app.state.jobs = JobManager(workers=1, sync_wait_seconds=0.05)
         started = threading.Event()
         def blocked(job, *args):
             started.set()
@@ -203,6 +341,7 @@ class AdmissionPolicyTests(unittest.TestCase):
                 self.assertIn('POST /api/runs', rejected.json()['admission']['guidance'])
                 runner.assert_not_called()
                 self.assertEqual(set(app.state.jobs.jobs), {first})
+            self.assertFalse(app.state.jobs._sync_waiters)
             second = client.post('/api/runs', json={'cases': []})
             self.assertEqual(second.status_code, 202)
             self.assertEqual(second.json()['status'], 'queued')

@@ -16,6 +16,9 @@ import uuid
 from api_test.database import LOCAL_CONTEXT
 from api_test.reports import now
 
+DEFAULT_SYNC_WAITERS = 16
+DEFAULT_SYNC_WAIT_SECONDS = 6
+
 TERMINAL = frozenset({'passed', 'failed', 'error', 'timeout', 'cancelled'})
 
 
@@ -43,9 +46,14 @@ class Job:
 
 class JobManager:
     def __init__(self, *, workers=2, capacity=20, user_limit=10, project_limit=10, retention=600, max_completed=100,
-                 artifact_limit=32 * 1024 * 1024, artifact_total=128 * 1024 * 1024):
+                 artifact_limit=32 * 1024 * 1024, artifact_total=128 * 1024 * 1024,
+                 sync_waiters=DEFAULT_SYNC_WAITERS, sync_wait_seconds=DEFAULT_SYNC_WAIT_SECONDS):
         if min(workers, capacity, user_limit, project_limit, retention, max_completed, artifact_limit, artifact_total) <= 0 or artifact_limit > artifact_total:
             raise ValueError('Job limits must be positive')
+        if not isinstance(sync_waiters, int) or not 0 <= sync_waiters <= 16 or not 0 <= sync_wait_seconds <= 10:
+            raise ValueError('Sync admission allows 0..16 waiters and a wait of 0..10 seconds')
+        self.sync_wait_limit, self.sync_wait_seconds = sync_waiters, sync_wait_seconds
+        self._sync_waiters = deque()
         self.workers, self.capacity = workers, capacity
         self.user_limit, self.project_limit = user_limit, project_limit
         self.retention, self.max_completed = retention, max_completed
@@ -60,7 +68,8 @@ class JobManager:
     @classmethod
     def from_environment(cls):
         names = {'workers': 2, 'capacity': 20, 'user_limit': 10, 'project_limit': 10,
-                 'retention': 600, 'max_completed': 100}
+                 'retention': 600, 'max_completed': 100,
+                 'sync_waiters': DEFAULT_SYNC_WAITERS, 'sync_wait_seconds': DEFAULT_SYNC_WAIT_SECONDS}
         return cls(**{key: int(os.environ.get('RUN_' + key.upper(), default)) for key, default in names.items()})
 
     def _prune(self):
@@ -209,7 +218,7 @@ class JobManager:
                     # Neither exception text nor tracebacks are retained in queryable job results.
                     result = {'status': 'error', 'error': '실행 작업 처리에 실패했습니다.'}
                 finally:
-                    self.slots.release()
+                    self._release_slot()
                 with self.condition:
                     artifact = result.pop('_artifact', None)
                     filename = result.pop('_artifact_filename', None)
@@ -233,18 +242,47 @@ class JobManager:
             with self.condition:
                 self._finish(job, {'status': 'cancelled'})
 
+    def _release_slot(self):
+        with self.condition:
+            self.slots.release()
+            self.condition.notify_all()
+
+    def _take_slot(self, wait_on_busy):
+        # Called under the condition. New synchronous runs take turns in arrival order.
+        if (not wait_on_busy or not self._sync_waiters) and self.slots.acquire(blocking=False):
+            return True
+        if not wait_on_busy or not self.sync_wait_seconds or len(self._sync_waiters) >= self.sync_wait_limit:
+            return False
+        ticket = object()
+        self._sync_waiters.append(ticket)
+        deadline = time.monotonic() + self.sync_wait_seconds
+        try:
+            while not self.closed:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                if self._sync_waiters[0] is ticket and self.slots.acquire(blocking=False):
+                    return True
+                self.condition.wait(remaining)
+            return False
+        finally:
+            self._sync_waiters.remove(ticket)
+            self.condition.notify_all()
+
     @contextmanager
-    def legacy_slot(self):
-        """Synchronous compatibility calls share the worker concurrency ceiling."""
-        if self.closed:
-            raise JobError('실행 worker가 종료 중입니다.', 503)
-        if not self.slots.acquire(blocking=False):
-            raise JobError('동시 실행 한도를 초과했습니다.', 429, code='RUN_WORKERS_BUSY',
-                           guidance='실행이 시작되지 않았습니다. 대기가 필요하면 POST /api/runs로 한 번 제출하고 반환된 Run ID를 조회하세요. 비동기 대기열에도 한도가 있습니다.')
+    def legacy_slot(self, *, wait_on_busy=False):
+        """Reserve one shared worker before dispatching a synchronous request."""
+        with self.condition:
+            acquired = not self.closed and self._take_slot(wait_on_busy)
+            if self.closed:
+                raise JobError('실행 worker가 종료 중입니다.', 503)
+            if not acquired:
+                raise JobError('동시 실행 한도를 초과했습니다.', 429, code='RUN_WORKERS_BUSY',
+                               guidance='실행이 시작되지 않았습니다. 대기가 필요하면 POST /api/runs로 한 번 제출하고 반환된 Run ID를 조회하세요. 비동기 대기열에도 한도가 있습니다.')
         try:
             yield
         finally:
-            self.slots.release()
+            self._release_slot()
 
     def close(self):
         with self.condition:

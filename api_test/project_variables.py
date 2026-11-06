@@ -3,11 +3,12 @@ from __future__ import annotations
 import os
 import re
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from cryptography.fernet import Fernet, InvalidToken
+if TYPE_CHECKING:
+    from cryptography.fernet import Fernet
 
 
 ENCRYPTION_KEY_ENV = "API_TEST_ENCRYPTION_KEY"
@@ -27,6 +28,7 @@ def _fernet() -> Fernet:
         raise ProjectVariableError(
             f"{ENCRYPTION_KEY_ENV} is required to save or use encrypted project variables"
         )
+    from cryptography.fernet import Fernet
     try:
         return Fernet(key.encode("ascii"))
     except (ValueError, UnicodeEncodeError) as exc:
@@ -87,6 +89,7 @@ def decrypt_secret(token: str, *, _audit_info=None) -> str:
             raise ProjectVariableError('Secret access authorization or audit is unavailable') from exc
     if _encryption_service_url():
         return _service_request("decrypt", "token", token)
+    from cryptography.fernet import InvalidToken
     try:
         return _fernet().decrypt(token.encode("ascii")).decode("utf-8")
     except (InvalidToken, ValueError, UnicodeEncodeError, UnicodeDecodeError) as exc:

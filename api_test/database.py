@@ -130,12 +130,12 @@ def require_membership(connection, context, *, write=False):
         raise PermissionError("Active workspace membership with the required role is required")
     return row["role"]
 
-try:
-    from psycopg import Error as PostgresError
-    from psycopg_pool import PoolTimeout
-    DATABASE_ERRORS = (sqlite3.Error, PostgresError, PoolTimeout)
-except ImportError:
-    DATABASE_ERRORS = (sqlite3.Error,)
+def __getattr__(name):
+    # Keep the existing exception exports while letting SQLite CLI processes skip the PostgreSQL driver.
+    if name in ('DATABASE_ERRORS', 'PostgresError', 'PoolTimeout'):
+        from . import database_errors
+        return getattr(database_errors, name)
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
 
 
 def initialize_local_context(connection):

@@ -16,15 +16,15 @@
 
 ## 실행 접수 정책
 
-worker 기본값 2를 유지한다. `/api/run`은 비동기 실행과 공유하는 실행 slot을 즉시 확보할 때만 시작하며 대기열에 들어가지 않는다. 모든 slot이 사용 중이면 HTTP 429를 반환하고 CLI나 job을 만들지 않는다. 바로 결과를 기다리는 호환 호출에 사용하며, 순차 실행하거나 caller가 동시 요청을 제한한다.
+동기 `POST /api/run`과 비동기 worker는 기본 실행 슬롯 2개를 공유한다. 동기 호출이 슬롯을 즉시 얻으면 바로 실행한다. 모두 사용 중이면 기본 최대 16개 요청이 각자의 HTTP 연결에서 도착 순서대로 최대 6초까지 슬롯을 기다린다. 슬롯을 얻은 요청은 원래 요청을 한 번 실행하고 같은 연결로 결과를 받는다. 클라이언트의 HTTP 시간 제한에는 슬롯 대기와 실제 실행 시간이 함께 포함된다. 대기 인원이 가득 차거나 시간이 만료된 요청은 실행 전에 기존 HTTP 429와 `RUN_WORKERS_BUSY`를 받는다. 서버 종료 시 슬롯 대기 중인 요청에는 503을 반환한다. 동기 SDK ZIP 생성은 슬롯을 즉시 확보하는 정책을 사용한다.
 
-대기를 허용할 실행은 처음부터 `POST /api/runs`로 한 번 제출한다. HTTP 202는 **접수**이며 실행 성공이 아니다. 응답의 `runId`를 보관해 `GET /api/runs/{runId}`로 `passed/failed/error/timeout/cancelled`까지 조회한다. 취소는 해당 ID로 요청한다. 대기열이 포화되면 이 API도 429를 반환하며 거부된 요청에 Run ID는 없다.
+장시간 대기·취소·상태 조회가 필요한 실행은 처음부터 `POST /api/runs`로 한 번 제출한다. HTTP 202는 **접수**이며 실행 성공이 아니다. 응답의 `runId`를 보관해 `GET /api/runs/{runId}`로 `passed/failed/error/timeout/cancelled`까지 조회한다. 취소는 해당 ID로 요청한다. 대기열이 포화되면 이 API도 429를 반환하며 거부된 요청에 Run ID는 없다.
 
 429 응답은 기존 `error` 문자열을 유지하고 다음 필드를 추가한다. `admission.accepted: false`는 실행/접수가 시작되지 않았음을 뜻한다. `admission.guidance`는 다음 행동 안내다. `Retry-After`는 제공하지 않으며 종료 시각을 추정하지 않는다.
 
 | `code` | 거부 조건 | 다음 행동 |
 | --- | --- | --- |
-| `RUN_WORKERS_BUSY` | 동기 `/api/run` 실행 slot 없음 | 진행 중 실행 완료 후 명시적으로 다시 실행하거나, 대기가 필요하면 `/api/runs`로 한 번 제출 |
+| `RUN_WORKERS_BUSY` | 동기 run의 슬롯 대기 한도 또는 시간 초과, 즉시 모드에서 슬롯 사용 중 | 진행 중 실행 완료 후 명시적으로 다시 실행하거나, 대기가 필요하면 `/api/runs`로 한 번 제출 |
 | `RUN_CAPACITY_EXCEEDED` | 전체 미완료 async job 한도 | 기존 Run ID의 완료 확인 후 새 제출 |
 | `RUN_USER_LIMIT_EXCEEDED` | 사용자 미완료 async job 한도 | 본인의 기존 Run ID 완료 확인 후 새 제출 |
 | `RUN_PROJECT_LIMIT_EXCEEDED` | 프로젝트 미완료 async job 한도 | 해당 프로젝트 작업 완료 후 새 제출 |
@@ -40,6 +40,8 @@ worker 기본값 2를 유지한다. `/api/run`은 비동기 실행과 공유하�
 | 변수 | 기본값 | 의미 |
 | --- | --- | --- |
 | `RUN_WORKERS` | 2 | 동시 실행 수 |
+| `RUN_SYNC_WAITERS` | 16 | 동기 run의 슬롯 대기 요청 상한(0~16개, 프로세스 전체). 0이면 즉시 거절 |
+| `RUN_SYNC_WAIT_SECONDS` | 6 | 슬롯 대기 시간(정수 0~10초). 0이면 즉시 거절. 실행 시간 제한과 별도로 적용 |
 | `RUN_CAPACITY` | 20 | 전체 미완료 작업 수 상한 |
 | `RUN_USER_LIMIT` | 10 | workspace·사용자별 미완료 작업 상한 |
 | `RUN_PROJECT_LIMIT` | 10 | workspace·프로젝트별 미완료 작업 상한 |
