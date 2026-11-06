@@ -54,7 +54,13 @@ def run_isolated_case() -> int:
     # The real CLI/report contract is used, with a guard pinned to one dedicated saved case.
     root = Path.cwd().resolve()
     runtime = json.loads((root / "runtime.json").read_text())
+    workspace_roots = ["--case-root", str(root / "case"), "--project-root", str(root / "projects"),
+                       "--file-root", str(root / "case")]
     arguments = sys.argv[1:]
+    # Studio supplies the workspace roots after the case. Legacy fixture commands omit them.
+    end = 2 + len(workspace_roots)
+    if arguments[2:end] == workspace_roots:
+        arguments = arguments[:2] + arguments[end:]
     if len(arguments) not in (6, 8) or arguments[0:2] != ["--case", RUN_CASE] or arguments[2] != "--report-json" or arguments[4] != "--run-id":
         raise ValueError("isolated runner accepts only the prepared saved health case")
     if not Path(arguments[3]).resolve().is_relative_to(root / "tmp"):
@@ -70,8 +76,7 @@ def run_isolated_case() -> int:
         return check
     cli.execution_guard = guard
     cli.local_policy = lambda: {"local_server": True, "skip_verification": False}
-    sys.argv = [sys.argv[0], "--case-root", str(root / "case"), "--project-root", str(root / "projects"),
-                "--file-root", str(root / "case"), "--log-dir", str(root / "logs"), "--timeout", "2", *arguments]
+    sys.argv = [sys.argv[0], *workspace_roots, "--log-dir", str(root / "logs"), "--timeout", "2", *arguments]
     return cli.main()
 
 

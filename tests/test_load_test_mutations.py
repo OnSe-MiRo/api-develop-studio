@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import sqlite3
-from contextlib import closing
+from contextlib import chdir, closing
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -109,6 +109,32 @@ class LoadTestMutationTests(unittest.TestCase):
                 network.assert_not_called()
                 self.assertIn("outside the prepared loopback", output.getvalue())
                 self.assertTrue(allowed_run_target(runtime, runtime["runProject"], runtime["baseUrl"] + "/example-api/health", "GET"))
+
+    def test_saved_case_command_accepts_only_the_fixture_workspace_roots(self):
+        from api_test import cli
+        from api_test.services import studio
+        from api_test.services.execution import run_command
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = (Path(directory) / "fixture").resolve()
+            generate_fixture(root, "small")
+            (root / "tmp").mkdir()
+            prepare_runner(root, "http://127.0.0.1:12345", REPOSITORY)
+            with patch.multiple(studio, CASE_ROOT=root / "case", PROJECT_ROOT=root / "projects",
+                                PIPELINE_ROOT=root / "pipelines"), run_command({"cases": [RUN_CASE]}, studio) as command:
+                args = command[1:] + ["--report-json", str(root / "tmp/report.json"), "--run-id", "run_test",
+                                      "--log-dir", str(root / "tmp/logs")]
+            with chdir(root), patch.object(cli, "main", return_value=0) as runner, \
+                    patch.object(cli, "execution_guard"), patch.object(cli, "local_policy"):
+                for option in ("--case-root", "--project-root", "--file-root"):
+                    changed = list(args)
+                    changed[changed.index(option) + 1] = str(root.parent)
+                    with self.subTest(option=option), patch("sys.argv", changed), self.assertRaises(ValueError):
+                        run_isolated_case()
+                runner.assert_not_called()
+                with patch("sys.argv", args):
+                    self.assertEqual(run_isolated_case(), 0)
+                runner.assert_called_once_with()
 
     def test_runner_report_cannot_escape_private_temporary_directory(self):
         with tempfile.TemporaryDirectory() as directory:
