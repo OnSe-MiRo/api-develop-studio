@@ -165,6 +165,15 @@ class JobApiTests(unittest.TestCase):
             eventually(lambda: client.get('/api/runs/' + first).json()['status'] == 'cancelled')
 
 class AdmissionPolicyTests(unittest.TestCase):
+    def setUp(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.enterContext(patch.dict(os.environ, {
+            'STUDIO_DB_PATH': str(root / 'studio.db'), 'STUDIO_DATABASE_URL': '', 'STUDIO_DATABASE_URL_FILE': '',
+            'STUDIO_REDIS_URL': '', 'STUDIO_AUTH_MODE': 'local', 'LOCAL_SERVER': 'true', 'EXAMPLE_PROJECT': 'false',
+        }))
+        self.enterContext(patch.multiple(studio, PROJECT_ROOT=root / 'projects', CASE_ROOT=root / 'case',
+                                         PIPELINE_ROOT=root / 'pipelines', _COLLABORATION_STORE=None))
+
     def test_rejection_reasons_never_create_jobs_and_limits_recover(self):
         for options, code in (({'capacity': 1}, 'RUN_CAPACITY_EXCEEDED'),
                               ({'user_limit': 1}, 'RUN_USER_LIMIT_EXCEEDED'),
@@ -322,6 +331,7 @@ class AdmissionPolicyTests(unittest.TestCase):
             self.assertFalse(app.state.jobs.jobs)
 
     def test_sync_429_guidance_and_async_queue_share_slots_without_fallback(self):
+        body = {'inlineCase': {'name': 'admission-test', 'request': {}, 'expected': {}}}
         app = create_app(studio)
         app.state.jobs = JobManager(workers=1, sync_wait_seconds=0.05)
         started = threading.Event()
@@ -330,10 +340,10 @@ class AdmissionPolicyTests(unittest.TestCase):
             job.cancel.wait(3)
             return {'status': 'cancelled'}
         with patch('api_test.services.execution.execute_job', side_effect=blocked), TestClient(app, base_url='http://127.0.0.1:8765') as client:
-            first = client.post('/api/runs', json={'cases': []}).json()['runId']
+            first = client.post('/api/runs', json=body).json()['runId']
             self.assertTrue(started.wait(2))
             with patch.object(studio, 'execute_studio_run') as runner:
-                rejected = client.post('/api/run', json={'cases': []})
+                rejected = client.post('/api/run', json=body)
                 self.assertEqual(rejected.status_code, 429)
                 self.assertEqual(rejected.json()['error'], '동시 실행 한도를 초과했습니다.')
                 self.assertEqual(rejected.json()['code'], 'RUN_WORKERS_BUSY')
@@ -342,18 +352,19 @@ class AdmissionPolicyTests(unittest.TestCase):
                 runner.assert_not_called()
                 self.assertEqual(set(app.state.jobs.jobs), {first})
             self.assertFalse(app.state.jobs._sync_waiters)
-            second = client.post('/api/runs', json={'cases': []})
+            second = client.post('/api/runs', json=body)
             self.assertEqual(second.status_code, 202)
             self.assertEqual(second.json()['status'], 'queued')
             client.post('/api/runs/' + second.json()['runId'] + '/cancel')
             client.post('/api/runs/' + first + '/cancel')
 
     def test_queue_429_response_preserves_error_and_contains_no_run_id(self):
+        body = {'inlineCase': {'name': 'admission-test', 'request': {}, 'expected': {}}}
         app = create_app(studio)
         app.state.jobs = JobManager(workers=1, capacity=1)
         with patch('api_test.services.execution.execute_job', side_effect=lambda job, *args: (job.cancel.wait(3), {'status': 'cancelled'})[1]), TestClient(app, base_url='http://127.0.0.1:8765') as client:
-            first = client.post('/api/runs', json={'cases': []}).json()['runId']
-            rejected = client.post('/api/runs', json={'cases': []})
+            first = client.post('/api/runs', json=body).json()['runId']
+            rejected = client.post('/api/runs', json=body)
             self.assertEqual(rejected.status_code, 429)
             self.assertEqual(rejected.json()['code'], 'RUN_CAPACITY_EXCEEDED')
             self.assertFalse(rejected.json()['admission']['accepted'])
