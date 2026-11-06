@@ -4,7 +4,7 @@ import { CaseList } from './CaseList.jsx'
 import { api } from '../../utils/studio.js'
 import { navigateTo, useRoute } from '../../router.js'
 vi.mock('../../utils/studio.js', async original => ({ ...await original(), api: vi.fn() }))
-vi.mock('../interoperability/ImportExportPanel.jsx', () => ({ ImportExportPanel: ({ caseItems, refresh }) => <section><p>내보내기 항목: {caseItems.join(',')}</p><button onClick={refresh}>가져오기 저장 완료</button></section> }))
+vi.mock('../interoperability/ImportExportPanel.jsx', () => ({ ImportExportPanel: ({ projectRef, refresh }) => <section><p>내보내기 프로젝트: {projectRef}</p><button onClick={refresh}>가져오기 저장 완료</button></section> }))
 const page=(items,extra={})=>({items,details:{},...extra})
 function RoutedCases() {
   const route=useRoute()
@@ -38,12 +38,12 @@ it('restores query on reload and back while rejecting stale query responses',asy
   expect(screen.getByLabelText('케이스 검색')).toHaveValue('back')
   expect(screen.getByLabelText('태그')).toHaveValue('')
 })
-it('loads complete export choices only when opened and refreshes the page after import',async()=>{
+it('opens export in the current project and refreshes the bounded list after import',async()=>{
   api.mockImplementation(async path=>path.includes('page_size=')?page(['tag/api/a.json']):page(['tag/api/a.json','other/api/off-page.json']))
   render(<RoutedCases/>);await screen.findByRole('button',{name:'tag/api/a.json 케이스 삭제'})
   expect(api).toHaveBeenCalledTimes(1)
   fireEvent.click(screen.getByRole('button',{name:'가져오기·내보내기'}))
-  await screen.findByText('내보내기 항목: tag/api/a.json,other/api/off-page.json')
+  await screen.findByText('내보내기 프로젝트: sample.json')
   fireEvent.click(screen.getByRole('button',{name:'가져오기 저장 완료'}))
   await waitFor(()=>expect(api.mock.calls.filter(([url])=>url.includes('page_size=')).length).toBe(2))
 })

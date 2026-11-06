@@ -5,7 +5,7 @@ import { api } from '../../utils/studio.js'
 vi.mock('../../utils/studio.js', () => ({ api: vi.fn() }))
 beforeEach(() => {
   api.mockImplementation(async url => {
-    if (url === '/api/projects') return { items: ['sample.json'] }
+    if (url === '/api/projects?page_size=20') return { items: ['sample.json'] }
     if (url === '/api/projects/sample.json') return { environments: { dev: { base_url: 'https://dev.example' } }, auth_profiles: { login: { type: 'Bearer Token', token: '{{project.token}}' } } }
     if (url === '/api/cases') return { items: [] }
     return {}
@@ -36,7 +36,7 @@ it('runs a selected environment and saves the same request with a profile refere
 it('uses an OAuth profile reference without exposing a browser token', async () => {
   let connected = false
   api.mockImplementation(async url => {
-    if (url === '/api/projects') return { items: ['sample.json'] }
+    if (url === '/api/projects?page_size=20') return { items: ['sample.json'] }
     if (url === '/api/projects/sample.json') return { auth_profiles: { login: { type: 'OAuth 2.0', grantType: 'client_credentials', issuer: 'https://idp.example' } } }
     if (url === '/api/projects/sample.json/oauth/profiles/login') return { configured: true, connected, grantType: 'client_credentials', expiresAt: connected ? '2030-01-01T00:00:00Z' : '2020-01-01T00:00:00Z', accessToken: 'hidden' }
     return {}

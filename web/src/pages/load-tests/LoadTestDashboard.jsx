@@ -1,3 +1,4 @@
+import { useReferencePage } from '../../components/ReferencePicker.jsx'
 import { useEffect, useState } from 'react'
 import { api } from '../../utils/studio.js'
 import { navigateTo } from '../../router.js'
@@ -69,7 +70,7 @@ function Trend({ series }) {
   </>
 }
 
-function LoadList({ route, projects, projectDetails, refreshKey }) {
+function LoadList({ route, refreshKey }) {
   const filters = route.loadFilters || {}
   const [draft, setDraft] = useState(filters)
   const [data, setData] = useState(null)
@@ -108,12 +109,12 @@ function LoadList({ route, projects, projectDetails, refreshKey }) {
   const latest = recent?.[0]
   const previous = recent?.[1]
   const delta = (current, before, unit) => current == null || before == null ? '—' : `${current - before > 0 ? '+' : ''}${formatNumber(unit === '%p' ? (current - before) * 100 : current - before)}${unit}`
-  const projectOptions = projects.includes(filters.project) || !filters.project ? projects : [filters.project, ...projects]
-  const visibleProjects = [...new Set([...projectOptions, ...(data?.items || []).map(item => item.run?.project).filter(Boolean)])]
+  const { page: suggestions } = useReferencePage('projects', '', draft.project?.trim().slice(0, 100) || '', '', refreshKey)
+  const visibleProjects = [...new Set([...suggestions.items, ...(data?.items || []).map(item => item.run?.project).filter(Boolean)])]
   return <main className="load-dashboard">
     <div className="section-header"><div><p className="eyebrow">LOAD TEST RESULTS</p><h1>부하테스트 결과</h1><p className="hint">저장된 실행 결과의 성능 지표와 통과 조건을 확인합니다. 날짜 필터는 UTC 기준입니다.</p></div><button className="ghost" onClick={() => setRevision(value => value + 1)}>↻ 결과 새로고침</button></div>
     <form className="card load-filters" onSubmit={apply}>
-      <label className="field" htmlFor="load-project-filter"><span>프로젝트</span><input id="load-project-filter" list="load-projects" value={draft.project || ''} onChange={event => updateDraft('project', event.target.value)} placeholder="전체 프로젝트" /></label><datalist id="load-projects">{visibleProjects.map(reference => <option key={reference} value={reference}>{projectDetails[reference]?.name || reference}</option>)}</datalist>
+      <label className="field" htmlFor="load-project-filter"><span>프로젝트</span><input id="load-project-filter" list="load-projects" value={draft.project || ''} onChange={event => updateDraft('project', event.target.value)} placeholder="전체 프로젝트" /></label><datalist id="load-projects">{visibleProjects.map(reference => <option key={reference} value={reference}>{suggestions.details?.[reference]?.name || reference}</option>)}</datalist>
       <label className="field"><span>시나리오</span><input value={draft.scenario || ''} onChange={event => updateDraft('scenario', event.target.value)} placeholder="시나리오 이름" /></label>
       <label className="field"><span>상태</span><select value={draft.status || ''} onChange={event => updateDraft('status', event.target.value)}><option value="">전체 상태</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label className="field"><span>시작일 (UTC)</span><input type="date" value={draft.from || ''} onChange={event => updateDraft('from', event.target.value)} /></label>
@@ -178,7 +179,7 @@ function LoadDetail({ route, refreshKey }) {
   </main>
 }
 
-export function LoadTestDashboard({ route, projects, projectDetails, refreshKey }) {
+export function LoadTestDashboard({ route, refreshKey }) {
   if (route.tab === 'load-test-compare') return <LoadTestComparison route={route} refreshKey={refreshKey} />
-  return route.tab === 'load-test-result' ? <LoadDetail route={route} refreshKey={refreshKey} /> : <LoadList route={route} projects={projects} projectDetails={projectDetails} refreshKey={refreshKey} />
+  return route.tab === 'load-test-result' ? <LoadDetail route={route} refreshKey={refreshKey} /> : <LoadList route={route} refreshKey={refreshKey} />
 }

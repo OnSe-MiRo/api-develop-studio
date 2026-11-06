@@ -1,24 +1,21 @@
+import { ReferencePicker } from './ReferencePicker.jsx'
 
 
-function ProjectSidebar({ active, projects, projectRef, project, onProjectChange, onNavigate, onProjectList }) {
+function ProjectSidebar({ active, projectRef, project, onProjectChange, onNavigate, onProjectList }) {
   const projectName = project?.name || (projectRef ? projectRef.replace(/\.json$/, '') : '프로젝트 미선택')
   return (
     <aside className="sidebar">
       <button className="sidebar-back" onClick={onProjectList}>← 프로젝트 목록</button>
       <div className="sidebar-title">현재 프로젝트</div>
-      {projects && projects.length > 1 && onProjectChange ? (
-        <select aria-label="프로젝트 선택" value={projectRef} onChange={event => onProjectChange(event.target.value)}>
-          {projects.map(reference => (
-            <option key={reference} value={reference}>{reference.replace(/\.json$/, '')}</option>
-          ))}
-        </select>
+      {onProjectChange ? (
+        <ReferencePicker resource="projects" label="프로젝트 선택" value={projectRef} placeholder="프로젝트 선택" onChange={onProjectChange} />
       ) : (
         <div className="current-project">
           <strong>{projectName}</strong>
           {project?.base_url && <code>{project.base_url}</code>}
         </div>
       )}
-      {project?.base_url && projects && projects.length > 1 && onProjectChange && (
+      {project?.base_url && onProjectChange && (
         <p className="hint"><code>{project.base_url}</code></p>
       )}
       <div className="sidebar-title">테스트 구성</div>
