@@ -317,21 +317,22 @@ def _header_primitive_type(document, schema):
         return None
 
 
-def _header_allof_array_items(document, schema):
+def _header_allof_array_layers(document, schema):
     # This is a decoding view only; validate against the original schema below.
-    if not isinstance(schema, dict) or 'allOf' not in schema:
+    if not isinstance(schema, dict) or not ('allOf' in schema or '$ref' in schema):
         return None
-    active, types, items = set(), set(), []
+    active, types, layers = set(), set(), []
     remaining = 128
+    composed = False
 
     def collect(value, depth=0):
-        nonlocal remaining
+        nonlocal remaining, composed
         remaining -= 1
         if remaining < 0 or depth > 32 or id(value) in active:
             raise ValueError('Header array traversal limit')
         if value is True:
             return
-        if not isinstance(value, dict) or any(key in value for key in ('anyOf', 'oneOf', 'not', 'if', 'prefixItems')):
+        if not isinstance(value, dict) or any(key in value for key in ('anyOf', 'oneOf', 'not', 'if')):
             raise ValueError('Unsupported array composition')
         active.add(id(value))
         try:
@@ -339,8 +340,10 @@ def _header_allof_array_items(document, schema):
                 collect(pointer(document, value['$ref']), depth + 1)
             if 'type' in value:
                 types.add(_header_type(value))
-            if 'items' in value:
-                items.append(value['items'])
+            if 'items' in value or 'prefixItems' in value:
+                layers.append(value)
+            if 'allOf' in value:
+                composed = True
             for child in value.get('allOf', []):
                 collect(child, depth + 1)
         finally:
@@ -350,9 +353,9 @@ def _header_allof_array_items(document, schema):
         collect(schema)
     except (ValueError, ContractError):
         return None
-    if types != {'array'} or not items:
+    if not composed or types != {'array'} or not layers:
         return None
-    return {'allOf': items}
+    return layers
 
 
 def _header_union_array_items(document, schema):
@@ -380,8 +383,12 @@ def _header_union_array_items(document, schema):
                 if len(kinds) != 1 or None in kinds:
                     raise ValueError('Mixed array item types')
                 return next(iter(kinds))
-            items = _header_allof_array_items(document, value)
-            if items is None:
+            layers = _header_allof_array_layers(document, value)
+            if layers:
+                if any('prefixItems' in layer for layer in layers):
+                    raise ValueError('Tuple in array union')
+                items = {'allOf': [layer['items'] for layer in layers]}
+            else:
                 if _header_type(value) != 'array':
                     raise ValueError('Non-array union branch')
                 items = value.get('items', {})
@@ -493,7 +500,10 @@ def _header_union_object_schema(document, schema):
 
 
 def _header_scalar(schema, value, document):
-    schema_type = _header_primitive_type(document, schema)
+    return _coerce_header_scalar(_header_primitive_type(document, schema), value)
+
+
+def _coerce_header_scalar(schema_type, value):
     try:
         if schema_type == 'integer':
             return int(value)
@@ -509,21 +519,39 @@ def _header_scalar(schema, value, document):
     return value
 
 
-def _header_tuple(document, header, schema, raw):
+def _header_tuple(document, header, layers, raw, *, composed):
     if header.get('style', 'simple') != 'simple':
         return None, 'unsupported_header_serialization'
-    prefix = [resolve(document, item) for item in schema['prefixItems']]
-    tail = resolve(document, schema.get('items', True))
-    decoders = prefix + ([tail] if isinstance(tail, dict) else [])
-    if any(not isinstance(item, bool) and item != {} and
-           (not isinstance(item, dict) or _header_primitive_type(document, item) is None) for item in decoders):
+
+    def decoder_at(index):
+        constraints = []
+        for layer in layers:
+            prefix = layer.get('prefixItems', ())
+            slot = prefix[index] if index < len(prefix) else layer.get('items', True)
+            slot = resolve(document, slot, preserve_siblings=composed)
+            # A forbidden position will fail the original schema regardless of its value.
+            if slot is False:
+                return 'string'
+            if slot is True or slot == {}:
+                continue
+            constraints.append(slot)
+        if not constraints:
+            return 'string'
+        combined = constraints[0] if len(constraints) == 1 else {'allOf': constraints}
+        return _header_primitive_type(document, combined)
+
+    parts = raw.split(',')
+    width = max(len(layer.get('prefixItems', ())) for layer in layers)
+    # Preserve direct tuple preflight. For a composition, compute only used slots.
+    count = min(width, len(parts)) if composed else width
+    kinds = [decoder_at(i) for i in range(count)]
+    tail = decoder_at(width) if not composed or len(parts) > width else 'string'
+    if tail is None or None in kinds:
         return None, 'unsupported_header_serialization'
     result = []
-    for index, part in enumerate(raw.split(',')):
-        value = part.strip(' \t')
-        decoder = prefix[index] if index < len(prefix) else tail
-        # Boolean/unconstrained schemas keep text; the original schema decides validity.
-        result.append(_header_scalar(decoder, value, document) if isinstance(decoder, dict) else value)
+    for i, part in enumerate(parts):
+        kind = kinds[i] if i < width else tail
+        result.append(_coerce_header_scalar(kind, part.strip(' \t')))
     return result, None
 
 
@@ -615,14 +643,22 @@ def validate_response(document, method, url, status, headers, body, *, raw_body=
                 continue
             schema = resolve(document, header['schema'])
             value = normalized[name.lower()]
-            composed_items = _header_allof_array_items(document, schema)
-            if composed_items is None:
+            layers = _header_allof_array_layers(document, header['schema'])
+            tuple_layers = None
+            if layers and any('prefixItems' in layer for layer in layers):
+                tuple_layers = layers
+                composed_items = None
+            elif layers:
+                composed_items = {'allOf': [layer['items'] for layer in layers]}
+            else:
                 composed_items = _header_union_array_items(document, schema)
+                if _header_type(schema) == 'array' and 'prefixItems' in schema:
+                    tuple_layers = [schema]
             composed_object = _header_allof_object_schema(document, schema)
             if composed_object is None:
                 composed_object = _header_union_object_schema(document, schema)
-            if isinstance(schema, dict) and _header_type(schema) == 'array' and 'prefixItems' in schema:
-                value, code = _header_tuple(document, header, schema, value)
+            if tuple_layers:
+                value, code = _header_tuple(document, header, tuple_layers, value, composed=bool(layers))
                 if code:
                     errors.append(issue(code, location))
                     continue

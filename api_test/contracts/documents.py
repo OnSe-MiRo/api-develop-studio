@@ -57,9 +57,11 @@ def pointer(document, reference):
     return target
 
 
-def resolve(document, value):
+def resolve(document, value, *, preserve_siblings=False):
     seen = set()
     while isinstance(value, dict) and '$ref' in value:
+        if preserve_siblings and value.keys() - {'$ref', 'title', 'description', 'summary'}:
+            break
         ref = value['$ref']
         if ref in seen:
             raise ContractError('Reference-only cycle is not supported')
