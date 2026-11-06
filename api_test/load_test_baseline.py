@@ -19,7 +19,7 @@ from api_test.load_test_harness import REPOSITORY, _host_memory_mb
 SOURCE_FILES = (
     "api_test/load_test_baseline.py", "api_test/load_test_baseline_diagnostics.py", "api_test/load_test_campaigns.py",
     "api_test/load_test_monitor.py", "api_test/load_test_harness.py", "api_test/load_test_mutations.py", "api_test/load_results.py",
-    "api_test/services/documents.py", "api_test/services/studio.py", "api_test/collaboration_store.py", "api_test/database.py",
+    "api_test/services/documents.py", "api_test/services/studio.py", "api_test/case_projection.py", "api_test/interoperability.py", "api_test/collaboration_store.py", "api_test/database.py",
     "api_test/jobs.py", "api_test/job_runner.py", "api_test/services/execution.py", "api_test/main.py", "api_test/dependencies.py",
     "api_test/cli.py", "api_test/runner.py", "api_test/reports.py", "api_test/ownership.py", "api_test/request_profiles.py", "api_test/project_variables.py",
     "load-tests/k6/mixed.js",

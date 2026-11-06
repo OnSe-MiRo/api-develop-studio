@@ -8,6 +8,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from api_test.case_projection import case_url
+
 
 class CaseListProbe:
     def __init__(self, path: Path):
@@ -31,30 +33,35 @@ def timed_case_list(request, studio, kind, trace: CaseListProbe, original):
     references = store.list_references("cases", request.query_value("project"))
     lookup_ended = time.perf_counter_ns()
     elapsed = {"pathResolutionNs": 0, "projectionReadNs": 0, "utf8DecodeNs": 0, "jsonParseNs": 0, "fieldSelectionNs": 0}
-    details: dict[str, dict[str, str]] = {}
-    read_bytes = 0
-    for reference in references:
+    read_bytes = files_read = 0
+
+    def resolve(root, reference):
         began = time.perf_counter_ns()
-        path = studio.safe_file(studio.document_root("cases"), reference)
-        selected = time.perf_counter_ns()
-        raw = path.read_bytes()
+        path = studio.safe_file(root, reference)
+        elapsed["pathResolutionNs"] += time.perf_counter_ns() - began
+        return path
+
+    def read_projection(source):
+        nonlocal read_bytes, files_read
+        began = time.perf_counter_ns()
+        raw = source.read()
         read = time.perf_counter_ns()
         decoded = raw.decode("utf-8")
         decoded_at = time.perf_counter_ns()
         document = json.loads(decoded)
         parsed = time.perf_counter_ns()
-        request_data = document.get("request", {})
-        if not isinstance(request_data, dict):
-            request_data = {}
-        url = request_data.get("url", "")
-        details[reference] = {"url": url if isinstance(url, str) else ""}
-        extracted = time.perf_counter_ns()
-        elapsed["pathResolutionNs"] += selected - began
-        elapsed["projectionReadNs"] += read - selected
+        url = case_url(document)
+        selected = time.perf_counter_ns()
+        elapsed["projectionReadNs"] += read - began
         elapsed["utf8DecodeNs"] += decoded_at - read
         elapsed["jsonParseNs"] += parsed - decoded_at
-        elapsed["fieldSelectionNs"] += extracted - parsed
+        elapsed["fieldSelectionNs"] += selected - parsed
+        files_read += 1
         read_bytes += len(raw)
+        return url
+
+    details = studio.case_summaries(studio.document_root("cases"), references,
+                                    resolve_file=resolve, read_projection=read_projection)
     serializing = time.perf_counter_ns()
     response = request.json_response(200, {"items": references, "details": details})
     finished = time.perf_counter_ns()
@@ -62,7 +69,7 @@ def timed_case_list(request, studio, kind, trace: CaseListProbe, original):
     total = finished - started
     other = total - sum(measurements.values())
     trace.record({"formatVersion": 1, "operation": "GET /api/cases", "timestamp": datetime.now(timezone.utc).isoformat(),
-                  "caseCount": len(references), "projectionReadBytes": read_bytes, "responseBytes": len(response.body),
+                  "caseCount": len(references), "projectionFilesRead": files_read, "projectionReadBytes": read_bytes, "responseBytes": len(response.body),
                   **measurements, "handlerNs": total, "otherNs": other})
     return response
 

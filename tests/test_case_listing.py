@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from contextlib import closing
@@ -81,6 +82,67 @@ class CasePageHttpTest(unittest.TestCase):
     def setUp(self):
         import test_workspace_isolation
         test_workspace_isolation.WorkspaceIsolationTest.setUp(self)
+
+    def test_unpaged_list_reads_only_changed_sqlite_files_and_preserves_workspace_scope(self):
+        def listing(workspace='team-a'):
+            response = self.client.get('/api/cases', params={'project': 'same.json'},
+                                       headers={'test-principal': workspace + '-owner'})
+            self.assertEqual(response.status_code, 200)
+            return response.json()
+
+        # Model settled projections for the read-count checks without a wall-clock sleep.
+        clock = self.enterContext(patch('api_test.case_projection.time_ns', side_effect=lambda: time.time_ns() + 3_000_000_000))
+        extra = 'tag/api/second.json'
+        shared = 'tag/api/same.json'
+        store = self.stores['team-a']
+        store.save('cases', extra, {'project': 'same.json', 'request': {'url': '/two', 'headers': {'X-Private': 'hidden'}}})
+        self.stores['team-b'].save('cases', shared, {'project': 'same.json', 'request': {'url': '/team-b'}}, expected_revision=1)
+        expected = {'items': [shared, extra], 'details': {shared: {'url': '/echo'}, extra: {'url': '/two'}}}
+        self.assertEqual(listing(), expected)
+        store.save('projects', 'other.json', {'name': 'Other'})
+        store.save('cases', 'other/api/only.json', {'project': 'other.json', 'request': []})
+        response = self.client.get('/api/cases', headers={'test-principal': 'team-a-owner'})
+        self.assertEqual(response.json()['items'], ['other/api/only.json', shared, extra])
+        self.assertEqual(response.json()['details']['other/api/only.json'], {'url': ''})
+        empty = self.client.get('/api/cases', params={'project': 'missing.json'}, headers={'test-principal': 'team-a-owner'})
+        self.assertEqual(empty.json(), {'items': [], 'details': {}})
+        reads = []
+        original_open = Path.open
+        def observe(path, *args, **kwargs):
+            if path.suffix == '.json' and 'cases' in path.parts:
+                reads.append(path)
+            return original_open(path, *args, **kwargs)
+
+        with patch.object(Path, 'open', observe):
+            self.assertEqual(listing(), expected)
+            self.assertEqual(listing('team-b')['details'][shared], {'url': '/team-b'})
+            reads.clear()
+            self.assertEqual(listing(), expected)
+            self.assertEqual(reads, [] if os.name == 'posix' else [store.roots['cases'] / r for r in (shared, extra)])
+        path = store.roots['cases'] / extra
+        stamp = path.stat()
+        payload = path.read_text(encoding='utf-8').replace('/two', '/new')
+        replacement = path.with_suffix('.new')
+        replacement.write_text(payload, encoding='utf-8')
+        os.utime(replacement, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+        replacement.replace(path)
+        expected['details'][extra] = {'url': '/new'}
+        reads.clear()
+        with patch.object(Path, 'open', observe):
+            self.assertEqual(listing(), expected)
+            self.assertEqual(reads, [path] if os.name == 'posix' else [store.roots['cases'] / shared, path])
+        # An in-place edit can preserve both size and mtime, including on coarse filesystems.
+        clock.side_effect = None
+        clock.return_value = time.time_ns()
+        path.write_text(payload.replace('/new', '/now'), encoding='utf-8')
+        os.utime(path, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+        expected['details'][extra] = {'url': '/now'}
+        self.assertEqual(listing(), expected)
+        updated = store.save('cases', extra, {'project': 'same.json', 'request': {'url': 7}}, expected_revision=1)
+        self.assertEqual(updated.revision, 2)
+        self.assertEqual(listing()['details'][extra], {'url': ''})
+        store.delete('cases', extra)
+        self.assertEqual(listing(), {'items': [shared], 'details': {shared: {'url': '/echo'}}})
 
     def test_workspace_project_input_and_legacy_contract(self):
         for n in range(4):self.stores['team-a'].save('cases',f'tag/api/c{n}.json',{'project':'same.json','request':{'url':'/test'}})

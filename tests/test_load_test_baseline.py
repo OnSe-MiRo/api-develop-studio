@@ -3,6 +3,7 @@ import copy
 import json
 import os
 import tempfile
+import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -183,13 +184,22 @@ class BaselineP1Tests(unittest.TestCase):
                                       json_response=lambda status, payload: Response(json.dumps(payload, ensure_ascii=False).encode(), status_code=status, media_type="application/json", headers={"Cache-Control": "no-store"}))
             service = SimpleNamespace(collaboration_store=lambda: store, CASE_ROOT=root / "case", safe_file=studio.safe_file,
                                       case_summaries=studio.case_summaries, document_root=lambda kind: root / "case")
-            expected = list_documents(request, service, "cases")
             path = Path(directory) / "trace.jsonl"
-            actual = timed_case_list(request, service, "cases", CaseListProbe(path), list_documents)
+            probe = CaseListProbe(path)
+            self.enterContext(patch('api_test.case_projection.time_ns', side_effect=lambda: time.time_ns() + 3_000_000_000))
+            actual = timed_case_list(request, service, "cases", probe, list_documents)
+            expected = list_documents(request, service, "cases")
+            warm = timed_case_list(request, service, "cases", probe, list_documents)
+            self.assertEqual(warm.body, expected.body)
             self.assertEqual(actual.status_code, expected.status_code)
             self.assertEqual(actual.headers, expected.headers)
             self.assertEqual(actual.body, expected.body)
             rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-            self.assertEqual(trace_summary(rows, 1)["status"], "passed")
+            self.assertEqual(trace_summary(rows, 2)["status"], "passed")
+            self.assertEqual(rows[0]["projectionFilesRead"], rows[0]["caseCount"])
+            self.assertGreater(rows[0]["projectionReadBytes"], 0)
+            if os.name == 'posix':
+                self.assertEqual(rows[1]["projectionFilesRead"], 0)
+                self.assertEqual(rows[1]["projectionReadBytes"], 0)
             self.assertNotIn("project-000-case", path.read_text(encoding="utf-8"))
             self.assertNotIn("padding", path.read_text(encoding="utf-8"))
