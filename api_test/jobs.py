@@ -17,7 +17,7 @@ from api_test.database import LOCAL_CONTEXT
 from api_test.reports import now
 
 DEFAULT_SYNC_WAITERS = 16
-DEFAULT_SYNC_WAIT_SECONDS = 4
+DEFAULT_SYNC_WAIT_SECONDS = 6
 
 TERMINAL = frozenset({'passed', 'failed', 'error', 'timeout', 'cancelled'})
 
