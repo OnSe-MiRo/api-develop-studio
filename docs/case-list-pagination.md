@@ -20,6 +20,12 @@ DB에서 keyset 조건과 `LIMIT page_size + 1`을 적용한다. 프로젝트 �
 
 조회는 live 목록이다. 이미 지나간 위치에 삽입된 항목까지 포함하는 고정 snapshot이 아니며, 검색 대상 이름 변경도 다음 조회에 반영된다. 변경된 전체 목록은 첫 페이지부터 다시 확인한다. JSON 부분 문자열 검색과 파일명 정렬의 대규모 성능/SLO는 이번 검증 범위가 아니다.
 
+## SQLite 전체 목록의 URL 요약
+
+페이지 조건을 생략한 전체 조회는 Workspace·프로젝트에 해당하는 정렬된 참조를 DB에서 얻고, 각 케이스의 현재 `request.url`을 `details`로 반환한다. POSIX에서 직접 접근할 수 있는 일반 JSON 파일은 검증된 URL을 재사용한다. 각 목록 요청에서 상위 디렉터리의 실제 경로와 파일의 장치·inode·크기·mtime·ctime을 확인한다. 파일이 바뀌면 기존 경로 검사와 UTF-8 JSON 읽기를 수행한다. 파일을 읽는 동안 버전이 바뀌거나 최근 2초 안에 변경된 파일은 재사용 대상에서 제외한다.
+
+프로세스 내 최대 32,768개 항목으로 제한하고, 경로와 URL 두 문자열의 합산 객체 크기가 1 KiB 이내인 값만 보관한다. 자격 증명 후보·사용자정보·fragment가 있는 URL, 별칭이나 심볼릭 링크는 기존 검사 경로로 읽는다. 전체 URL 응답은 이 보관 조건과 독립적이다. Windows에서는 ctime이 생성 시간을 나타낼 수 있어 파일을 직접 확인한다. PostgreSQL은 저장 리비전을 조회한다. P1의 파일 읽기 건수와 byte 계측은 전체 목록이 실제로 연 파일만 센다. 캐시 확인 및 파일 상태 조회 비용은 handler의 기타 시간에 포함된다.
+
 ## 화면 동작
 
 검색어·태그·정렬·크기·커서를 URL에 저장하고 새로고침/뒤로 가기에서 복원한다. 검색(Enter 포함)·태그·정렬·크기 변경 시 첫 페이지로 이동한다. 늦게 도착한 이전 응답은 무시한다. 삭제 후 현재 페이지를 다시 읽고 비어 있으면 첫 페이지로 복귀한다. 오류 재시도/조건 초기화와 읽기 전용 예제 상태를 유지한다.
@@ -38,3 +44,5 @@ DB에서 keyset 조건과 `LIMIT page_size + 1`을 적용한다. 프로젝트 �
 - 실제 기존 흐름: case-44 편집기와 뒤로 가기, 파이프라인 편집기의 전체45개 선택 유지. 다른 프로젝트1개와 팀B3개/태그auth2개로 격리 확인. 이 브라우저 실행에서는 API 호출 성공이나 파이프라인 실행 성공을 새로 측정하지 않았다.
 - 콘솔 오류/경고0개. [화면 증거](case-list-pagination-browser.jpg).
 - 로그: `/tmp/case-pagination-focused-python.log`, `/tmp/case-pagination-focused-pg.log`, `/tmp/case-pagination-focused-web.log`, `/tmp/case-pagination-web-all.log`, `/tmp/case-pagination-build.log`, `/tmp/case-pagination-baseline-regression.log`, `/tmp/case-pagination-python-final.log`, `/tmp/case-pagination-generated-check.log`.
+
+후속 케이스 목록 최적화와 35 VU 재검증은 [전체 목록·회복 측정](case-list-recovery.md)에 기록했다.

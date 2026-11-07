@@ -34,6 +34,7 @@ from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 import yaml
 
+from api_test.case_projection import CaseProjectionCache, case_url, read_case_url
 from api_test.execution_history import ExecutionHistory
 from api_test.database import LOCAL_CONTEXT, postgres_enabled, DATABASE_ERRORS
 from api_test.runner import CaseConfigurationError, validate_response_time_limit
@@ -1154,17 +1155,14 @@ def example_openapi_document() -> dict[str, object]:
     }
 
 
-def case_summaries(root: Path, references: list[str]) -> dict[str, dict[str, str]]:
-    """Return the request details needed to identify saved cases in the UI."""
-    summaries: dict[str, dict[str, str]] = {}
-    for reference in references:
-        document = read_studio_document(root, reference)
-        request = document.get("request", {})
-        if not isinstance(request, dict):
-            request = {}
-        url = request.get("url", "")
-        summaries[reference] = {"url": url if isinstance(url, str) else ""}
-    return summaries
+_CASE_PROJECTION_CACHE = CaseProjectionCache()
+
+
+def case_summaries(root: Path, references: list[str], *, resolve_file=None, read_projection=read_case_url) -> dict[str, dict[str, str]]:
+    """Return public case URLs from the backing store used by this Studio."""
+    if postgres_enabled():
+        return {ref: {"url": case_url(read_studio_document(root, ref))} for ref in references}
+    return _CASE_PROJECTION_CACHE.summaries(root, references, resolve_file or safe_file, read_projection)
 
 
 def project_summaries(root: Path, references: list[str]) -> dict[str, dict[str, str]]:

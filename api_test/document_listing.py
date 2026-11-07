@@ -5,6 +5,8 @@ import hashlib
 import json
 from contextlib import closing
 
+from api_test.case_projection import case_url
+
 
 PROJECT_SORTS = {'reference_asc', 'reference_desc', 'created_desc'}
 CASE_SORTS = {'name_asc', 'name_desc', 'created_desc'}
@@ -99,9 +101,7 @@ def list_document_page(store, *, kind, page_size='20', search='', sort='referenc
         if kind == 'projects':
             details[row['reference']] = {key: document.get(key, '') if isinstance(document.get(key, ''), str) else '' for key in ('name', 'base_url')}
         elif kind == 'cases':
-            request = document.get('request', {})
-            url = request.get('url', '') if isinstance(request, dict) else ''
-            details[row['reference']] = {'url': url if isinstance(url, str) else ''}
+            details[row['reference']] = {'url': case_url(document)}
     return {'items': [row['reference'] for row in rows], 'details': details,
             'nextCursor': token(rows[-1], 'next') if rows and (more if direction == 'next' else bool(cursor)) else None,
             'previousCursor': token(rows[0], 'previous') if rows and (bool(cursor) if direction == 'next' else more) else None}
