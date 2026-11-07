@@ -44,3 +44,5 @@ DB에서 keyset 조건과 `LIMIT page_size + 1`을 적용한다. 프로젝트 �
 - 실제 기존 흐름: case-44 편집기와 뒤로 가기, 파이프라인 편집기의 전체45개 선택 유지. 다른 프로젝트1개와 팀B3개/태그auth2개로 격리 확인. 이 브라우저 실행에서는 API 호출 성공이나 파이프라인 실행 성공을 새로 측정하지 않았다.
 - 콘솔 오류/경고0개. [화면 증거](case-list-pagination-browser.jpg).
 - 로그: `/tmp/case-pagination-focused-python.log`, `/tmp/case-pagination-focused-pg.log`, `/tmp/case-pagination-focused-web.log`, `/tmp/case-pagination-web-all.log`, `/tmp/case-pagination-build.log`, `/tmp/case-pagination-baseline-regression.log`, `/tmp/case-pagination-python-final.log`, `/tmp/case-pagination-generated-check.log`.
+
+후속 케이스 목록 최적화와 35 VU 재검증은 [전체 목록·회복 측정](case-list-recovery.md)에 기록했다.

@@ -80,3 +80,5 @@ python -m api_test.load_test_harness verify --root <fixture>
 Target은 별도 출력을 써서 3회 실행한다. 위 명령은 기본 시간을 사용한다. 동기 실행 수는 k6의 `POST /api/run` 상태별 원본, SQLite 저장 이력과 고유 Run ID에서 각각 대조한다.
 
 원시 JSONL·서버 자원·실행 이력 대조 자료는 로컬 `data/load-test-evidence/sync-run-admission-20261107/`에 후보별로 보존했다. 98개 입력 파일을 압축 자료와 대조했고 63개 파일 지문을 다시 확인했다. 상위 색인 SHA-256은 `08b05593c0e4c028ed0e7f4a58fd9ee784654c9cee050e23fb61d9e5c7ec0ef1`이다.
+
+후속 케이스 목록 최적화와 35 VU 재검증은 [전체 목록·회복 측정](case-list-recovery.md)에 기록했다.
