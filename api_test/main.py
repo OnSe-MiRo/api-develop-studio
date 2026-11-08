@@ -8,6 +8,7 @@ from copy import deepcopy
 from contextlib import asynccontextmanager
 from starlette.concurrency import run_in_threadpool
 from api_test.jobs import JobManager, JobError
+from api_test.request_threads import RequestThreads
 from pathlib import Path
 import yaml
 import uvicorn
@@ -79,18 +80,26 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
     async def lifespan(app):
         if app.state.jobs.closed:
             app.state.jobs = JobManager.from_environment()
+        if app.state.request_threads.closed:
+            app.state.request_threads = RequestThreads()
         try:
             yield
         finally:
             from api_test.services.mock import manager as mock_manager
-            await run_in_threadpool(mock_manager.stop_all)
-            await run_in_threadpool(app.state.jobs.close)
+            try:
+                await app.state.request_threads.run_sync(mock_manager.stop_all)
+            finally:
+                try:
+                    await app.state.request_threads.run_sync(app.state.jobs.close)
+                finally:
+                    await run_in_threadpool(app.state.request_threads.shutdown)
 
     app = FastAPI(lifespan=lifespan, title="API Develop Studio", docs_url=None, redoc_url=None,
                   openapi_url="/api/schema.json", redirect_slashes=False)
     app.state.current_user_provider = current_user_provider
     app.state.studio = studio
     app.state.jobs = manager
+    app.state.request_threads = RequestThreads()
     from api_test.security_headers import SecurityHeaders
     app.add_middleware(SecurityHeaders)
 
@@ -98,7 +107,7 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
     async def health():
         return {"status": "ok"}
 
-    def error_response(request, exc):
+    async def error_response(request, exc):
         context = getattr(request.state, "studio", None) or studio.StudioRequest(request, b"")
         status, payload = 400, {"error": str(exc)}
         if isinstance(exc, RequestValidationError):

@@ -2,7 +2,6 @@
 from fastapi import Request
 import re
 from api_test.database import LOCAL_CONTEXT
-from starlette.concurrency import run_in_threadpool
 from api_test.request_scope import bind_context, resolve_context, require_permission, permission_for
 
 
@@ -42,7 +41,7 @@ class RequestContext:
                 if self.request.url.path.startswith('/api/') and not self.public:
                     require_permission(self.studio, self.context, permission_for(self.request))
                 return implementation(self.transport, self.studio, *arguments)
-        return await run_in_threadpool(invoke)
+        return await self.request.app.state.request_threads.run_sync(invoke)
 
 
 async def request_context(request: Request) -> RequestContext:

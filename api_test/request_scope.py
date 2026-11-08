@@ -77,9 +77,8 @@ async def resolve_context(request, studio):
         if os.environ.get('STUDIO_AUTH_MODE', 'local') != 'local':
             from api_test.login import service
             from api_test.oidc_client import LoginError
-            from starlette.concurrency import run_in_threadpool
             try:
-                verified=await run_in_threadpool(lambda:service(request,studio).current_user(request))
+                verified=await request.app.state.request_threads.run_sync(lambda:service(request,studio).current_user(request))
                 context=verified.context()
             except LoginError as exc:raise studio.ApiError(exc.code,401 if exc.status_code==503 else exc.status_code) from exc
             selected=request.headers.get('X-Studio-Workspace')
