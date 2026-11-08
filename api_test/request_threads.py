@@ -8,6 +8,25 @@ import threading
 
 import anyio
 
+try:
+    import sniffio
+except ImportError:
+    sniffio = None
+
+
+class RequestThreadsUnavailable(RuntimeError):
+    pass
+
+
+def for_app(app):
+    # Some callers reuse the same ASGI app in a new client after a completed lifespan.
+    with app.state.request_thread_lock:
+        if app.state.request_threads_closing:
+            raise RequestThreadsUnavailable('Request workers are stopping')
+        if app.state.request_threads.closed:
+            app.state.request_threads = RequestThreads()
+        return app.state.request_threads
+
 
 class RequestThreads:
     def __init__(self, max_workers=40, idle_seconds=1):
@@ -25,6 +44,8 @@ class RequestThreads:
     def submit(self, function, *args):
         future = Future()
         context = copy_context()
+        if sniffio is not None:
+            context.run(sniffio.current_async_library_cvar.set, None)
         with self._condition:
             if self.closed:
                 raise RuntimeError('Request workers are closed')

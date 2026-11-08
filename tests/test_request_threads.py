@@ -52,3 +52,44 @@ class RequestThreadLifecycleTests(unittest.TestCase):
             time.sleep(.02)
         self.assertFalse(remaining())
         self.assertEqual(self.client.get('/api/projects', headers={'test-principal':'team-b-owner'}).status_code,200)
+
+
+class RequestShutdownTests(unittest.TestCase):
+    def test_cleanup_failure_still_closes_jobs_and_request_pool(self):
+        from fastapi.testclient import TestClient
+        from api_test.main import create_app
+        from api_test.services import studio
+        app = create_app(studio)
+        with patch('api_test.services.mock.manager.stop_all', side_effect=RuntimeError('cleanup failure')):
+            with self.assertRaisesRegex(RuntimeError, 'cleanup failure'):
+                with TestClient(app):
+                    pass
+        self.assertTrue(app.state.jobs.closed)
+        self.assertTrue(app.state.request_threads.closed)
+
+
+    def test_app_can_start_a_fresh_request_pool_after_completed_lifespan(self):
+        from fastapi.testclient import TestClient
+        from api_test.main import create_app
+        from api_test.services import studio
+        from api_test.request_threads import for_app, RequestThreadsUnavailable
+        app = create_app(studio)
+        async def probe():
+            return await for_app(app).run_sync(lambda: 'ok')
+        app.add_api_route('/__thread_test__', probe)
+        app.router.routes.insert(0, app.router.routes.pop())
+        with TestClient(app) as client:
+            self.assertEqual(client.get('/__thread_test__').json(), 'ok')
+            first = app.state.request_threads
+            app.state.request_threads_closing = True
+            with self.assertRaises(RequestThreadsUnavailable):
+                for_app(app)
+            app.state.request_threads_closing = False
+        self.assertTrue(first.closed)
+        second = TestClient(app)
+        try:
+            self.assertEqual(second.get('/__thread_test__').json(), 'ok')
+            self.assertIsNot(app.state.request_threads, first)
+        finally:
+            app.state.request_threads.shutdown()
+            second.close()

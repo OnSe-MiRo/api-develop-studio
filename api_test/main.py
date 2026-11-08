@@ -5,10 +5,11 @@ import logging
 import os
 import subprocess
 from copy import deepcopy
+from threading import Lock
 from contextlib import asynccontextmanager
 from starlette.concurrency import run_in_threadpool
 from api_test.jobs import JobManager, JobError
-from api_test.request_threads import RequestThreads
+from api_test.request_threads import RequestThreads, RequestThreadsUnavailable
 from pathlib import Path
 import yaml
 import uvicorn
@@ -80,19 +81,27 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
     async def lifespan(app):
         if app.state.jobs.closed:
             app.state.jobs = JobManager.from_environment()
-        if app.state.request_threads.closed:
-            app.state.request_threads = RequestThreads()
+        with app.state.request_thread_lock:
+            app.state.request_threads_closing = False
+            if app.state.request_threads.closed:
+                app.state.request_threads = RequestThreads()
         try:
             yield
         finally:
             from api_test.services.mock import manager as mock_manager
+            with app.state.request_thread_lock:
+                app.state.request_threads_closing = True
             try:
                 await app.state.request_threads.run_sync(mock_manager.stop_all)
             finally:
                 try:
                     await app.state.request_threads.run_sync(app.state.jobs.close)
                 finally:
-                    await run_in_threadpool(app.state.request_threads.shutdown)
+                    try:
+                        await run_in_threadpool(app.state.request_threads.shutdown)
+                    finally:
+                        with app.state.request_thread_lock:
+                            app.state.request_threads_closing = False
 
     app = FastAPI(lifespan=lifespan, title="API Develop Studio", docs_url=None, redoc_url=None,
                   openapi_url="/api/schema.json", redirect_slashes=False)
@@ -100,6 +109,8 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
     app.state.studio = studio
     app.state.jobs = manager
     app.state.request_threads = RequestThreads()
+    app.state.request_thread_lock = Lock()
+    app.state.request_threads_closing = False
     from api_test.security_headers import SecurityHeaders
     app.add_middleware(SecurityHeaders)
 
@@ -129,11 +140,13 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
             status = exc.status_code
             if exc.code:
                 payload.update(code=exc.code, admission={"accepted": False, "guidance": exc.guidance})
+        if isinstance(exc, RequestThreadsUnavailable):
+            status, payload = 503, {"error": "요청 worker가 종료 중입니다."}
         if isinstance(exc, DATABASE_ERRORS):
             status, payload = 503, {"error": "저장소에 연결할 수 없습니다. 잠시 후 다시 시도하세요."}
         return context.json_response(status, payload)
 
-    for error in (PermissionError, JobError, studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
+    for error in (PermissionError, RequestThreadsUnavailable, JobError, studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
                   OSError, json.JSONDecodeError, subprocess.TimeoutExpired, RequestValidationError, *DATABASE_ERRORS):
         app.add_exception_handler(error, error_response)
 

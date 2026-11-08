@@ -70,6 +70,24 @@ class RequestPoolTests(unittest.TestCase):
             self.assertEqual(pool.submit(lambda n=number: n).result(timeout=1), number)
             time.sleep(.002)
 
+    def test_async_detection_is_cleared_but_request_context_is_copied(self):
+        try:
+            import sniffio
+        except ImportError:
+            self.skipTest('sniffio is optional')
+        async def check():
+            pool = RequestThreads()
+            scope = ContextVar('request_scope', default=None)
+            scope.set('workspace-a')
+            token = sniffio.current_async_library_cvar.set('asyncio')
+            try:
+                self.assertEqual(await pool.run_sync(lambda: (scope.get(), sniffio.current_async_library_cvar.get())),
+                                 ('workspace-a', None))
+            finally:
+                sniffio.current_async_library_cvar.reset(token)
+                pool.shutdown()
+        asyncio.run(check())
+
     def test_cancelled_caller_drains_running_work(self):
         async def check():
             pool=RequestThreads(max_workers=1,idle_seconds=.05)
