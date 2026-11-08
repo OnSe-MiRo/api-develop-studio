@@ -6,7 +6,7 @@ import os
 import subprocess
 from copy import deepcopy
 from threading import Lock
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from starlette.concurrency import run_in_threadpool
 from api_test.jobs import JobManager, JobError
 from api_test.request_threads import RequestThreads, RequestThreadsUnavailable
@@ -79,29 +79,33 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app):
-        if app.state.jobs.closed:
-            app.state.jobs = JobManager.from_environment()
         with app.state.request_thread_lock:
-            app.state.request_threads_closing = False
+            if app.state.request_threads_closing:
+                raise RequestThreadsUnavailable('Request workers are stopping')
+            if app.state.jobs.closed:
+                app.state.jobs = JobManager.from_environment()
             if app.state.request_threads.closed:
                 app.state.request_threads = RequestThreads()
+            app.state.request_lifespans += 1
         try:
             yield
         finally:
-            from api_test.services.mock import manager as mock_manager
             with app.state.request_thread_lock:
-                app.state.request_threads_closing = True
-            try:
-                await app.state.request_threads.run_sync(mock_manager.stop_all)
-            finally:
+                app.state.request_lifespans -= 1
+                last = app.state.request_lifespans == 0
+                if last:
+                    app.state.request_threads_closing = True
+            if last:
+                from api_test.services.mock import manager as mock_manager
+                pool = app.state.request_threads
                 try:
-                    await app.state.request_threads.run_sync(app.state.jobs.close)
+                    async with AsyncExitStack() as cleanup:
+                        cleanup.push_async_callback(run_in_threadpool, pool.shutdown)
+                        cleanup.push_async_callback(pool.run_sync, app.state.jobs.close)
+                        cleanup.push_async_callback(pool.run_sync, mock_manager.stop_all)
                 finally:
-                    try:
-                        await run_in_threadpool(app.state.request_threads.shutdown)
-                    finally:
-                        with app.state.request_thread_lock:
-                            app.state.request_threads_closing = False
+                    with app.state.request_thread_lock:
+                        app.state.request_threads_closing = False
 
     app = FastAPI(lifespan=lifespan, title="API Develop Studio", docs_url=None, redoc_url=None,
                   openapi_url="/api/schema.json", redirect_slashes=False)
@@ -111,6 +115,7 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
     app.state.request_threads = RequestThreads()
     app.state.request_thread_lock = Lock()
     app.state.request_threads_closing = False
+    app.state.request_lifespans = 0
     from api_test.security_headers import SecurityHeaders
     app.add_middleware(SecurityHeaders)
 

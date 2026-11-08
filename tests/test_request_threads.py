@@ -68,6 +68,20 @@ class RequestShutdownTests(unittest.TestCase):
         self.assertTrue(app.state.request_threads.closed)
 
 
+    def test_overlapping_clients_close_workers_only_after_the_last_lifespan(self):
+        from fastapi.testclient import TestClient
+        from api_test.main import create_app
+        from api_test.services import studio
+        app = create_app(studio)
+        with TestClient(app):
+            pool = app.state.request_threads
+            with TestClient(app):
+                self.assertEqual(app.state.request_lifespans, 2)
+            self.assertEqual(app.state.request_lifespans, 1)
+            self.assertFalse(pool.closed)
+        self.assertEqual(app.state.request_lifespans, 0)
+        self.assertTrue(pool.closed)
+
     def test_app_can_start_a_fresh_request_pool_after_completed_lifespan(self):
         from fastapi.testclient import TestClient
         from api_test.main import create_app
