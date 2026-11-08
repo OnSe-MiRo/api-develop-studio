@@ -50,7 +50,7 @@ class RequestThreads:
             if self.closed:
                 raise RuntimeError('Request workers are closed')
             if len(self._pending) >= self.max_workers:
-                raise RuntimeError('Request worker queue is full')
+                raise RequestThreadsUnavailable('Request worker queue is full')
             item = (future, context, partial(function, *args))
             self._pending.append(item)
             if len(self._pending) > self._idle and len(self._workers) < self.max_workers:
