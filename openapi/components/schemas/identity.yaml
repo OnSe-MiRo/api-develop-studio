@@ -7,6 +7,9 @@ SessionInfo:
       type: boolean
     loginAvailable:
       type: boolean
+    signupAvailable:
+      type: boolean
+      description: Whether the deployment has enabled public Dex local account registration.
     userId:
       type: string
     displayName:

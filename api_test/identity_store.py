@@ -1,6 +1,7 @@
 """Server-side OIDC transactions, opaque sessions and workspace security audit."""
 from contextlib import contextmanager, closing
 from datetime import datetime, timezone
+import base64
 import hashlib
 import json
 import re
@@ -104,13 +105,36 @@ class IdentityStore:
     def _memberships(db,user):
         return [dict(row) for row in db.execute("SELECT w.id,w.name,m.role FROM memberships m JOIN workspaces w ON w.id=m.workspace_id JOIN users u ON u.id=m.user_id WHERE m.user_id=? AND m.status='active' AND u.status='active' AND w.status='active' ORDER BY w.name,w.id",(user,)).fetchall()]
 
-    def start_session(self,issuer,subject,config,idle_seconds,max_seconds,old_session=None):
+    @staticmethod
+    def _signup_subject(subject):
+        # Dex encodes local passwords as a protobuf IDTokenSubject (user_id, connector_id).
+        if not re.fullmatch(r'[A-Za-z0-9_-]{64}', subject):
+            return False
+        raw = base64.urlsafe_b64decode(subject)
+        return re.fullmatch(rb"\x0a\x27signup-[0-9a-f]{32}\x12\x05local", raw) is not None
+
+    def start_session(self,issuer,subject,config,idle_seconds,max_seconds,old_session=None, *, dex_signup=False):
         token=secrets.token_urlsafe(32)
         with self.connection() as db,db:
             db.execute('BEGIN IMMEDIATE');self._prune(db,config)
             row=db.execute("SELECT u.id FROM user_identities i JOIN users u ON u.id=i.user_id WHERE i.provider=? AND i.provider_subject=? AND u.status='active'",(issuer,subject)).fetchone()
-            if row is None:raise LoginError('identity_not_registered',403)
-            user=row['id'];memberships=self._memberships(db,user)
+            if row is None:
+                if not dex_signup or not self._signup_subject(subject):
+                    raise LoginError('identity_not_registered',403)
+                # An existing disabled identity must never be provisioned again.
+                if db.execute('SELECT 1 FROM user_identities WHERE provider=? AND provider_subject=?',(issuer,subject)).fetchone():
+                    raise LoginError('identity_not_registered',403)
+                user = 'signup-' + uuid.uuid4().hex
+                workspace = 'personal-' + uuid.uuid4().hex
+                now = stamp()
+                db.execute('INSERT INTO users(id,display_name,created_at,updated_at) VALUES(?,?,?,?)',(user,'개인 사용자',now,now))
+                db.execute('INSERT INTO workspaces(id,name,created_at,updated_at) VALUES(?,?,?,?)',(workspace,'개인 워크스페이스',now,now))
+                db.execute('INSERT INTO user_identities(user_id,provider,provider_subject) VALUES(?,?,?)',(user,issuer,subject))
+                db.execute('INSERT INTO memberships(workspace_id,user_id,role,created_at) VALUES(?,?,?,?)',(workspace,user,'owner',now))
+                self._audit(db,workspace,user,'identity.registered')
+            else:
+                user = row['id']
+            memberships=self._memberships(db,user)
             if not memberships:raise LoginError('workspace_membership_required',403)
             workspace=memberships[0]['id']
             if old_session and TOKEN.fullmatch(old_session):

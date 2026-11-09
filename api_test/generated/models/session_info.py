@@ -25,6 +25,7 @@ class SessionInfo(BaseModel):
     mode: Optional[StrictStr] = None
     authenticated: Optional[StrictBool] = None
     login_available: Optional[StrictBool] = Field(default=None, alias="loginAvailable")
+    signup_available: Optional[StrictBool] = Field(default=None, description="Whether the deployment has enabled public Dex local account registration.", alias="signupAvailable")
     user_id: Optional[StrictStr] = Field(default=None, alias="userId")
     display_name: Optional[StrictStr] = Field(default=None, alias="displayName")
     workspace: Optional[Dict[str, Any]] = None
