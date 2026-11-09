@@ -1,9 +1,10 @@
 import { ReferencePicker } from '../../components/ReferencePicker.jsx'
 import { normalizeDashboardFilters, normalizeOutcomeFilter, normalizeOutcomeSearch } from '../../router.js'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { api } from '../../utils/studio.js'
 import './dashboard.css'
-import { ExecutionDetail } from './ExecutionDetail.jsx'
+
+const ExecutionDetail = lazy(() => import('./ExecutionDetail.jsx').then(module => ({ default: module.ExecutionDetail })))
 
 const statusLabels = { passed: '성공', failed: '실패', error: '오류', timeout: '시간 초과', cancelled: '취소' }
 const duration = value => value == null ? '—' : value < 1000 ? `${Math.round(value).toLocaleString('ko-KR')} ms` : `${(value / 1000).toLocaleString('ko-KR', { maximumFractionDigits: 2 })} 초`
@@ -63,7 +64,7 @@ function ExecutionDashboard({ projectRef, onOpenCases, refreshKey, route = {}, o
       <p className="hint">{updatedAt ? `${updatedAt.toLocaleTimeString('ko-KR')} 갱신` : '실행 이력 조회 중'}<br />기간과 일별 집계는 UTC 기준입니다.</p>
     </div>
     <form className="dashboard-search" onSubmit={event => { event.preventDefault(); changeFilters({ search: searchInput.trim() }) }}><label className="field"><span>Run ID·실행 대상 검색</span><input aria-label="Run ID·실행 대상 검색" maxLength={200} value={searchInput} onChange={event => setSearchInput(event.target.value)} /></label><button type="submit">검색</button></form>
-    {selectedRun && <ExecutionDetail key={selectedRun} runId={selectedRun} outcomeFilter={normalizeOutcomeFilter(route.outcomeFilter)} onOutcomeFilterChange={value => navigate(filters, selectedRun, projectRef, value, outcomeSearch)} outcomeSearch={outcomeSearch} onOutcomeSearchChange={value => navigate(filters, selectedRun, projectRef, route.outcomeFilter, value)} onClose={() => navigate(filters)} />}
+    {selectedRun && <Suspense fallback={<div className="empty" role="status">실행 상세 화면을 불러오는 중입니다…</div>}><ExecutionDetail key={selectedRun} runId={selectedRun} outcomeFilter={normalizeOutcomeFilter(route.outcomeFilter)} onOutcomeFilterChange={value => navigate(filters, selectedRun, projectRef, value, outcomeSearch)} outcomeSearch={outcomeSearch} onOutcomeSearchChange={value => navigate(filters, selectedRun, projectRef, route.outcomeFilter, value)} onClose={() => navigate(filters)} /></Suspense>}
     {error && <div className="dashboard-error" role="alert">{error}<button onClick={() => setRevision(value => value + 1)}>다시 시도</button></div>}
     {!data && !error && <div className="empty" role="status">실행 이력을 불러오는 중입니다…</div>}
     {data && <>

@@ -36,7 +36,7 @@ it.each([
   fireEvent.click(screen.getByRole('button', { name: target, exact: true }))
   expect(window.location.pathname).toBe(expectedUrl)
   expect(screen.queryByRole('heading', { name: 'Workspace 멤버·감사 기록' })).not.toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: `${target} 화면` })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: `${target} 화면` })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: target, exact: true })).toHaveAttribute('aria-current', 'page')
 })
 
@@ -48,7 +48,7 @@ it('leaves member management on browser history navigation', async () => {
   window.history.replaceState(null, '', '/projects')
   fireEvent.popState(window)
   expect(screen.queryByRole('heading', { name: 'Workspace 멤버·감사 기록' })).not.toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: '프로젝트 화면' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: '프로젝트 화면' })).toBeInTheDocument()
 })
 
 it('keeps a member edit open when background project selection normalizes the URL', async () => {
