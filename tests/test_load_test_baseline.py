@@ -28,7 +28,7 @@ class BaselineP1Tests(unittest.TestCase):
         digest = "a" * 64
         identity = {"appVersion": "1.0.1", "commitSha": "b" * 40, "pythonVersion": "3.13.5", "k6Version": "k6 2.3.0",
                     "os": "macOS", "machine": "arm64", "logicalCpuCount": 8, "memoryMb": 16384, "diskDevice": 1,
-                    "k6BinarySha256": digest, "sourceManifestVersion": 2, "sourceSha256": dict.fromkeys(SOURCE_FILES, digest)}
+                    "k6BinarySha256": digest, "sourceManifestVersion": 3, "sourceSha256": dict.fromkeys(SOURCE_FILES, digest)}
         census = {"serverPid": 101, "threads": [{"name": "studio-run-0", "nativeId": 500, "daemon": True},
                                                {"name": "studio-run-1", "nativeId": 501, "daemon": True},
                                                {"name": "AnyIO worker thread", "nativeId": 502, "daemon": True}]}
@@ -99,6 +99,16 @@ class BaselineP1Tests(unittest.TestCase):
                          historical['comparison'])
         runs, identity, digest = self.fixtures()
         del identity['sourceSha256']['api_test/case_projection.py']
+        self.assertEqual(compare_three(runs, identity, digest)['status'], 'incomparable')
+
+    def test_request_thread_sources_required_and_v2_remains_replayable(self):
+        from api_test.load_test_baseline import SOURCE_FILES_V2
+        runs, identity, digest = self.fixtures()
+        identity['sourceManifestVersion'] = 2
+        identity['sourceSha256'] = {name: identity['sourceSha256'][name] for name in SOURCE_FILES_V2}
+        self.assertEqual(compare_three(runs, identity, digest)['status'], 'comparable')
+        runs, identity, digest = self.fixtures()
+        del identity['sourceSha256']['api_test/request_threads.py']
         self.assertEqual(compare_three(runs, identity, digest)['status'], 'incomparable')
 
     def test_recovery_baseline_requires_complete_resource_window_and_clean_client(self):

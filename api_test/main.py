@@ -5,9 +5,11 @@ import logging
 import os
 import subprocess
 from copy import deepcopy
-from contextlib import asynccontextmanager
+from threading import Lock
+from contextlib import AsyncExitStack, asynccontextmanager
 from starlette.concurrency import run_in_threadpool
 from api_test.jobs import JobManager, JobError
+from api_test.request_threads import RequestThreads, RequestThreadsUnavailable
 from pathlib import Path
 import yaml
 import uvicorn
@@ -77,20 +79,43 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app):
-        if app.state.jobs.closed:
-            app.state.jobs = JobManager.from_environment()
+        with app.state.request_thread_lock:
+            if app.state.request_threads_closing:
+                raise RequestThreadsUnavailable('Request workers are stopping')
+            if app.state.jobs.closed:
+                app.state.jobs = JobManager.from_environment()
+            if app.state.request_threads.closed:
+                app.state.request_threads = RequestThreads()
+            app.state.request_lifespans += 1
         try:
             yield
         finally:
-            from api_test.services.mock import manager as mock_manager
-            await run_in_threadpool(mock_manager.stop_all)
-            await run_in_threadpool(app.state.jobs.close)
+            with app.state.request_thread_lock:
+                app.state.request_lifespans -= 1
+                last = app.state.request_lifespans == 0
+                if last:
+                    app.state.request_threads_closing = True
+            if last:
+                from api_test.services.mock import manager as mock_manager
+                pool = app.state.request_threads
+                try:
+                    async with AsyncExitStack() as cleanup:
+                        cleanup.push_async_callback(run_in_threadpool, pool.shutdown)
+                        cleanup.push_async_callback(pool.run_sync, app.state.jobs.close)
+                        cleanup.push_async_callback(pool.run_sync, mock_manager.stop_all)
+                finally:
+                    with app.state.request_thread_lock:
+                        app.state.request_threads_closing = False
 
     app = FastAPI(lifespan=lifespan, title="API Develop Studio", docs_url=None, redoc_url=None,
                   openapi_url="/api/schema.json", redirect_slashes=False)
     app.state.current_user_provider = current_user_provider
     app.state.studio = studio
     app.state.jobs = manager
+    app.state.request_threads = RequestThreads()
+    app.state.request_thread_lock = Lock()
+    app.state.request_threads_closing = False
+    app.state.request_lifespans = 0
     from api_test.security_headers import SecurityHeaders
     app.add_middleware(SecurityHeaders)
 
@@ -98,7 +123,7 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
     async def health():
         return {"status": "ok"}
 
-    def error_response(request, exc):
+    async def error_response(request, exc):
         context = getattr(request.state, "studio", None) or studio.StudioRequest(request, b"")
         status, payload = 400, {"error": str(exc)}
         if isinstance(exc, RequestValidationError):
@@ -120,11 +145,13 @@ def create_app(studio, *, current_user_provider=None) -> FastAPI:
             status = exc.status_code
             if exc.code:
                 payload.update(code=exc.code, admission={"accepted": False, "guidance": exc.guidance})
+        if isinstance(exc, RequestThreadsUnavailable):
+            status, payload = 503, {"error": "요청 worker를 사용할 수 없습니다."}
         if isinstance(exc, DATABASE_ERRORS):
             status, payload = 503, {"error": "저장소에 연결할 수 없습니다. 잠시 후 다시 시도하세요."}
         return context.json_response(status, payload)
 
-    for error in (PermissionError, JobError, studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
+    for error in (PermissionError, RequestThreadsUnavailable, JobError, studio.ApiError, studio.OwnershipError, studio.CollaborationStoreError,
                   OSError, json.JSONDecodeError, subprocess.TimeoutExpired, RequestValidationError, *DATABASE_ERRORS):
         app.add_exception_handler(error, error_response)
 

@@ -26,7 +26,8 @@ SOURCE_FILES_V1 = (
     "load-tests/k6/read-model.js", "load-tests/k6/mixed-model.js", "load-tests/k6/campaign-model.js", "load-tests/k6/studio-summary.js",
     "web/package.json",
 )
-SOURCE_FILES = (*SOURCE_FILES_V1, "api_test/case_projection.py", "api_test/interoperability.py")
+SOURCE_FILES_V2 = (*SOURCE_FILES_V1, "api_test/case_projection.py", "api_test/interoperability.py")
+SOURCE_FILES = (*SOURCE_FILES_V2, "api_test/request_threads.py", "api_test/request_scope.py")
 COMPONENTS = ("lookupNs", "pathResolutionNs", "projectionReadNs", "utf8DecodeNs", "jsonParseNs", "fieldSelectionNs", "serializationNs", "otherNs")
 
 
@@ -41,7 +42,7 @@ def environment_identity(snapshot: Path, k6_version: str) -> dict:
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPOSITORY, capture_output=True, text=True, timeout=5, check=True).stdout.strip()
     return {"appVersion": version, "commitSha": commit, "pythonVersion": platform.python_version(), "k6Version": k6_version,
             "os": platform.platform(), "machine": platform.machine(), "logicalCpuCount": os.cpu_count(),
-            "memoryMb": _host_memory_mb(), "diskDevice": snapshot.stat().st_dev, "sourceManifestVersion": 2, "sourceSha256": source_hashes()}
+            "memoryMb": _host_memory_mb(), "diskDevice": snapshot.stat().st_dev, "sourceManifestVersion": 3, "sourceSha256": source_hashes()}
 
 
 def _valid_number(value, *, positive=False) -> bool:
@@ -76,9 +77,9 @@ def _identity_complete(identity):
     if not _valid_number(identity.get("logicalCpuCount"), positive=True) or not _valid_number(identity.get("memoryMb"), positive=True) or not re.fullmatch(r"[0-9a-f]{64}", str(identity.get("k6BinarySha256", ""))):
         return False
     version = identity.get("sourceManifestVersion", 1)
-    if type(version) is not int or version not in (1, 2):
+    if type(version) is not int or version not in (1, 2, 3):
         return False
-    required = SOURCE_FILES if version == 2 else SOURCE_FILES_V1
+    required = {1: SOURCE_FILES_V1, 2: SOURCE_FILES_V2, 3: SOURCE_FILES}[version]
     hashes = identity.get("sourceSha256")
     return isinstance(hashes, dict) and set(hashes) == set(required) and all(isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest) for digest in hashes.values())
 

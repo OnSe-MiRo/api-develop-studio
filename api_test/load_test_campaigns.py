@@ -77,7 +77,11 @@ def install_stub(application):
             raise HTTPException(400, "unsupported controlled stub configuration")
         state.update(body)
         return dict(state)
+    async def census():
+        from api_test.load_test_baseline_diagnostics import thread_census
+        return thread_census()
     count = len(application.router.routes)
+    application.add_api_route("/__load_test__/thread-census", census, methods=["GET"], include_in_schema=False)
     application.add_api_route("/__load_test__/health", health, methods=["GET"], include_in_schema=False)
     application.add_api_route("/__load_test__/control", control, methods=["PUT"], include_in_schema=False)
     application.router.routes[:] = application.router.routes[count:] + application.router.routes[:count]
@@ -90,6 +94,11 @@ def _json(path, value):
 def _control(base_url, delay=0, status=200):
     request = UrlRequest(base_url + "/__load_test__/control", data=json.dumps({"delayMs": delay, "status": status}).encode(), method="PUT", headers={"Content-Type": "application/json"})
     with build_opener(ProxyHandler({})).open(request, timeout=3) as response:
+        return json.load(response)
+
+
+def _thread_snapshot(base_url):
+    with build_opener(ProxyHandler({})).open(base_url + "/__load_test__/thread-census", timeout=3) as response:
         return json.load(response)
 
 
@@ -121,6 +130,7 @@ def _phase(config, directory, snapshot, environment, executable, server, sampler
     script = "run-admission.js" if config["mode"] == "run-sustained" and config["phase"] != "baseline" else "mixed.js"
     command = [executable, "run", "--out", f"json={raw}", str(REPOSITORY / "load-tests/k6" / script)]
     result = {"phase": config, "serverPid": server.pid, "command": command, "status": "error", "complete": False, "stopReason": None, "resources": []}
+    result["threadsBefore"] = _thread_snapshot(environment["STUDIO_BASE_URL"])
     if config.get("resetCpuAtPhaseStart"):
         sampler.reset_cpu()
     client = RawTail(raw, config["windowSeconds"])
@@ -202,6 +212,10 @@ def _phase(config, directory, snapshot, environment, executable, server, sampler
             except (OSError, subprocess.SubprocessError) as exc:
                 result["status"] = "error"
                 result["cleanupError"] = str(exc)
+        try:
+            result["threadsAfter"] = _thread_snapshot(environment["STUDIO_BASE_URL"])
+        except OSError:
+            result["threadCensusStatus"] = "unavailable"
         _json(directory / "phase.json", result)
     return result
 
@@ -260,7 +274,7 @@ def run_campaign(fixture, output, k6="k6", mode="stress", validation_seconds=Non
         environment[temporary_variable] = str(snapshot / "tmp")
     server = None
     result = {"configuration": config, "originalFixture": original, "status": "error", "phases": [], "fullDurationConfigured": not config["validationMode"], "fullDurationCompleted": False}
-    files = ("api_test/jobs.py", "api_test/main.py", "api_test/services/execution.py", "api_test/job_runner.py", "load-tests/k6/run-admission.js", "api_test/load_test_campaigns.py", "api_test/load_test_monitor.py", "api_test/load_test_mutations.py", "api_test/load_test_harness.py", "api_test/load_results.py", "load-tests/k6/mixed.js", "load-tests/k6/mixed-model.js", "load-tests/k6/read-model.js", "load-tests/k6/campaign-model.js", "load-tests/k6/studio-summary.js")
+    files = ("api_test/request_threads.py", "api_test/request_scope.py", "api_test/jobs.py", "api_test/main.py", "api_test/services/execution.py", "api_test/job_runner.py", "load-tests/k6/run-admission.js", "api_test/load_test_campaigns.py", "api_test/load_test_monitor.py", "api_test/load_test_mutations.py", "api_test/load_test_harness.py", "api_test/load_results.py", "load-tests/k6/mixed.js", "load-tests/k6/mixed-model.js", "load-tests/k6/read-model.js", "load-tests/k6/campaign-model.js", "load-tests/k6/studio-summary.js")
     result["sourceSha256"] = {name: hashlib.sha256((REPOSITORY / name).read_bytes()).hexdigest() for name in files}
     result["k6Version"] = subprocess.run([executable, "version"], capture_output=True, text=True, env=environment, timeout=10, check=True).stdout.strip()
     result["appVersion"] = json.loads((REPOSITORY / "web/package.json").read_text())["version"]
