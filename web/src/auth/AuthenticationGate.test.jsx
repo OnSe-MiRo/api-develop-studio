@@ -48,3 +48,21 @@ it('unmounts a selected dashboard detail before navigating away on workspace swi
   expect(screen.queryByText('Private old-run detail')).not.toBeInTheDocument()
   expect(screen.getByRole('status')).toHaveTextContent('인증 상태를 변경하고 있습니다')
 })
+
+it('submits the public signup form and returns to SSO without mounting private pages', async () => {
+  const fetch = vi.fn().mockImplementation(async path => ({
+    ok: true, json: async () => path === '/api/session'
+      ? { authenticated: false, mode: 'remote', loginAvailable: true, signupAvailable: true } : {},
+  }))
+  vi.stubGlobal('fetch', fetch)
+  render(<AuthenticationGate>{() => <div>Private app</div>}</AuthenticationGate>)
+  fireEvent.click(await screen.findByRole('button', { name: '회원가입' }))
+  fireEvent.change(screen.getByLabelText('이메일'), { target: { value: 'tester@example.test' } })
+  expect(screen.getByLabelText('비밀번호 (8자 이상)')).toHaveAttribute('minlength', '8')
+  fireEvent.change(screen.getByLabelText('비밀번호 (8자 이상)'), { target: { value: 'signup-8' } })
+  fireEvent.change(screen.getByLabelText('비밀번호 확인'), { target: { value: 'signup-8' } })
+  fireEvent.click(screen.getByRole('button', { name: '계정 만들기' }))
+  expect(await screen.findByRole('link', { name: 'SSO 로그인' })).toHaveAttribute('href', '/auth/login')
+  expect(JSON.parse(fetch.mock.calls.find(([path]) => path === '/auth/signup')[1].body)).toEqual({ email: 'tester@example.test', password: 'signup-8' })
+  expect(screen.queryByText('Private app')).not.toBeInTheDocument()
+})

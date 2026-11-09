@@ -81,7 +81,7 @@ class Authentication:
         try:pending=json.loads(self.cipher.decrypt(encrypted.encode(),ttl=600))
         except (InvalidToken,ValueError,KeyError) as exc:raise LoginError('login_state_invalid',401) from exc
         identity=self.client.redeem(request.query_params.get('code'),pending['nonce'],pending['verifier'])
-        token=self.store.start_session(identity['issuer'],identity['subject'],self.settings.fingerprint,self.settings.idle_seconds,self.settings.absolute_seconds,request.cookies.get(self.settings.cookie_name))
+        token=self.store.start_session(identity['issuer'],identity['subject'],self.settings.fingerprint,self.settings.idle_seconds,self.settings.absolute_seconds,request.cookies.get(self.settings.cookie_name), dex_signup=os.environ.get('STUDIO_DEX_SELF_SIGNUP') == 'true')
         response=RedirectResponse(origin(self.settings.public_url)+'/projects',status_code=303)
         response.delete_cookie(self.settings.state_cookie,path='/',secure=self.settings.secure,httponly=True,samesite='lax')
         response.set_cookie(self.settings.cookie_name,token,max_age=self.settings.absolute_seconds,httponly=True,secure=self.settings.secure,samesite='lax',path='/')
@@ -153,6 +153,8 @@ def session_info(request,studio):
         except LoginError as exc:
             if exc.code in ('session_required','session_expired'):payload={'mode':'remote','authenticated':False,'loginAvailable':True}
             else:raise
+        if not payload['authenticated'] and os.environ.get('STUDIO_DEX_SELF_SIGNUP') == 'true':
+            payload['signupAvailable'] = True
         return secure_response(request.json_response(200,payload))
     except LoginError as exc:
         if exc.code=='oidc_not_configured':return secure_response(request.json_response(200,{'mode':'remote','authenticated':False,'loginAvailable':False,'error':'oidc_not_configured'}))

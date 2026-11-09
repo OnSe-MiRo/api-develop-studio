@@ -1,0 +1,12 @@
+// Wire-compatible subset of Dex v2.44 api/v2/api.proto.
+syntax = "proto3";
+package api;
+message Password {
+  string email = 1;
+  bytes hash = 2;
+  string username = 3;
+  string user_id = 4;
+}
+message CreatePasswordReq { Password password = 1; }
+message CreatePasswordResp { bool already_exists = 1; }
+service Dex { rpc CreatePassword(CreatePasswordReq) returns (CreatePasswordResp); }

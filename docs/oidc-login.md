@@ -61,3 +61,14 @@ Compose는 API 포트를 host에 게시하지 않고 Nginx gateway만 기본 `12
 | 역할 제한과 로그아웃 | 조회자의 문서 저장 403, UI 로그아웃 후 세션 쿠키 제거 및 비공개 목록 401 |
 
 최초 테스트 인증서의 Authority Key Identifier 누락을 고쳐 Python의 엄격한 TLS 검증을 통과했다. Firefox 기동 문제 이후 별도 Chrome 프로필로 확인했다. 검증 범위는 합성 계정·격리 DB를 사용한 로컬 배포다.
+
+### Mac Compose의 공개 회원가입 (Dex 2.44)
+
+로그인 전 **회원가입**에서 이메일과 비밀번호를 등록한 후 **SSO 로그인**을 선택한다. 이 배포에서는 이메일을 로그인 이름으로 사용하며 메일 소유권 확인 절차는 없다. 첫 로그인 시 가입 서비스가 발급한 Dex 로컬 계정에 개인 Workspace와 그 Workspace의 owner 권한을 생성한다. 다른 Workspace에 참가하려면 별도 membership이 필요하다. 기존 계정의 암호와 권한은 가입 요청으로 수정할 수 없다.
+
+이 기능은 기본적으로 비활성이다. 같은 Mac 배포 구성을 복원할 때는 다음을 함께 적용한다.
+
+- Dex는 영구 SQLite 볼륨과 password DB를 사용한다. gRPC 주소를 `127.0.0.1:5557`로 설정한다.
+- Compose에서 `deploy/dex-signup`을 빌드한 서비스에 `network_mode: service:dex`와 Studio의 HTTPS `STUDIO_PUBLIC_URL`을 설정한다. 이 서비스의 HTTP 포트 5559와 Dex 관리 포트 5557은 호스트에 게시하지 않는다.
+- Studio용 HTTPS 게이트웨이에서 `location = /auth/signup`만 `http://dex:5559`로 전달한다. 요청 본문은 4 KiB, IP별 요청은 분당 6회와 burst 5로 제한하고, Cookie와 Authorization 헤더는 제거한다. 기존 `/auth/login`과 콜백은 Studio API로 전달한다.
+- Studio API 환경에 `STUDIO_DEX_SELF_SIGNUP=true`를 설정한다. 이 플래그는 로그인 화면의 가입 버튼과 검증된 Dex 신규 가입 subject의 최초 Workspace 생성을 활성화한다. 가입 서비스는 입력된 비밀번호를 bcrypt 해시로 변환한 뒤 Dex CreatePassword RPC만 호출한다.

@@ -87,6 +87,24 @@ class OidcLoginTest(unittest.TestCase):
         return self.client.get('/api/session').json()
     def headers(self,info):return {'Origin':self.settings.public_url,'X-CSRF-Token':info['csrfToken']}
 
+    def test_public_signup_only_provisions_new_dex_local_subjects(self):
+        subject = base64.urlsafe_b64encode(b"\x0a\x27signup-" + b"a" * 32 + b"\x12\x05local").decode()
+        with self.assertRaises(LoginError):
+            self.store.start_session(self.settings.issuer, subject, 'config', 300, 600)
+        with patch.dict(os.environ, {'STUDIO_DEX_SELF_SIGNUP':'true'}):
+            self.assertTrue(self.client.get('/api/session').json()['signupAvailable'])
+            info = self.login(subject)
+            self.assertEqual([item['role'] for item in info['workspaces']], ['owner'])
+            self.assertTrue(info['workspace']['id'].startswith('personal-'))
+            self.assertEqual(self.login(subject)['workspace']['id'], info['workspace']['id'])
+            self.assertEqual(self.login('alice-subject')['workspace']['id'], 'team-a')
+            with self.assertRaises(LoginError):
+                self.store.start_session(self.settings.issuer, 'unprovisioned', 'config', 300, 600, dex_signup=True)
+            with self.store.connection() as db, db:
+                db.execute("UPDATE users SET status='disabled' WHERE id=?", (info['userId'],))
+            with self.assertRaises(LoginError):
+                self.store.start_session(self.settings.issuer, subject, 'config', 300, 600, dex_signup=True)
+
     def test_login_rotation_private_cookie_and_no_tokens_in_storage(self):
         first=self.login();token=self.client.cookies.get(self.settings.cookie_name)
         self.assertEqual(first['userId'],'alice');self.assertEqual(first['workspace']['id'],'team-a')
