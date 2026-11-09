@@ -41,9 +41,12 @@ async def signup(request: Request):
         account = Password(email=email, hash=hashed, username=email, user_id='signup-' + uuid.uuid4().hex)
         return dex.CreatePassword(CreatePasswordReq(password=account), timeout=5)
     try:
-        await run_in_threadpool(create)
+        result = await run_in_threadpool(create)
+        duplicate = result.already_exists
     except grpc.RpcError as exc:
         if exc.code() != grpc.StatusCode.ALREADY_EXISTS:
             return reply(503, '가입 요청을 처리할 수 없습니다. 잠시 후 다시 시도하세요.')
-    # Same result for an existing address. CreatePassword never updates credentials.
+        duplicate = True
+    if duplicate:
+        return reply(409, '이미 가입된 이메일입니다. 다른 이메일을 입력하거나 SSO 로그인으로 이동하세요.')
     return reply(200, 'SSO 로그인에서 이메일과 비밀번호를 입력하세요.')
