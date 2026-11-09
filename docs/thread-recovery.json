@@ -1,0 +1,828 @@
+{
+  "candidate": "9099690d723a4aa5993d723dbc885db30a528893",
+  "base": "654515d8df29df8f4d31790b6a52fab673a52bf1",
+  "environment": {
+    "python": "3.13.5",
+    "os": "macOS-27.2-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "packages": {
+      "anyio": "4.13.0",
+      "starlette": "1.3.1",
+      "fastapi": "0.137.0",
+      "uvicorn": "0.49.0",
+      "httpx": "0.28.1",
+      "sniffio": "1.3.1"
+    },
+    "moduleSha256": {
+      "anyio._backends._asyncio": "92eaa5836b0152c15d818f34c520c0c3ad06c7fe1634297d8922f95e563a9425",
+      "starlette.concurrency": "3e9e245d060ef39716c58ed754db7995c62f8581d4aaec8b82e09e73b84a2a83",
+      "fastapi.routing": "fe3246412ad4ab688ea3b894e1c0afc4c2400c20a03f91853a22e2190e7ddbe3"
+    }
+  },
+  "fixture": {
+    "dataset": "medium",
+    "seed": 20260929,
+    "counts": {
+      "projects": 20,
+      "cases": 2000,
+      "pipelines": 100
+    },
+    "caseRevisions": 1,
+    "revisionCount": 2120,
+    "bodyCounts": {
+      "1024": 667,
+      "10240": 667,
+      "102400": 666
+    },
+    "fixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "databaseBytes": 79589376,
+    "projectionBytes": 76199087,
+    "revisionContentBytes": 76196967,
+    "integrity": "passed"
+  },
+  "k6Sha256": "efb8282e24ffe18f54ce3679eaa71d72e0645bbb97b14e2a05cc8b192abf48e3",
+  "scope": "native macOS SQLite, same server before and after, original 35-VU 7200-second load and 120-percent recovery",
+  "soak": {
+    "commitSha": "9099690d723a4aa5993d723dbc885db30a528893",
+    "dirty": false,
+    "status": "unknown",
+    "error": null,
+    "configuration": {
+      "mode": "soak",
+      "validationMode": false,
+      "baselineSeconds": 300,
+      "sampleIntervalSeconds": 5,
+      "windowSeconds": 60,
+      "resourceSustainSeconds": 120,
+      "scaledStopTimers": false,
+      "configuredVus": 35,
+      "selectionStride": 35,
+      "contentionRequests": 5,
+      "phase": "profile",
+      "vus": 35,
+      "durationSeconds": 7200,
+      "soakTargetBasis": "70% of planned Target50VU; proven stable capacity is not established"
+    },
+    "fullDurationCompleted": true,
+    "phases": [
+      {
+        "name": "before",
+        "status": "passed",
+        "complete": true,
+        "stopReason": null,
+        "configuredSeconds": 300,
+        "elapsedSeconds": 311.277,
+        "summary": {
+          "requests": 756,
+          "rps": 2.437436,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.41,
+            "p90": 10.985,
+            "p95": 16.36925,
+            "p99": 77.726,
+            "max": 249.483
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 756
+          },
+          "runStatuses": {},
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 1512
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 0,
+          "reads": {
+            "count": 648,
+            "p95Ms": 15.423,
+            "p99Ms": 63.1812,
+            "maxMs": 249.483
+          },
+          "syncRuns": {
+            "count": 0,
+            "p95Ms": null,
+            "p99Ms": null,
+            "maxMs": null
+          },
+          "successfulCaseWrites": {
+            "count": 0,
+            "p95Ms": null,
+            "p99Ms": null,
+            "maxMs": null
+          },
+          "uniqueWriteRequests": 0,
+          "uniqueWriteP95UpperBoundMs": null,
+          "vus": {
+            "3": {
+              "samples": 2,
+              "firstToLastSampleSeconds": 1.0
+            },
+            "4": {
+              "samples": 7,
+              "firstToLastSampleSeconds": 6.0
+            },
+            "5": {
+              "samples": 301,
+              "firstToLastSampleSeconds": 300.001
+            }
+          },
+          "rawSha256": "48aa0bee71aac792ab0f33f8f4689a9547c50c10801cf847ecaecd9a87c55598"
+        },
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "resources": {
+          "cpuPercent": {
+            "min": 0.0983622013202113,
+            "max": 0.4955125802933006,
+            "first": 0.4955125802933006,
+            "last": 0.09905143721997099,
+            "samples": 61
+          },
+          "memoryPercent": {
+            "min": 0.5601882934570312,
+            "max": 0.6009101867675781,
+            "first": 0.5606651306152344,
+            "last": 0.5601882934570312,
+            "samples": 62
+          },
+          "memoryMb": {
+            "min": 91.78125,
+            "max": 98.453125,
+            "first": 91.859375,
+            "last": 91.78125,
+            "samples": 62
+          },
+          "threads": {
+            "min": 1,
+            "max": 4,
+            "first": 1,
+            "last": 1,
+            "samples": 62
+          },
+          "walBytes": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0,
+            "samples": 62
+          },
+          "handles": {
+            "min": 12,
+            "max": 18,
+            "first": 12,
+            "last": 16,
+            "samples": 62
+          },
+          "childProcesses": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0,
+            "samples": 62
+          },
+          "tempEntries": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0,
+            "samples": 62
+          }
+        },
+        "growth": {
+          "memoryMb": {
+            "samples": 62,
+            "first": 91.859375,
+            "last": 91.78125,
+            "delta": -0.078125,
+            "continuouslyIncreasing": false
+          },
+          "threads": {
+            "samples": 62,
+            "first": 1,
+            "last": 1,
+            "delta": 0,
+            "continuouslyIncreasing": false
+          },
+          "walBytes": {
+            "samples": 62,
+            "first": 0,
+            "last": 0,
+            "delta": 0,
+            "continuouslyIncreasing": false
+          },
+          "logFiles": {
+            "samples": 62,
+            "first": 0,
+            "last": 0,
+            "delta": 0,
+            "continuouslyIncreasing": false
+          }
+        },
+        "integrity": "passed",
+        "threadsBefore": {
+          "serverPid": 5909,
+          "timestamp": "2026-11-08T23:57:42.266025+00:00",
+          "threads": [
+            {
+              "name": "MainThread",
+              "nativeId": 5412501,
+              "daemon": false
+            }
+          ]
+        },
+        "threadsBeforeByName": {
+          "MainThread": 1
+        },
+        "threadsAfter": {
+          "serverPid": 5909,
+          "timestamp": "2026-11-09T00:02:53.545552+00:00",
+          "threads": [
+            {
+              "name": "MainThread",
+              "nativeId": 5412501,
+              "daemon": false
+            }
+          ]
+        },
+        "threadsAfterByName": {
+          "MainThread": 1
+        }
+      },
+      {
+        "name": "profile",
+        "status": "passed",
+        "complete": true,
+        "stopReason": null,
+        "configuredSeconds": 7200,
+        "elapsedSeconds": 7234.733,
+        "summary": {
+          "requests": 142535,
+          "rps": 19.787809,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.293,
+            "p90": 17.8688,
+            "p95": 107.2344,
+            "p99": 154.78678,
+            "max": 2764.007
+          },
+          "vusMax": 35,
+          "thresholdsPassed": true
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 136823,
+            "409": 5712
+          },
+          "runStatuses": {
+            "200": 7059
+          },
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 260275
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 5712,
+          "reads": {
+            "count": 112780,
+            "p95Ms": 14.141,
+            "p99Ms": 28.1013,
+            "maxMs": 1600.801
+          },
+          "syncRuns": {
+            "count": 7059,
+            "p95Ms": 215.8659,
+            "p99Ms": 415.1336,
+            "maxMs": 2764.007
+          },
+          "successfulCaseWrites": {
+            "count": 16984,
+            "p95Ms": 19.9829,
+            "p99Ms": 34.8098,
+            "maxMs": 1064.548
+          },
+          "uniqueWriteRequests": 14128,
+          "uniqueWriteP95UpperBoundMs": 21.2948,
+          "vus": {
+            "1": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "9": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "20": {
+              "samples": 1,
+              "firstToLastSampleSeconds": 0.0
+            },
+            "35": {
+              "samples": 7200,
+              "firstToLastSampleSeconds": 7198.982
+            }
+          },
+          "rawSha256": "5ead642a00a44ea8aa197f873a1d5432c7184dbb511f06035f3ccc6c8f38425c"
+        },
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "resources": {
+          "cpuPercent": {
+            "min": 0.0,
+            "max": 3.112171447556996,
+            "first": 0.0,
+            "last": 0.6251681753697229,
+            "samples": 1427
+          },
+          "memoryPercent": {
+            "min": 0.3006935119628906,
+            "max": 1.0488510131835938,
+            "first": 0.5601882934570312,
+            "last": 0.61187744140625,
+            "samples": 1427
+          },
+          "memoryMb": {
+            "min": 49.265625,
+            "max": 171.84375,
+            "first": 91.78125,
+            "last": 100.25,
+            "samples": 1427
+          },
+          "threads": {
+            "min": 1,
+            "max": 19,
+            "first": 1,
+            "last": 1,
+            "samples": 1427
+          },
+          "walBytes": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0,
+            "samples": 1427
+          },
+          "handles": {
+            "min": 12,
+            "max": 115,
+            "first": 12,
+            "last": 51,
+            "samples": 1427
+          },
+          "childProcesses": {
+            "min": 0,
+            "max": 2,
+            "first": 0,
+            "last": 0,
+            "samples": 1427
+          },
+          "tempEntries": {
+            "min": 0,
+            "max": 10,
+            "first": 0,
+            "last": 0,
+            "samples": 1427
+          }
+        },
+        "growth": {
+          "memoryMb": {
+            "samples": 1427,
+            "first": 91.78125,
+            "last": 100.25,
+            "delta": 8.46875,
+            "continuouslyIncreasing": false
+          },
+          "threads": {
+            "samples": 1427,
+            "first": 1,
+            "last": 1,
+            "delta": 0,
+            "continuouslyIncreasing": false
+          },
+          "walBytes": {
+            "samples": 1427,
+            "first": 0,
+            "last": 0,
+            "delta": 0,
+            "continuouslyIncreasing": false
+          },
+          "logFiles": {
+            "samples": 1427,
+            "first": 0,
+            "last": 0,
+            "delta": 0,
+            "continuouslyIncreasing": false
+          }
+        },
+        "integrity": "passed",
+        "threadsBefore": {
+          "serverPid": 5909,
+          "timestamp": "2026-11-09T00:02:53.559594+00:00",
+          "threads": [
+            {
+              "name": "MainThread",
+              "nativeId": 5412501,
+              "daemon": false
+            }
+          ]
+        },
+        "threadsBeforeByName": {
+          "MainThread": 1
+        },
+        "threadsAfter": {
+          "serverPid": 5909,
+          "timestamp": "2026-11-09T02:03:28.284406+00:00",
+          "threads": [
+            {
+              "name": "MainThread",
+              "nativeId": 5412501,
+              "daemon": false
+            }
+          ]
+        },
+        "threadsAfterByName": {
+          "MainThread": 1
+        }
+      },
+      {
+        "name": "after",
+        "status": "passed",
+        "complete": true,
+        "stopReason": null,
+        "configuredSeconds": 300,
+        "elapsedSeconds": 319.739,
+        "summary": {
+          "requests": 756,
+          "rps": 2.436691,
+          "errorRate": 0.0,
+          "latencyMs": {
+            "p50": 5.7525,
+            "p90": 12.419,
+            "p95": 15.90075,
+            "p99": 21.5916,
+            "max": 26.168
+          },
+          "vusMax": 5,
+          "thresholdsPassed": true
+        },
+        "raw": {
+          "httpStatuses": {
+            "200": 756
+          },
+          "runStatuses": {},
+          "networkFailures": {},
+          "firstNetworkFailureAt": null,
+          "checks": {
+            "passed": 1512
+          },
+          "correctnessFailures": 0,
+          "runExitFailures": 0,
+          "expected409": 0,
+          "reads": {
+            "count": 648,
+            "p95Ms": 16.2049,
+            "p99Ms": 21.6787,
+            "maxMs": 26.168
+          },
+          "syncRuns": {
+            "count": 0,
+            "p95Ms": null,
+            "p99Ms": null,
+            "maxMs": null
+          },
+          "successfulCaseWrites": {
+            "count": 0,
+            "p95Ms": null,
+            "p99Ms": null,
+            "maxMs": null
+          },
+          "uniqueWriteRequests": 0,
+          "uniqueWriteP95UpperBoundMs": null,
+          "vus": {
+            "3": {
+              "samples": 2,
+              "firstToLastSampleSeconds": 1.0
+            },
+            "4": {
+              "samples": 7,
+              "firstToLastSampleSeconds": 6.0
+            },
+            "5": {
+              "samples": 301,
+              "firstToLastSampleSeconds": 299.999
+            }
+          },
+          "rawSha256": "b1b3fd2a1f71b2d3e8dd0135c1b274464d58c824a0d773e07df048922d575b1f"
+        },
+        "cleanup": {
+          "childProcesses": 0,
+          "tempEntries": 0,
+          "status": "passed"
+        },
+        "resources": {
+          "cpuPercent": {
+            "min": 0.007933538599620218,
+            "max": 0.24915298161587812,
+            "first": 0.007933538599620218,
+            "last": 0.09840292059891131,
+            "samples": 62
+          },
+          "memoryPercent": {
+            "min": 0.5643844604492188,
+            "max": 0.5961418151855469,
+            "first": 0.5643844604492188,
+            "last": 0.5956649780273438,
+            "samples": 62
+          },
+          "memoryMb": {
+            "min": 92.46875,
+            "max": 97.671875,
+            "first": 92.46875,
+            "last": 97.59375,
+            "samples": 62
+          },
+          "threads": {
+            "min": 1,
+            "max": 5,
+            "first": 1,
+            "last": 3,
+            "samples": 62
+          },
+          "walBytes": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0,
+            "samples": 62
+          },
+          "handles": {
+            "min": 12,
+            "max": 17,
+            "first": 12,
+            "last": 16,
+            "samples": 62
+          },
+          "childProcesses": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0,
+            "samples": 62
+          },
+          "tempEntries": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0,
+            "samples": 62
+          }
+        },
+        "growth": {
+          "memoryMb": {
+            "samples": 62,
+            "first": 92.46875,
+            "last": 97.59375,
+            "delta": 5.125,
+            "continuouslyIncreasing": false
+          },
+          "threads": {
+            "samples": 62,
+            "first": 1,
+            "last": 3,
+            "delta": 2,
+            "continuouslyIncreasing": false
+          },
+          "walBytes": {
+            "samples": 62,
+            "first": 0,
+            "last": 0,
+            "delta": 0,
+            "continuouslyIncreasing": false
+          },
+          "logFiles": {
+            "samples": 62,
+            "first": 0,
+            "last": 0,
+            "delta": 0,
+            "continuouslyIncreasing": false
+          }
+        },
+        "integrity": "passed",
+        "threadsBefore": {
+          "serverPid": 5909,
+          "timestamp": "2026-11-09T02:03:28.325803+00:00",
+          "threads": [
+            {
+              "name": "MainThread",
+              "nativeId": 5412501,
+              "daemon": false
+            }
+          ]
+        },
+        "threadsBeforeByName": {
+          "MainThread": 1
+        },
+        "threadsAfter": {
+          "serverPid": 5909,
+          "timestamp": "2026-11-09T02:08:48.066686+00:00",
+          "threads": [
+            {
+              "name": "MainThread",
+              "nativeId": 5412501,
+              "daemon": false
+            }
+          ]
+        },
+        "threadsAfterByName": {
+          "MainThread": 1
+        }
+      }
+    ],
+    "recovery": {
+      "comparison": {
+        "p95Ms": {
+          "before": 16.36925,
+          "after": 15.90075,
+          "verdict": "passed"
+        },
+        "errorRate": {
+          "before": 0.0,
+          "after": 0.0,
+          "verdict": "passed"
+        },
+        "cpuPercent": {
+          "before": 0.1378699176031374,
+          "after": 0.1630386252948897,
+          "verdict": "passed"
+        },
+        "memoryMb": {
+          "before": 92.01041666666667,
+          "after": 97.59765625,
+          "verdict": "passed"
+        },
+        "threads": {
+          "before": 2.5833333333333335,
+          "after": 3.0833333333333335,
+          "verdict": "passed"
+        },
+        "handles": {
+          "before": 16.916666666666668,
+          "after": 16.916666666666668,
+          "verdict": "passed"
+        },
+        "childProcesses": {
+          "before": 0,
+          "after": 0,
+          "verdict": "passed"
+        }
+      },
+      "status": "passed",
+      "factor": 1.2
+    },
+    "soakStability": "unknown",
+    "postFixtureSha256": "a83c873f2f2961b7a7e20eb7a04a8aa7c4ae5cf781385270d6dcfb49181702a9",
+    "executionHistory": {
+      "rows": 7059,
+      "distinctRunIds": 7059,
+      "passedExitZero": 7059,
+      "proofSha256": "d60afca197727581cd80ee560173d27da5bc37cef5654162aec0aa10202e014b"
+    },
+    "externalHostSample": null,
+    "serverStopped": true
+  },
+  "shortDiagnostics": {
+    "first": {
+      "comparison": {
+        "p95Ms": {
+          "before": 82.9635,
+          "after": 17.9392,
+          "verdict": "passed"
+        },
+        "errorRate": {
+          "before": 0.0,
+          "after": 0.0,
+          "verdict": "passed"
+        },
+        "cpuPercent": {
+          "before": 0.19483873664125553,
+          "after": 0.12182231990286473,
+          "verdict": "passed"
+        },
+        "memoryMb": {
+          "before": 85.14423076923077,
+          "after": 72.98557692307692,
+          "verdict": "passed"
+        },
+        "threads": {
+          "before": 2.230769230769231,
+          "after": 3.6923076923076925,
+          "verdict": "failed"
+        },
+        "handles": {
+          "before": 16.923076923076923,
+          "after": 16.923076923076923,
+          "verdict": "passed"
+        },
+        "childProcesses": {
+          "before": 0,
+          "after": 0,
+          "verdict": "passed"
+        }
+      },
+      "status": "failed",
+      "factor": 1.2
+    },
+    "afterErrorHandlerFix": {
+      "comparison": {
+        "p95Ms": {
+          "before": 105.66195,
+          "after": 18.9993,
+          "verdict": "passed"
+        },
+        "errorRate": {
+          "before": 0.0,
+          "after": 0.0,
+          "verdict": "passed"
+        },
+        "cpuPercent": {
+          "before": 0.20601163634651404,
+          "after": 0.12207504745743948,
+          "verdict": "passed"
+        },
+        "memoryMb": {
+          "before": 85.94471153846153,
+          "after": 98.10697115384616,
+          "verdict": "passed"
+        },
+        "threads": {
+          "before": 2.3846153846153846,
+          "after": 2.6153846153846154,
+          "verdict": "passed"
+        },
+        "handles": {
+          "before": 16.923076923076923,
+          "after": 16.923076923076923,
+          "verdict": "passed"
+        },
+        "childProcesses": {
+          "before": 0,
+          "after": 0,
+          "verdict": "passed"
+        }
+      },
+      "status": "passed",
+      "factor": 1.2
+    }
+  },
+  "recordedDate": "2026-11-09",
+  "validation": {
+    "python": {
+      "tests": 740,
+      "seconds": 123.421,
+      "status": "passed"
+    },
+    "frontend": {
+      "tests": 169,
+      "files": 38,
+      "status": "passed"
+    },
+    "productionBuild": "passed (existing chunk-size warning)",
+    "generatedServer": "passed",
+    "lt5Report": "passed",
+    "historicalP1Reports": "passed",
+    "k6ModelFiles": 5
+  },
+  "evidence": {
+    "path": "data/load-test-evidence/thread-recovery-9099690-20261109",
+    "indexSha256": "0f7932afe13cb4cf7bad266b194725fcc8652aa2424aee45a24823925082f1a9",
+    "archiveSourceFiles": 61,
+    "checksums": 29
+  },
+  "interpretation": {
+    "profile": "passed",
+    "recovery": "passed",
+    "threadRatio": 1.1935483870967742,
+    "campaign": "unknown",
+    "campaignExitCode": 1,
+    "unknownReason": "Existing monotonic-growth heuristic does not establish long-term stability. The full-duration profile and all recovery checks passed; the heuristic was not changed.",
+    "limitations": [
+      "native macOS, private SQLite and same-host k6 only",
+      "Windows deferred",
+      "production deployment and organizational OIDC not verified"
+    ]
+  }
+}
