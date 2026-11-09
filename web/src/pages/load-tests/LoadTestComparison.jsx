@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../../utils/studio.js'
 import { navigateTo } from '../../router.js'
 import { absoluteDelta, chartSegments, comparisonMetrics, elapsedSeries, metricValue, metricVerdict, number, percent, provisionalCriteria, relativeDelta } from './comparison.js'
+import './load-tests.css'
 
 const time = value => value ? new Date(value).toLocaleString('ko-KR') : '—'
 const metrics = [

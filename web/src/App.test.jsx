@@ -37,7 +37,7 @@ it('keeps the URL project when navigating before project metadata finishes loadi
   window.history.replaceState(null, '', '/cases?project=sample')
   api.mockImplementation(() => new Promise(() => {}))
   render(<App />)
-  fireEvent.click(screen.getByRole('button', { name: '파이프라인 목록 이동' }))
+  fireEvent.click(await screen.findByRole('button', { name: '파이프라인 목록 이동' }))
   expect(window.location.pathname).toBe('/pipelines')
   expect(new URLSearchParams(window.location.search).get('project')).toBe('sample')
 })

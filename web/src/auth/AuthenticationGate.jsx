@@ -66,10 +66,10 @@ export function AuthenticationGate({ children, onNavigate = target => window.loc
   return <>{error && <p className="notice" role="alert">{error}</p>}{children(info, { switchWorkspace, logout, busy })}</>
 }
 
-export function SessionControls({ info, actions, onManage }) {
+export function SessionControls({ info, actions, managing = false, onManage }) {
   if (!info) return null
-  return <div className="session-controls"><span>{info.displayName} · {info.mode === 'local' ? '로컬 모드' : info.workspace?.role}</span>
+  return <div className="session-controls"><span className="session-identity" title={info.displayName}>{info.displayName} · {info.mode === 'local' ? '로컬 모드' : info.workspace?.role}</span>
     {info.mode === 'remote' && <><label>Workspace<select aria-label="현재 Workspace" disabled={actions.busy} value={info.workspace.id} onChange={e => actions.switchWorkspace(e.target.value)}>{info.workspaces.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button className="ghost" disabled={actions.busy} onClick={actions.logout}>Studio 로그아웃</button></>}
-    {['owner', 'admin'].includes(info.workspace?.role) && <button className="ghost" onClick={onManage}>멤버·감사 기록</button>}
+    {['owner', 'admin'].includes(info.workspace?.role) && <button className="ghost" aria-pressed={managing} onClick={onManage}>멤버·감사 기록</button>}
   </div>
 }
