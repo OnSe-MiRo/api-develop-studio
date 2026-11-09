@@ -34,8 +34,8 @@ async def signup(request: Request):
     password = body['password']
     if len(email) > 254 or not re.fullmatch(r'[a-z0-9.!#$%&\x27*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+', email):
         return reply(400, '이메일 주소를 확인하세요.')
-    if len(password) < 12 or len(password.encode('utf-8', errors='replace')) > 72 or any(0xD800 <= ord(c) <= 0xDFFF for c in password):
-        return reply(400, '비밀번호는 12자 이상이며 UTF-8 기준 72바이트 이하여야 합니다.')
+    if len(password) < 8 or len(password.encode('utf-8', errors='replace')) > 72 or any(0xD800 <= ord(c) <= 0xDFFF for c in password):
+        return reply(400, '비밀번호는 8자 이상이며 UTF-8 기준 72바이트 이하여야 합니다.')
     def create():
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12))
         account = Password(email=email, hash=hashed, username=email, user_id='signup-' + uuid.uuid4().hex)

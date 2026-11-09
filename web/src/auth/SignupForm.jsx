@@ -32,7 +32,7 @@ export function SignupForm({ onCancel }) {
       <form className="form-grid" onSubmit={submit}>
         <p>처음 로그인하면 개인 워크스페이스가 생성됩니다.</p>
         <label className="field">이메일<input type="email" name="email" required maxLength={254} autoComplete="email" /></label>
-        <label className="field">비밀번호 (12자 이상)<input type="password" name="password" required minLength={12} autoComplete="new-password" /></label>
+        <label className="field">비밀번호 (8자 이상)<input type="password" name="password" required minLength={8} autoComplete="new-password" /></label>
         <label className="field">비밀번호 확인<input type="password" name="confirmation" required autoComplete="new-password" /></label>
         {error && <p role="alert">{error}</p>}
         <div className="actions"><button className="primary" disabled={busy}>{busy ? '가입 중…' : '계정 만들기'}</button><button type="button" onClick={onCancel} disabled={busy}>돌아가기</button></div>
